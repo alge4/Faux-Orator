@@ -1,6 +1,9 @@
 import { config } from "dotenv";
 import { Client, GatewayIntentBits, Guild, Routes } from "discord.js";
+import { SlashCommandBuilder } from "@discordjs/builders";
 import { REST } from "@discordjs/rest";
+//import order from "./commands/order";
+//import OrderCommand from "./commands.order.js";
 
 config();
 
@@ -37,50 +40,51 @@ client.on("interactionCreate", (interaction) => {
 });
 
 async function main() {
-  const commands = [
-    {
-      name: "order",
-      description: "Order something",
-      options: [
-        {
-          name: "food",
-          description: "the type of food",
-          type: 3,
-          required: true,
-          choices: [
-            {
-              name: "Cake",
-              value: "cake",
-            },
-            {
-              name: "Hamburger",
-              value: "Hamburger",
-            },
-          ],
-        },
-        {
-          name: "drink",
-          description: "Beverage",
-          type: 3,
-          required: true,
-          choices: [
-            {
-              name: "Water",
-              value: "H20",
-            },
-            {
-              name: "Sprite",
-              value: "Sprite",
-            },
-            {
-              name: "Cola",
-              value: "Is pesi okay?",
-            },
-          ],
-        },
-      ],
-    },
-  ];
+  const orderCommand = new SlashCommandBuilder()
+    .setName("order")
+    .setDescription("the type of food")
+    .addStringOption((option) =>
+      option
+        .setName("food")
+        .setDescription("Select your favorite food.")
+        .setRequired(true)
+        .setChoices(
+          {
+            name: "Cake",
+            value: "cake",
+          },
+          {
+            name: "Hamburger",
+            value: "Hamburger",
+          },
+          {
+            name: "Pizza",
+            value: "Pizza",
+          }
+        )
+    )
+    .addStringOption((option) =>
+      option
+        .setName("drink")
+        .setDescription("Select your beverage")
+        .setRequired(false)
+        .setChoices(
+          {
+            name: "Water",
+            value: "H20",
+          },
+          {
+            name: "Sprite",
+            value: "Sprite",
+          },
+          {
+            name: "Cola",
+            value: "Is pesi okay?",
+          }
+        )
+    );
+
+  const commands = [orderCommand.toJSON()];
 
   try {
     //client login.
