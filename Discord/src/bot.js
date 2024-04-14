@@ -30,16 +30,18 @@ client.on(`ready`, () => {
   console.log(`${client.user.tag} has logged in`);
 });
 
+client.on('interactionCreate', (interaction) => {
+    if (interaction.isChatInputCommand()){
+        console.log('Hello, World');
+        interaction.reply({content: 'Hey there!!!!!!!'});
+    }
+});
 async function main() {
   const commands = [
     {
-      name: "tutorailhelp",
-      description: "Help Tutorial Command",
+      name: "order",
+      description: "Order something",
     },
-    {
-        name: "tutorailhelp2",
-        description: "Help Tutorial Command",
-      },
   ];
 
   try {
