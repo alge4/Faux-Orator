@@ -28,7 +28,11 @@ client.on(`ready`, () => {
 client.on("interactionCreate", (interaction) => {
   if (interaction.isChatInputCommand()) {
     //console.log(interaction.options.get('food').value);
-    interaction.reply({ content: `You ordered a ${interaction.options.get('food').value}.`});
+    interaction.reply({
+      content: `You ordered a ${interaction.options.get("food").value} and ${
+        interaction.options.get("drink").value
+      }.`,
+    });
   }
 });
 
@@ -43,6 +47,36 @@ async function main() {
           description: "the type of food",
           type: 3,
           required: true,
+          choices: [
+            {
+              name: "Cake",
+              value: "cake",
+            },
+            {
+              name: "Hamburger",
+              value: "Hamburger",
+            },
+          ],
+        },
+        {
+          name: "drink",
+          description: "Beverage",
+          type: 3,
+          required: true,
+          choices: [
+            {
+              name: "Water",
+              value: "H20",
+            },
+            {
+              name: "Sprite",
+              value: "Sprite",
+            },
+            {
+              name: "Cola",
+              value: "Is pesi okay?",
+            },
+          ],
         },
       ],
     },
