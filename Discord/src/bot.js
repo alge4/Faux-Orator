@@ -1,10 +1,5 @@
 import { config } from "dotenv";
-import {
-  Client,
-  GatewayIntentBits,
-  Guild,
-  Routes,
-} from "discord.js";
+import { Client, GatewayIntentBits, Guild, Routes } from "discord.js";
 import { REST } from "@discordjs/rest";
 
 config();
@@ -30,17 +25,26 @@ client.on(`ready`, () => {
   console.log(`${client.user.tag} has logged in`);
 });
 
-client.on('interactionCreate', (interaction) => {
-    if (interaction.isChatInputCommand()){
-        console.log('Hello, World');
-        interaction.reply({content: 'Hey there!!!!!!!'});
-    }
+client.on("interactionCreate", (interaction) => {
+  if (interaction.isChatInputCommand()) {
+    //console.log(interaction.options.get('food').value);
+    interaction.reply({ content: `You ordered a ${interaction.options.get('food').value}.`});
+  }
 });
+
 async function main() {
   const commands = [
     {
       name: "order",
       description: "Order something",
+      options: [
+        {
+          name: "food",
+          description: "the type of food",
+          type: 3,
+          required: true,
+        },
+      ],
     },
   ];
 
