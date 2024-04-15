@@ -1,9 +1,13 @@
 import { config } from "dotenv";
 import { Client, GatewayIntentBits, Guild, Routes } from "discord.js";
-import { SlashCommandBuilder } from "@discordjs/builders";
 import { REST } from "@discordjs/rest";
-//import order from "./commands/order";
-//import OrderCommand from "./commands.order.js";
+import OrderCommand from "./commands/order.js";
+import RolesCommand from "./commands/roles.js";
+import UserCommand from "./commands/user.js";
+import ChannelCommand from "./commands/channel.js";
+import BanCommand from "./commands/ban.js";
+import { ActionRowBuilder } from "discord.js";
+import { SelectMenuBuilder } from "@discordjs/builders";
 
 config();
 
@@ -30,62 +34,28 @@ client.on(`ready`, () => {
 
 client.on("interactionCreate", (interaction) => {
   if (interaction.isChatInputCommand()) {
-    //console.log(interaction.options.get('food').value);
-    interaction.reply({
-      content: `You ordered a ${interaction.options.get("food").value} and ${
-        interaction.options.get("drink").value
-      }.`,
-    });
+    if (interaction.commandName === 'order') {
+      console.log("OrderCommand");
+      console.log(interaction);
+      const actionRowComponent = new ActionRowBuilder().setComponents(
+        new SelectMenuBuilder().setCustomId('food_options').setOptions([{label:'cake',value:'cake'},{label:'pizza',value:'pizza'},{label:'Sushi',value:'sushi'},])
+      );
+      interaction.reply({
+        components: [actionRowComponent.toJSON()]
+      });
+    }
   }
 });
 
 async function main() {
-  const orderCommand = new SlashCommandBuilder()
-    .setName("order")
-    .setDescription("the type of food")
-    .addStringOption((option) =>
-      option
-        .setName("food")
-        .setDescription("Select your favorite food.")
-        .setRequired(true)
-        .setChoices(
-          {
-            name: "Cake",
-            value: "cake",
-          },
-          {
-            name: "Hamburger",
-            value: "Hamburger",
-          },
-          {
-            name: "Pizza",
-            value: "Pizza",
-          }
-        )
-    )
-    .addStringOption((option) =>
-      option
-        .setName("drink")
-        .setDescription("Select your beverage")
-        .setRequired(false)
-        .setChoices(
-          {
-            name: "Water",
-            value: "H20",
-          },
-          {
-            name: "Sprite",
-            value: "Sprite",
-          },
-          {
-            name: "Cola",
-            value: "Is pesi okay?",
-          }
-        )
-    );
-
-  const commands = [orderCommand.toJSON()];
-
+  const commands = [
+    OrderCommand,
+    RolesCommand,
+    UserCommand,
+    ChannelCommand,
+    BanCommand,
+  ];
+  //console.log(`${commands}`);
   try {
     //client login.
     console.log(`Starting refreshing application (/) commands.`);
