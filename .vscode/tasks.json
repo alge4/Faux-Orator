@@ -1,0 +1,11 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "open-edge-browser",
+            "type": "shell",
+            "command": "start msedge http://localhost:5000",
+            "problemMatcher": []
+        }
+    ]
+}
