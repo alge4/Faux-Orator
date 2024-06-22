@@ -1,5 +1,6 @@
 .env
-/venv
+venv/
 Discord/.env
 Discord/node_modules/
 instance/
+.logs
