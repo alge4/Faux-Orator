@@ -1,6 +1,78 @@
-{% extends "layout.html" %}
-{% block title %}Main{% endblock %}
-{% block header %}Main Screen{% endblock %}
-{% block content %}
-<!-- Main-specific content goes here -->
-{% endblock %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Faux Orator{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="//cdnjs.cloudflare.com/ajax/libs/socket.io/2.3.0/socket.io.js"></script>
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+</head>
+<body>
+    <div id="container">
+        <div id="sidebar" class="flex-shrink-0 overflow-x-hidden bg-token-sidebar-surface-primary">
+            <h2>Campaigns</h2>
+            <ul id="campaign-list">
+                {% for campaign in campaigns %}
+                <li>
+                    <input type="radio" name="favorite" id="fav-{{ campaign.id }}" 
+                           {% if campaign.id == user.favorite_campaign_id %}checked{% endif %}
+                           onclick="setFavoriteCampaign('{{ campaign.id }}')">
+                    <label for="fav-{{ campaign.id }}">{{ campaign.name }}</label>
+                </li>
+                {% endfor %}
+            </ul>
+            <form action="{{ url_for('main.add_campaign') }}" method="post">
+                {{ form.hidden_tag() }}
+                <input type="text" name="name" placeholder="New Campaign" required>
+                <button type="submit">Add</button>
+            </form>
+        </div>
+        <div id="content">
+            <div class="top-bar">
+                <div class="profile-dropdown">
+                    <button class="profile-icon">
+                        <img src="{{ url_for('static', filename='img/profile-icon.png') }}" alt="Profile">
+                    </button>
+                    <div class="dropdown-content">
+                        <a href="#">Profile</a>
+                        <a href="#">Options</a>
+                        <a href="{{ url_for('auth.logout') }}">Logout</a>
+                    </div>
+                </div>
+            </div>
+            <h1 id="main-header">{% block header %}Main Screen{% endblock %}</h1>
+            <p>Welcome, {{ session['username'] }}</p>
+            <div class="toggle-switch">
+                <input type="radio" id="planning" name="phase" value="planning" {% if phase == 'planning' %}checked{% endif %}>
+                <label for="planning" class="toggle-option">Planning</label>
+
+                <input type="radio" id="playing" name="phase" value="playing" {% if phase == 'playing' %}checked{% endif %}>
+                <label for="playing" class="toggle-option">Playing</label>
+
+                <input type="radio" id="review" name="phase" value="review" {% if phase == 'review' %}checked{% endif %}>
+                <label for="review" class="toggle-option">Review</label>
+            </div>
+            <div id="main-content">
+                <div id="chat-window" style="width: 33%; float: left;">
+                    <div id="chat-messages"></div>
+                    <form id="chat-form" method="post">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                        <input type="text" id="chat-input" name="message" placeholder="Type your message...">
+                        <button type="submit">Send</button>
+                    </form>
+                    <form id="custom-story-form" method="post">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                        <input type="text" id="custom-story-prompt" name="prompt" placeholder="Enter custom story prompt...">
+                        <button type="submit">Get Custom Story</button>
+                    </form>
+                </div>
+                <div id="other-content" style="width: 66%; float: right;">
+                    {% block content %}{% endblock %}
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="{{ url_for('static', filename='js/gma_chat.js') }}"></script>
+</body>
+</html>

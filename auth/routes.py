@@ -1,9 +1,10 @@
 from flask import Blueprint, render_template, redirect, url_for, request, flash, session
-from models import User, db
+from flask_login import login_user, logout_user, login_required, current_user
+from models import User, db, Campaign
 from flask_bcrypt import Bcrypt
 from itsdangerous import URLSafeTimedSerializer
 from flask_mail import Message, Mail
-from .forms import LoginForm, RegistrationForm, ResetPasswordRequestForm, ResetPasswordForm
+from auth.forms import LoginForm, RegistrationForm, ResetPasswordRequestForm, ResetPasswordForm
 
 auth_bp = Blueprint('auth', __name__)
 bcrypt = Bcrypt()
@@ -12,27 +13,47 @@ serializer = URLSafeTimedSerializer('your-secret-key')
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
 def login():
-    form = LoginForm()
-    if form.validate_on_submit():
-        user = User.query.filter_by(username=form.username.data).first()
-        if user and bcrypt.check_password_hash(user.password, form.password.data):
+    if current_user.is_authenticated:
+        return redirect(url_for('main.main'))
+    login_form = LoginForm()
+    register_form = RegistrationForm()
+    if login_form.validate_on_submit():
+        user = User.query.filter_by(email=login_form.email.data).first()
+        if user and bcrypt.check_password_hash(user.password, login_form.password.data):
+            login_user(user)
             session['username'] = user.username
             return redirect(url_for('main.main'))
         else:
             flash('Invalid credentials, please try again.', 'danger')
-    return render_template('login.html', form=form)
+    return render_template('login.html', login_form=login_form, register_form=register_form)
 
-@auth_bp.route('/register', methods=['POST'])
+@auth_bp.route('/register', methods=['GET', 'POST'])
 def register():
-    form = RegistrationForm()
-    if form.validate_on_submit():
-        hashed_password = bcrypt.generate_password_hash(form.password.data).decode('utf-8')
-        new_user = User(email=form.email.data, username=form.username.data, password=hashed_password)
-        db.session.add(new_user)
-        db.session.commit()
-        session['username'] = new_user.username
+    if current_user.is_authenticated:
         return redirect(url_for('main.main'))
-    return render_template('register.html', form=form)
+    register_form = RegistrationForm()
+    login_form = LoginForm()
+    if register_form.validate_on_submit():
+        hashed_password = bcrypt.generate_password_hash(register_form.password.data).decode('utf-8')
+        user = User(username=register_form.username.data, email=register_form.email.data, password=hashed_password)
+        db.session.add(user)
+        db.session.commit()
+        template_campaign = Campaign(name='Lost Mines of Phandelver', user_id=user.id)
+        db.session.add(template_campaign)
+        db.session.commit()
+        user.favorite_campaign_id = template_campaign.id
+        db.session.commit()
+        login_user(user)
+        session['username'] = user.username
+        flash('Your account has been created and you are now logged in!', 'success')
+        return redirect(url_for('main.main'))
+    return render_template('login.html', login_form=login_form, register_form=register_form)
+
+@auth_bp.route('/logout')
+@login_required
+def logout():
+    logout_user()
+    return redirect(url_for('auth.login'))
 
 @auth_bp.route('/reset_password', methods=['GET', 'POST'])
 def reset_password_request():

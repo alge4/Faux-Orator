@@ -1,15 +1,18 @@
+<!-- templates/index.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Faux Orator</title>
+    <title>Faux Orator - Landing Page</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
-    <h1>Faux Orator</h1>
-    <div class="link-container">
-    <a class="login-link" href="{{ url_for('login') }}">Login / Register</a>
+    <div class="container">
+        <h1>Welcome to Faux Orator</h1>
+        <div class="auth-buttons">
+            <a href="{{ url_for('auth.login') }}" class="btn">Login/Register</a>
+        </div>
     </div>
 </body>
 </html>

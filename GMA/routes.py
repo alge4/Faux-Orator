@@ -1,29 +1,35 @@
-from flask import Blueprint
+from flask import Blueprint, request, jsonify, current_app
 from flask_socketio import emit
-from .ai import GameMastersAssistant
+from flask_login import login_required
+from .agents import GameMastersAssistant
 
 gma_bp = Blueprint('gma', __name__)
-gma = GameMastersAssistant()
 
-@gma_bp.route('/get_story_idea')
-def handle_get_story_idea():
-    idea = gma.get_story_idea()
-    emit('story_idea', idea)
+def get_gma():
+    api_key = current_app.config['OPENAI_API_KEY']
+    return GameMastersAssistant(api_key)
 
-@gma_bp.route('/get_rule_clarification')
-def handle_get_rule_clarification(data):
-    query = data['query']
-    clarification = gma.get_rule_clarification(query)
-    emit('rule_clarification', clarification)
+@gma_bp.route('/send_message', methods=['POST'])
+@login_required
+def send_message():
+    gma = get_gma()
+    message = request.form['message']
+    response = gma.handle_message(message)
+    emit('gma_response', response, broadcast=True)
+    return jsonify(success=True, response=response)
 
-@gma_bp.route('/get_npc_dialogue')
-def handle_get_npc_dialogue(data):
-    npc_name = data['npc_name']
-    dialogue = gma.get_npc_dialogue(npc_name)
-    emit('npc_dialogue', dialogue)
+# Test route
+@gma_bp.route('/test_openai', methods=['GET'])
+def test_openai():
+    gma = get_gma()
+    response = gma.story_agent.get_idea()
+    return jsonify(success=True, response=response)
 
-@gma_bp.route('/get_lore_info')
-def handle_get_lore_info(data):
-    topic = data['topic']
-    info = gma.get_lore_info(topic)
-    emit('lore_info', info)
+# Example route to get a custom story from StoryAgent
+@gma_bp.route('/get_custom_story', methods=['POST'])
+@login_required
+def get_custom_story():
+    gma = get_gma()
+    prompt = request.form['prompt']
+    response = gma.story_agent.get_custom_story(prompt)
+    return jsonify(success=True, response=response)
