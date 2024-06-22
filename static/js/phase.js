@@ -1,4 +1,4 @@
-// Placeholder for future JavaScript functionality
+// scripts/phase.js
 document.addEventListener('DOMContentLoaded', function () {
     const phaseRadios = document.querySelectorAll('input[name="phase"]');
 

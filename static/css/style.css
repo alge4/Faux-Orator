@@ -33,18 +33,25 @@ body {
 
 #sidebar ul li {
     margin-bottom: 10px;
+    display: flex;
+    align-items: center;
 }
 
-#sidebar ul li a {
+#sidebar ul li label {
     color: white;
     text-decoration: none;
     display: block;
     padding: 10px;
     border-radius: 5px;
     transition: background-color 0.3s;
+    flex-grow: 1;
 }
 
-#sidebar ul li a:hover {
+#sidebar ul li input[type="radio"] {
+    margin-right: 10px;
+}
+
+#sidebar ul li label:hover {
     background-color: #374151;
 }
 
@@ -78,6 +85,8 @@ body {
     padding: 20px;
     box-sizing: border-box;
     overflow-x: hidden;
+    display: flex;
+    flex-direction: column;
 }
 
 .top-bar {
@@ -166,4 +175,67 @@ body {
 
 h1, p {
     margin: 0 0 10px 0;
+}
+
+#main-header-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    background-color: #f0f0f0;
+}
+
+#main-header {
+    font-size: 2rem;
+}
+
+#main-content {
+    display: flex;
+    height: 100%;
+}
+
+#chat-window {
+    width: 33.33%;
+    background-color: #e0e0e0;
+    border-right: 1px solid #ccc;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+#chat-messages {
+    flex-grow: 1;
+    padding: 1rem;
+    overflow-y: auto;
+}
+
+#chat-form {
+    display: flex;
+    padding: 0.5rem;
+}
+
+#chat-input {
+    flex-grow: 1;
+    padding: 0.5rem;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+
+#chat-form button {
+    margin-left: 0.5rem;
+    padding: 0.5rem 1rem;
+    border: none;
+    background-color: #007bff;
+    color: #fff;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+#chat-form button:hover {
+    background-color: #0056b3;
+}
+
+#other-content {
+    width: 66.67%;
+    padding: 1rem;
 }

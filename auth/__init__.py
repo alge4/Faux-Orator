@@ -1,6 +1,7 @@
-# auth/__init__.py
-from flask import Blueprint
+# app.py
+from __init__ import create_app, socketio
 
-auth_bp = Blueprint('auth', __name__)
+app = create_app()
 
-from . import routes
+if __name__ == '__main__':
+    socketio.run(app, debug=True)
