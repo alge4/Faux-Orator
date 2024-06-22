@@ -3,18 +3,23 @@ body {
     margin: 0;
     padding: 0;
     display: flex;
-    flex-direction: column;
-    align-items: center;
     height: 100vh;
     background-color: #f0f0f0;
 }
 
+#container {
+    display: flex;
+    width: 100%;
+}
+
 #sidebar {
     width: 250px;
-    background-color: #333;
+    background-color: #1f2937;
     color: white;
     padding: 15px;
     box-sizing: border-box;
+    overflow-y: auto;
+    flex-shrink: 0;
 }
 
 #sidebar h2 {
@@ -34,13 +39,13 @@ body {
     color: white;
     text-decoration: none;
     display: block;
-    padding: 5px;
+    padding: 10px;
     border-radius: 5px;
     transition: background-color 0.3s;
 }
 
 #sidebar ul li a:hover {
-    background-color: #555;
+    background-color: #374151;
 }
 
 #sidebar form {
@@ -68,69 +73,97 @@ body {
     background-color: #0056b3;
 }
 
-.container {
-    width: 80%;
-    max-width: 900px;
-    background-color: white;
+#content {
+    flex-grow: 1;
     padding: 20px;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    box-sizing: border-box;
+    overflow-x: hidden;
 }
 
-h1, h2 {
-    margin-top: 20px;
-    text-align: center;
-}
-
-form {
+.top-bar {
     display: flex;
-    flex-direction: column;
-    margin-bottom: 20px;
+    justify-content: flex-end;
+    align-items: center;
+    padding: 10px;
+    background-color: #f8f9fa;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-input {
-    margin-bottom: 10px;
-    padding: 10px;
-    font-size: 16px;
+.profile-dropdown {
+    position: relative;
+    display: inline-block;
 }
 
-button {
-    padding: 10px;
-    font-size: 16px;
-    background-color: #007bff;
-    color: white;
+.profile-icon {
+    background: none;
     border: none;
     cursor: pointer;
+    padding: 5px;
 }
 
-button:hover {
-    background-color: #0056b3;
+.profile-icon img {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
 }
 
-.flash {
-    color: red;
+.dropdown-content {
+    display: none;
+    position: absolute;
+    right: 0;
+    background-color: white;
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+    min-width: 160px;
+    z-index: 1;
+}
+
+.dropdown-content a {
+    color: black;
+    padding: 12px 16px;
+    text-decoration: none;
+    display: block;
+}
+
+.dropdown-content a:hover {
+    background-color: #ddd;
+}
+
+.profile-dropdown:hover .dropdown-content {
+    display: block;
+}
+
+.toggle-switch {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-top: 20px;
+}
+
+.toggle-switch input[type="radio"] {
+    display: none;
+}
+
+.toggle-switch label {
+    display: inline-block;
+    width: 100px;
+    padding: 10px;
+    background-color: #ddd;
+    color: #333;
     text-align: center;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
 }
 
-.section {
-    margin-bottom: 30px;
-}
-.link-container {
-    width: 100%;
-    text-align: center; /* Center the container content */
-    margin-top: 20px;  /* Adds space above the link */
+.toggle-switch input[type="radio"]:checked + label {
+    background-color: #007bff;
+    color: white;
 }
 
-.link-container a {
-    display: block;  /* Makes the link a block element to force it onto a new line */
-    width: 200px; /* Set a fixed width for the link */
-    margin: 0 auto; /* Center the block element */
-    padding: 10px;  /* Adds some padding for better appearance */
-    background-color: #007bff;  /* Background color for the link */
-    color: white;  /* Text color */
-    text-decoration: none;  /* Removes underline */
-    border-radius: 5px;  /* Rounds the corners */
+.toggle-switch label:hover {
+    background-color: #0056b3;
+    color: white;
 }
 
-.link-container a:hover {
-    background-color: #0056b3;  /* Changes background color on hover */
+h1, p {
+    margin: 0 0 10px 0;
 }
