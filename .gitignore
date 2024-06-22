@@ -1,3 +1,4 @@
 .env
+/venv
 Discord/.env
 Discord/node_modules/

@@ -17,7 +17,6 @@
                 "--no-reload"
             ],
             "preLaunchTask": "open-edge-browser",
-            "jinja":true
         }
     ]
 }

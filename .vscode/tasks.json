@@ -2,6 +2,19 @@
     "version": "2.0.0",
     "tasks": [
         {
+            "label": "Run Flask App",
+            "type": "shell",
+            "command": "${workspaceFolder}\\venv\\Scripts\\python.exe",  // Use venv/Scripts/python.exe for Windows
+            "args": [
+                "app.py"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": []
+        },
+        {
             "label": "open-edge-browser",
             "type": "shell",
             "command": "start msedge http://localhost:5000",
