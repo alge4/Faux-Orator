@@ -5,13 +5,15 @@ from flask_bcrypt import Bcrypt
 from flask_migrate import Migrate
 from flask_mail import Mail, Message
 from itsdangerous import URLSafeTimedSerializer
+from datetime import datetime
 from dotenv import load_dotenv
+from sqlalchemy.orm import relationship
 
 # Load environment variables from .env file
 load_dotenv()
 
 app = Flask(__name__)
-app.secret_key = os.urandom(24)
+app.secret_key = os.getenv('SECRET_KEY')
 
 # Database configuration
 basedir = os.path.abspath(os.path.dirname(__file__))
@@ -33,7 +35,6 @@ db = SQLAlchemy(app)
 bcrypt = Bcrypt(app)
 migrate = Migrate(app, db)
 
-
 # Secret key for generating tokens
 serializer = URLSafeTimedSerializer(app.secret_key)
 
@@ -43,6 +44,15 @@ class User(db.Model):
     email = db.Column(db.String(150), nullable=False, unique=True)
     username = db.Column(db.String(150), nullable=False, unique=True)
     password = db.Column(db.String(150), nullable=False)
+    campaigns = relationship('Campaign', back_populates='user')
+
+# Campaign model
+class Campaign(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(150), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    user = relationship('User', back_populates='campaigns')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 # Create database tables
 with app.app_context():
@@ -81,12 +91,6 @@ def register():
     db.session.commit()
     session['username'] = new_user.username
     return redirect(url_for('main'))
-
-@app.route('/main')
-def main():
-    if 'username' not in session:
-        return redirect(url_for('login'))
-    return render_template('main.html', phase='planning')
 
 @app.route('/reset_password', methods=['GET', 'POST'])
 def reset_password_request():
@@ -130,29 +134,35 @@ def reset_password(token):
     
     return render_template('reset_password.html', token=token)
 
+@app.route('/campaigns')
+def campaigns():
+    if 'username' not in session:
+        return redirect(url_for('login'))
+    user = User.query.filter_by(username=session['username']).first()
+    return render_template('campaigns.html', campaigns=user.campaigns)
+
+@app.route('/add_campaign', methods=['POST'])
+def add_campaign():
+    if 'username' not in session:
+        return redirect(url_for('login'))
+    user = User.query.filter_by(username=session['username']).first()
+    name = request.form['name']
+    new_campaign = Campaign(name=name, user=user)
+    db.session.add(new_campaign)
+    db.session.commit()
+    return redirect(url_for('campaigns'))
+
+@app.route('/main')
+def main():
+    if 'username' not in session:
+        return redirect(url_for('login'))
+    user = User.query.filter_by(username=session['username']).first()
+    return render_template('main.html', phase='planning', campaigns=user.campaigns)
+
 @app.route('/logout')
 def logout():
     session.pop('username', None)
     return redirect(url_for('landing_page'))
-
-
-@app.route('/planning')
-def planning():
-    if 'username' not in session:
-        return redirect(url_for('login'))
-    return render_template('planning.html')
-
-@app.route('/playing')
-def playing():
-    if 'username' not in session:
-        return redirect(url_for('login'))
-    return render_template('playing.html')
-
-@app.route('/review')
-def review():
-    if 'username' not in session:
-        return redirect(url_for('login'))
-    return render_template('review.html')
 
 if __name__ == '__main__':
     app.run(debug=True)
