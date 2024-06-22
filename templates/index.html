@@ -3,11 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Dungeon Master Assistant</title>
+    <title>Faux Orator</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
-    <h1>Welcome to Faux Orator</h1>
-    <a href="{{ url_for('login') }}">Login / Register</a>
+    <h1>Faux Orator</h1>
+    <div class="link-container">
+    <a class="login-link" href="{{ url_for('login') }}">Login / Register</a>
+    </div>
 </body>
 </html>

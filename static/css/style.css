@@ -3,19 +3,30 @@ body {
     margin: 0;
     padding: 0;
     display: flex;
-    justify-content: center;
+    flex-direction: column;
     align-items: center;
     height: 100vh;
     background-color: #f0f0f0;
 }
 
-h1 {
-    margin-bottom: 20px;
+
+.container {
+    width: 80%;
+    max-width: 900px;
+    background-color: white;
+    padding: 20px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+h1, h2 {
+    margin-top: 20px;
+    text-align: center;
 }
 
 form {
     display: flex;
     flex-direction: column;
+    margin-bottom: 20px;
 }
 
 input {
@@ -37,6 +48,31 @@ button:hover {
     background-color: #0056b3;
 }
 
-p {
+.flash {
     color: red;
+    text-align: center;
+}
+
+.section {
+    margin-bottom: 30px;
+}
+.link-container {
+    width: 100%;
+    text-align: center; /* Center the container content */
+    margin-top: 20px;  /* Adds space above the link */
+}
+
+.link-container a {
+    display: block;  /* Makes the link a block element to force it onto a new line */
+    width: 200px; /* Set a fixed width for the link */
+    margin: 0 auto; /* Center the block element */
+    padding: 10px;  /* Adds some padding for better appearance */
+    background-color: #007bff;  /* Background color for the link */
+    color: white;  /* Text color */
+    text-decoration: none;  /* Removes underline */
+    border-radius: 5px;  /* Rounds the corners */
+}
+
+.link-container a:hover {
+    background-color: #0056b3;  /* Changes background color on hover */
 }

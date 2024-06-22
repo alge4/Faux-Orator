@@ -3,16 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Main Screen</title>
+    <title>Main Screen - {{ phase|capitalize }} Mode</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/script.js') }}" defer></script>
 </head>
 <body>
-    <h1>Main Screen - Planning Mode</h1>
+    <h1>Main Screen - {{ phase|capitalize }} Mode</h1>
     <div id="content">
         <p>Welcome, {{ session['username'] }}</p>
-        <!-- Content for Planning Mode -->
-        <p>Planning mode active</p>
+        <div class="toggle-switch">
+            <input type="radio" id="planning" name="phase" value="planning" {% if phase == 'planning' %}checked{% endif %}>
+            <label for="planning" class="toggle-option">Planning</label>
+            
+            <input type="radio" id="playing" name="phase" value="playing" {% if phase == 'playing' %}checked{% endif %}>
+            <label for="playing" class="toggle-option">Playing</label>
+            
+            <input type="radio" id="review" name="phase" value="review" {% if phase == 'review' %}checked{% endif %}>
+            <label for="review" class="toggle-option">Review</label>
+        </div>
     </div>
 </body>
 </html>
