@@ -8,12 +8,15 @@ from itsdangerous import URLSafeTimedSerializer
 from datetime import datetime
 from dotenv import load_dotenv
 from sqlalchemy.orm import relationship
+from flask import Flask, render_template, request, jsonify
+from flask_socketio import SocketIO, emit
 
 # Load environment variables from .env file
 load_dotenv()
 
 app = Flask(__name__)
 app.secret_key = os.getenv('SECRET_KEY')
+socketio = SocketIO(app)
 
 # Database configuration
 basedir = os.path.abspath(os.path.dirname(__file__))
@@ -53,6 +56,56 @@ class Campaign(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     user = relationship('User', back_populates='campaigns')
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+class GameMastersAssistant:
+    def __init__(self):
+        self.story_ai = StoryCreativeIdeasAI()
+        self.rules_ai = DnD5eRulesLawyerAI()
+        self.npc_ai = NPCManagerAI()
+        self.lore_ai = LoreGuideAI()
+    
+    def get_story_idea(self):
+        return self.story_ai.generate_idea()
+
+    def get_rule_clarification(self, query):
+        return self.rules_ai.clarify_rule(query)
+    
+    def get_npc_dialogue(self, npc_name):
+        return self.npc_ai.get_dialogue(npc_name)
+    
+    def get_lore_info(self, topic):
+        return self.lore_ai.get_info(topic)
+    
+    def update_configurations(self, configs):
+        self.story_ai.update_config(configs)
+        self.rules_ai.update_config(configs)
+        self.npc_ai.update_config(configs)
+        self.lore_ai.update_config(configs)
+    
+    def review_session(self, session_data):
+        # Review and update session data
+        pass
+
+class StoryCreativeIdeasAI:
+    def generate_idea(self):
+        # Generate creative story ideas
+        return "A mysterious stranger offers the party a quest."
+
+class DnD5eRulesLawyerAI:
+    def clarify_rule(self, query):
+        # Clarify rules based on DnD 5th Edition
+        return "According to page 75 of the Player's Handbook..."
+
+class NPCManagerAI:
+    def get_dialogue(self, npc_name):
+        # Generate NPC dialogue
+        return f"{npc_name}: Welcome, adventurers!"
+
+class LoreGuideAI:
+    def get_info(self, topic):
+        # Provide lore information
+        return f"The ancient city of {topic} is known for..."
+
 
 # Create database tables
 with app.app_context():
@@ -163,6 +216,59 @@ def main():
 def logout():
     session.pop('username', None)
     return redirect(url_for('landing_page'))
+gma = GameMastersAssistant()
+
+@app.route('/')
+def index():
+    campaigns = get_user_campaigns()
+    return render_template('main.html', campaigns=campaigns)
+
+@app.route('/planning')
+def planning():
+    campaigns = get_user_campaigns()
+    return render_template('planning.html', campaigns=campaigns)
+
+@app.route('/playing')
+def playing():
+    campaigns = get_user_campaigns()
+    return render_template('playing.html', campaigns=campaigns)
+
+@app.route('/review')
+def review():
+    campaigns = get_user_campaigns()
+    return render_template('review.html', campaigns=campaigns)
+
+def get_user_campaigns():
+    # Dummy data for campaigns, replace with actual user campaigns
+    return [
+        {"name": "Campaign 1"},
+        {"name": "Campaign 2"},
+        {"name": "Campaign 3"}
+    ]
+
+
+@socketio.on('get_story_idea')
+def handle_get_story_idea():
+    idea = gma.get_story_idea()
+    emit('story_idea', idea)
+
+@socketio.on('get_rule_clarification')
+def handle_get_rule_clarification(data):
+    query = data['query']
+    clarification = gma.get_rule_clarification(query)
+    emit('rule_clarification', clarification)
+
+@socketio.on('get_npc_dialogue')
+def handle_get_npc_dialogue(data):
+    npc_name = data['npc_name']
+    dialogue = gma.get_npc_dialogue(npc_name)
+    emit('npc_dialogue', dialogue)
+
+@socketio.on('get_lore_info')
+def handle_get_lore_info(data):
+    topic = data['topic']
+    info = gma.get_lore_info(topic)
+    emit('lore_info', info)
 
 if __name__ == '__main__':
     app.run(debug=True)
