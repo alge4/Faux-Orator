@@ -8,18 +8,33 @@
     <script src="{{ url_for('static', filename='js/script.js') }}" defer></script>
 </head>
 <body>
-    <h1>Main Screen - {{ phase|capitalize }} Mode</h1>
-    <div id="content">
-        <p>Welcome, {{ session['username'] }}</p>
-        <div class="toggle-switch">
-            <input type="radio" id="planning" name="phase" value="planning" {% if phase == 'planning' %}checked{% endif %}>
-            <label for="planning" class="toggle-option">Planning</label>
-            
-            <input type="radio" id="playing" name="phase" value="playing" {% if phase == 'playing' %}checked{% endif %}>
-            <label for="playing" class="toggle-option">Playing</label>
-            
-            <input type="radio" id="review" name="phase" value="review" {% if phase == 'review' %}checked{% endif %}>
-            <label for="review" class="toggle-option">Review</label>
+    <div id="container">
+        <div id="sidebar">
+            <h2>Campaigns</h2>
+            <ul>
+                {% for campaign in campaigns %}
+                <li><a href="#">{{ campaign.name }}</a></li>
+                {% endfor %}
+            </ul>
+            <form action="{{ url_for('add_campaign') }}" method="post">
+                <input type="text" name="name" placeholder="New Campaign" required>
+                <button type="submit">Add</button>
+            </form>
+        </div>
+        <div id="content">
+            <h1>Main Screen - {{ phase|capitalize }} Mode</h1>
+            <p>Welcome, {{ session['username'] }}</p>
+            <div class="toggle-switch">
+                <input type="radio" id="planning" name="phase" value="planning" {% if phase == 'planning' %}checked{% endif %}>
+                <label for="planning" class="toggle-option">Planning</label>
+
+                <input type="radio" id="playing" name="phase" value="playing" {% if phase == 'playing' %}checked{% endif %}>
+                <label for="playing" class="toggle-option">Playing</label>
+
+                <input type="radio" id="review" name="phase" value="review" {% if phase == 'review' %}checked{% endif %}>
+                <label for="review" class="toggle-option">Review</label>
+            </div>
+            <a href="{{ url_for('logout') }}">Logout</a>
         </div>
     </div>
 </body>
