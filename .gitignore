@@ -4,4 +4,4 @@ Discord/.env
 Discord/node_modules/
 instance/
 .logs
-/__pycache__
+__pycache__
