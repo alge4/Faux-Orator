@@ -1,7 +1,7 @@
-# auth/routes.py
+#auth/routes.py
 from flask import Blueprint, render_template, redirect, url_for, request, flash, session, current_app
 from flask_login import login_user, logout_user, login_required, current_user
-from models import User, db
+from models import User, db, Campaign
 from flask_bcrypt import Bcrypt
 from itsdangerous import URLSafeTimedSerializer
 from flask_mail import Message, Mail
@@ -13,7 +13,6 @@ auth_bp = Blueprint('auth', __name__)
 bcrypt = Bcrypt()
 mail = Mail()
 serializer = URLSafeTimedSerializer('your-secret-key')
-
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
 def login():
@@ -67,6 +66,7 @@ def reset_password_request():
     if form.validate_on_submit():
         user = User.query.filter_by(email=form.email.data).first()
         if user:
+            serializer = get_serializer()
             token = serializer.dumps(user.email, salt='password-reset-salt')
             reset_url = url_for('auth.reset_password', token=token, _external=True)
             msg = Message('Password Reset Request', sender='noreply@example.com', recipients=[user.email])
@@ -80,6 +80,7 @@ def reset_password_request():
 @auth_bp.route('/reset_password/<token>', methods=['GET', 'POST'])
 def reset_password(token):
     try:
+        serializer = get_serializer()
         email = serializer.loads(token, salt='password-reset-salt', max_age=3600)
     except Exception as e:
         flash('The password reset link is invalid or has expired.', 'danger')
