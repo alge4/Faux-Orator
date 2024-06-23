@@ -1,41 +1,39 @@
+import sys
+import os
 import pytest
-from app import create_app
-from models import db as _db
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+from config import TestConfig
 
-@pytest.fixture(scope='session')
-def app():
-    app = create_app()
-    app.config['TESTING'] = True
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///:memory:'
-    
-    with app.app_context():
-        _db.create_all()
+# Add the project directory to the sys.path
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir)))
 
-    yield app
+from __init__ import create_app
+from models import db, User
 
-    _db.drop_all()
+@pytest.fixture(scope='module')
+def test_client():
+    flask_app = create_app()
 
-@pytest.fixture(scope='session')
-def db(app):
-    yield _db
+    flask_app.config.from_object(TestConfig)
+    testing_client = flask_app.test_client()
 
-@pytest.fixture(scope='function')
-def session(db):
-    connection = db.engine.connect()
-    transaction = connection.begin()
-    options = dict(bind=connection, binds={})
-    session = db.create_scoped_session(options=options)
+    # Establish an application context before running the tests.
+    ctx = flask_app.app_context()
+    ctx.push()
 
-    db.session = session
+    yield testing_client  # this is where the testing happens!
 
-    yield session
+    ctx.pop()
 
-    transaction.rollback()
-    connection.close()
-    session.remove()
+@pytest.fixture(scope='module')
+def init_database():
+    # Create the database and the database table(s)
+    db.create_all()
 
-@pytest.fixture
-def test_client(app):
-    return app.test_client()
+    # Insert user data
+    user = User(username='testuser', email='test@example.com', password='password')
+    db.session.add(user)
+    db.session.commit()
+
+    yield db  # this is where the testing happens!
+
+    db.drop_all()

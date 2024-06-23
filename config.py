@@ -26,3 +26,12 @@ class Config:
     MS_CLIENT_ID = os.getenv('MS_CLIENT_ID')
     MS_CLIENT_SECRET = os.getenv('MS_CLIENT_SECRET')
     MS_AUTHORITY = os.getenv('MS_AUTHORITY')
+
+    
+class TestConfig(Config):
+    TESTING = True
+    SECRET_KEY = 'test-secret-key'
+    SQLALCHEMY_DATABASE_URI = f"sqlite:///{os.path.join(basedir, 'instance', 'test_users.db')}"
+    SQLALCHEMY_TRACK_MODIFICATIONS = False
+    WTF_CSRF_ENABLED = False
+    MAIL_SUPPRESS_SEND = True

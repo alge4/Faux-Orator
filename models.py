@@ -1,8 +1,10 @@
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import UserMixin
 from datetime import datetime
+from flask_bcrypt import Bcrypt
 
 db = SQLAlchemy()
+bcrypt = Bcrypt()
 
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -14,14 +16,17 @@ class User(UserMixin, db.Model):
 
     def __init__(self, **kwargs):
         super(User, self).__init__(**kwargs)
+        if 'password' in kwargs:
+            self.password = bcrypt.generate_password_hash(kwargs['password']).decode('utf-8')
         self.set_default_campaign()
 
     def set_default_campaign(self):
-        default_campaign = Campaign(name='Lost Mines of Phandelver', user=self)
-        db.session.add(default_campaign)
-        db.session.commit()
-        self.favorite_campaign_id = default_campaign.id
-        db.session.commit()
+        if self.favorite_campaign_id is None:
+            default_campaign = Campaign(name='Lost Mines of Phandelver', user=self)
+            db.session.add(default_campaign)
+            db.session.commit()
+            self.favorite_campaign_id = default_campaign.id
+            db.session.commit()
 
     def get_id(self):
         return self.id
