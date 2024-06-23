@@ -1,37 +1,41 @@
-# tests/conftest.py
-
 import pytest
 from app import create_app
-from models import db, User
-from flask_bcrypt import generate_password_hash
+from models import db as _db
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 
-@pytest.fixture(scope='module')
-def test_client():
-    flask_app = create_app()
-    flask_app.config['WTF_CSRF_ENABLED'] = False
+@pytest.fixture(scope='session')
+def app():
+    app = create_app()
+    app.config['TESTING'] = True
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///:memory:'
+    
+    with app.app_context():
+        _db.create_all()
 
-    # Create a test client
-    testing_client = flask_app.test_client()
+    yield app
 
-    # Establish an application context before running the tests.
-    ctx = flask_app.app_context()
-    ctx.push()
+    _db.drop_all()
 
-    yield testing_client  # this is where the testing happens!
+@pytest.fixture(scope='session')
+def db(app):
+    yield _db
 
-    ctx.pop()
+@pytest.fixture(scope='function')
+def session(db):
+    connection = db.engine.connect()
+    transaction = connection.begin()
+    options = dict(bind=connection, binds={})
+    session = db.create_scoped_session(options=options)
 
-@pytest.fixture(scope='module')
-def init_database():
-    # Create the database and the database table
-    db.create_all()
+    db.session = session
 
-    # Insert user data
-    hashed_password = generate_password_hash('testpassword').decode('utf-8')
-    user = User(username='testuser', email='testuser@example.com', password=hashed_password)
-    db.session.add(user)
-    db.session.commit()
+    yield session
 
-    yield db  # this is where the testing happens!
+    transaction.rollback()
+    connection.close()
+    session.remove()
 
-    db.drop_all()
+@pytest.fixture
+def test_client(app):
+    return app.test_client()
