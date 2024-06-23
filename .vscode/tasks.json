@@ -4,20 +4,36 @@
         {
             "label": "Run Flask App",
             "type": "shell",
-            "command": "${workspaceFolder}\\venv\\Scripts\\python.exe",  // Use venv/Scripts/python.exe for Windows
-            "args": [
-                "app.py"
-            ],
+            "command": "${workspaceFolder}/update_requirements.bat",
             "group": {
                 "kind": "build",
                 "isDefault": true
             },
-            "problemMatcher": []
+            "problemMatcher": [],
+            "dependsOn": ["open-edge-browser"]
         },
         {
             "label": "open-edge-browser",
             "type": "shell",
             "command": "start msedge http://localhost:5000",
+            "problemMatcher": [],
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            }
+        },
+        {
+            "label": "Activate venv and install dependencies",
+            "type": "shell",
+            "command": ".\\venv\\Scripts\\activate && pip install -r requirements.txt",
+            "problemMatcher": []
+        },
+        {
+            "label": "Update and Install Dependencies",
+            "type": "shell",
+            "command": ".\\update_requirements.bat",
             "problemMatcher": []
         }
     ]

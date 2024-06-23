@@ -1,4 +1,3 @@
-#config.py
 import os
 from dotenv import load_dotenv
 
@@ -22,3 +21,8 @@ class Config:
 
     # OpenAI API Key
     OPENAI_API_KEY = os.getenv('OPENAI_API_KEY', 'your-default-openai-api-key')
+
+    # Microsoft OAuth Configuration
+    MS_CLIENT_ID = os.getenv('MS_CLIENT_ID')
+    MS_CLIENT_SECRET = os.getenv('MS_CLIENT_SECRET')
+    MS_AUTHORITY = os.getenv('MS_AUTHORITY')

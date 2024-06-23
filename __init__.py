@@ -5,9 +5,9 @@ from flask_migrate import Migrate
 from flask_mail import Mail
 from flask_socketio import SocketIO
 from flask_wtf import CSRFProtect
+from flask_login import LoginManager
 from config import Config
 from models import db, User  # Ensure User is imported
-from flask_login import LoginManager
 
 bcrypt = Bcrypt()
 migrate = Migrate()

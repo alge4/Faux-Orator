@@ -1,11 +1,12 @@
 <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Faux Orator{% endblock %}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    <script src="//cdnjs.cloudflare.com/ajax/libs/socket.io/2.3.0/socket.io.js"></script>
+    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
     <meta name="csrf-token" content="{{ csrf_token() }}">
 </head>
 <body>
@@ -32,7 +33,7 @@
             <div class="top-bar">
                 <div class="profile-dropdown">
                     <button class="profile-icon">
-                        <img src="{{ url_for('static', filename='img/profile-icon.png') }}" alt="Profile">
+                        <img src="{{ url_for('static', filename='img/profile-icon.svg') }}" alt="Profile">
                     </button>
                     <div class="dropdown-content">
                         <a href="#">Profile</a>
@@ -75,4 +76,5 @@
     </div>
     <script src="{{ url_for('static', filename='js/gma_chat.js') }}"></script>
 </body>
+</html>
 </html>

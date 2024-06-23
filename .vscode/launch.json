@@ -3,7 +3,7 @@
     "configurations": [
         {
             "name": "Python: Flask",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/app.py",
             "console": "integratedTerminal",
@@ -16,7 +16,7 @@
                 "--no-debugger",
                 "--no-reload"
             ],
-            "preLaunchTask": "open-edge-browser",
+            "preLaunchTask": "Run Flask App"
         }
     ]
 }

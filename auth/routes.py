@@ -1,10 +1,12 @@
-from flask import Blueprint, render_template, redirect, url_for, request, flash, session
+from flask import Blueprint, render_template, redirect, url_for, request, flash, session, current_app
 from flask_login import login_user, logout_user, login_required, current_user
-from models import User, db, Campaign
+from models import User, db
 from flask_bcrypt import Bcrypt
 from itsdangerous import URLSafeTimedSerializer
 from flask_mail import Message, Mail
 from auth.forms import LoginForm, RegistrationForm, ResetPasswordRequestForm, ResetPasswordForm
+from msal import ConfidentialClientApplication
+import requests
 
 auth_bp = Blueprint('auth', __name__)
 bcrypt = Bcrypt()
@@ -37,11 +39,6 @@ def register():
         hashed_password = bcrypt.generate_password_hash(register_form.password.data).decode('utf-8')
         user = User(username=register_form.username.data, email=register_form.email.data, password=hashed_password)
         db.session.add(user)
-        db.session.commit()
-        template_campaign = Campaign(name='Lost Mines of Phandelver', user_id=user.id)
-        db.session.add(template_campaign)
-        db.session.commit()
-        user.favorite_campaign_id = template_campaign.id
         db.session.commit()
         login_user(user)
         session['username'] = user.username
@@ -93,3 +90,61 @@ def reset_password(token):
             return redirect(url_for('auth.login'))
     
     return render_template('reset_password.html', form=form)
+
+@auth_bp.route('/ms_login')
+def ms_login():
+    client_app = ConfidentialClientApplication(
+        current_app.config['MS_CLIENT_ID'],
+        authority=current_app.config['MS_AUTHORITY'],
+        client_credential=current_app.config['MS_CLIENT_SECRET']
+    )
+    
+    scopes = ["User.Read"]
+    
+    auth_url = client_app.get_authorization_request_url(
+        scopes,
+        redirect_uri=url_for('auth.ms_callback', _external=True)
+    )
+    return redirect(auth_url)
+
+@auth_bp.route('/ms_callback')
+def ms_callback():
+    client_app = ConfidentialClientApplication(
+        current_app.config['MS_CLIENT_ID'],
+        authority=current_app.config['MS_AUTHORITY'],
+        client_credential=current_app.config['MS_CLIENT_SECRET']
+    )
+    code = request.args.get('code')
+    result = client_app.acquire_token_by_authorization_code(
+        code,
+        scopes=["User.Read"],
+        redirect_uri=url_for('auth.ms_callback', _external=True)
+    )
+
+    if "access_token" in result:
+        user_info = requests.get(
+            'https://graph.microsoft.com/v1.0/me',
+            headers={'Authorization': 'Bearer ' + result['access_token']}
+        ).json()
+        
+        # Handle cases where email might not be provided
+        email = user_info.get('mail') or user_info.get('userPrincipalName')
+        
+        # Check if user exists in your database
+        user = User.query.filter_by(email=email).first()
+        if not user:
+            # Create a new user if not exist
+            user = User(
+                username=user_info['displayName'],
+                email=email,
+                password=bcrypt.generate_password_hash(current_app.config['SECRET_KEY']).decode('utf-8')  # Set a default password
+            )
+            db.session.add(user)
+            db.session.commit()
+        
+        login_user(user)
+        session['username'] = user.username
+        return redirect(url_for('main.main'))
+    else:
+        flash('Failed to authenticate with Microsoft.', 'danger')
+        return redirect(url_for('auth.login'))
