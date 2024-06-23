@@ -1,3 +1,4 @@
+# auth/routes.py
 from flask import Blueprint, render_template, redirect, url_for, request, flash, session, current_app
 from flask_login import login_user, logout_user, login_required, current_user
 from models import User, db
@@ -13,6 +14,7 @@ bcrypt = Bcrypt()
 mail = Mail()
 serializer = URLSafeTimedSerializer('your-secret-key')
 
+
 @auth_bp.route('/login', methods=['GET', 'POST'])
 def login():
     if current_user.is_authenticated:
@@ -24,6 +26,7 @@ def login():
         if user and bcrypt.check_password_hash(user.password, login_form.password.data):
             login_user(user)
             session['username'] = user.username
+            flash('You have been logged in!', 'success')
             return redirect(url_for('main.main'))
         else:
             flash('Invalid credentials, please try again.', 'danger')
@@ -40,6 +43,11 @@ def register():
         user = User(username=register_form.username.data, email=register_form.email.data, password=hashed_password)
         db.session.add(user)
         db.session.commit()
+        template_campaign = Campaign(name='Lost Mines of Phandelver', user_id=user.id)
+        db.session.add(template_campaign)
+        db.session.commit()
+        user.favorite_campaign_id = template_campaign.id
+        db.session.commit()
         login_user(user)
         session['username'] = user.username
         flash('Your account has been created and you are now logged in!', 'success')
@@ -50,6 +58,7 @@ def register():
 @login_required
 def logout():
     logout_user()
+    flash('You have been logged out.', 'success')
     return redirect(url_for('auth.login'))
 
 @auth_bp.route('/reset_password', methods=['GET', 'POST'])
