@@ -1,3 +1,4 @@
+# __init__.py in the root directory
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask_bcrypt import Bcrypt
