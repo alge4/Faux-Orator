@@ -7,7 +7,7 @@ from flask_socketio import SocketIO
 from flask_wtf import CSRFProtect
 from flask_login import LoginManager
 from config import Config
-from models import db, User  # Ensure User is imported
+from models import db, User
 
 bcrypt = Bcrypt()
 migrate = Migrate()
@@ -33,7 +33,7 @@ def create_app():
 
     from auth.routes import auth_bp
     from main.routes import main_bp
-    from gma.routes import gma_bp  # Ensure this matches the directory name exactly
+    from gma.routes import gma_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(main_bp)
