@@ -1,13 +1,13 @@
 import sys
 import os
 import pytest
-from config import TestConfig
 
 # Add the project directory to the sys.path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir)))
 
 from __init__ import create_app
 from models import db, User
+from config import TestConfig  # Updated to import from root config.py
 
 @pytest.fixture(scope='module')
 def test_client():
