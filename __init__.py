@@ -33,7 +33,7 @@ def create_app():
 
     from auth.routes import auth_bp
     from main.routes import main_bp
-    from gma.routes import gma_bp
+    from gma.routes import gma_bp  # Ensure this matches the directory name exactly
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(main_bp)
