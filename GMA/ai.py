@@ -1,3 +1,4 @@
+#gma/ai.py
 class GameMastersAssistant:
     def __init__(self):
         self.story_ai = StoryCreativeIdeasAI()

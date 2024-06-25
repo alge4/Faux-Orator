@@ -1,4 +1,4 @@
-# app.py
+# app.py in the root directory
 from __init__ import create_app, socketio
 
 app = create_app()

@@ -7,6 +7,24 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <style>
+        /* Styles for the context menu */
+        .context-menu {
+            display: none;
+            position: absolute;
+            z-index: 1000;
+            background-color: #fff;
+            border: 1px solid #ccc;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+        }
+        .context-menu-item {
+            padding: 8px 12px;
+            cursor: pointer;
+        }
+        .context-menu-item:hover {
+            background-color: #eee;
+        }
+    </style>
 </head>
 <body>
     <div id="container">
@@ -14,10 +32,9 @@
             <h2>Campaigns</h2>
             <ul id="campaign-list">
                 {% for campaign in campaigns %}
-                <li>
-                    <input type="radio" name="favorite" id="fav-{{ campaign.id }}" 
-                           {% if campaign.id == user.favorite_campaign_id %}checked{% endif %}
-                           onclick="setFavoriteCampaign('{{ campaign.id }}')">
+                <li data-campaign-id="{{ campaign.id }}" class="campaign-item">
+                    <span class="star-button {% if campaign.id == user.favorite_campaign_id %}selected{% endif %}" 
+                          data-campaign-id="{{ campaign.id }}"></span>
                     <label for="fav-{{ campaign.id }}">{{ campaign.name }}</label>
                 </li>
                 {% endfor %}
@@ -80,6 +97,12 @@
         {% endfor %}
       {% endif %}
     {% endwith %}
+    <div class="context-menu" id="context-menu">
+        <div class="context-menu-item" id="edit-campaign">Edit</div>
+        <div class="context-menu-item" id="delete-campaign">Delete</div>
+    </div>
     <script src="{{ url_for('static', filename='js/gma_chat.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/campaign.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/favorite_campaign.js') }}"></script>
 </body>
 </html>
