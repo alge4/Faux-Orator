@@ -239,3 +239,32 @@ h1, p {
     width: 66.67%;
     padding: 1rem;
 }
+.star-button {
+    display: inline-block;
+    width: 24px;
+    height: 24px;
+    background: transparent;
+    border: 1px solid #ccc;
+    border-radius: 50%;
+    position: relative;
+    cursor: pointer;
+}
+
+.star-button::before {
+    content: '☆';
+    font-size: 24px;
+    color: #ccc;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    margin: auto;
+    text-align: center;
+    line-height: 24px;
+}
+
+.star-button.selected::before {
+    content: '★';
+    color: #ffd700;
+}

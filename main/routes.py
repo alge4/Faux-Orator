@@ -1,8 +1,8 @@
 #main/routes.py
-from flask import Blueprint, request, jsonify, session, redirect, url_for, render_template
+from flask import Blueprint, request, jsonify, session, redirect, url_for, render_template, flash
 from flask_login import login_required, current_user, logout_user
 from models import User, Campaign, db
-from main.forms import AddCampaignForm  # Use relative import
+from main.forms import AddCampaignForm
 
 main_bp = Blueprint('main', __name__)
 
@@ -34,7 +34,34 @@ def add_campaign():
         new_campaign = Campaign(name=name, user_id=user.id)
         db.session.add(new_campaign)
         db.session.commit()
+        flash('Campaign added successfully.', 'success')
+    else:
+        flash('Error adding campaign. Please try again.', 'danger')
     return redirect(url_for('main.main'))
+
+@main_bp.route('/edit_campaign/<int:campaign_id>', methods=['POST'])
+@login_required
+def edit_campaign(campaign_id):
+    campaign = Campaign.query.get_or_404(campaign_id)
+    if campaign.user_id != current_user.id:
+        return jsonify(success=False, message='Permission denied.')
+
+    data = request.get_json()
+    campaign.name = data['name']
+    db.session.commit()
+    return jsonify(success=True)
+
+
+@main_bp.route('/delete_campaign/<int:campaign_id>', methods=['POST'])
+@login_required
+def delete_campaign(campaign_id):
+    campaign = Campaign.query.get_or_404(campaign_id)
+    if campaign.user_id != current_user.id:
+        return jsonify(success=False, message='Permission denied.')
+
+    db.session.delete(campaign)
+    db.session.commit()
+    return jsonify(success=True)
 
 @main_bp.route('/planning')
 @login_required
