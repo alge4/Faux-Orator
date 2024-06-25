@@ -4,7 +4,7 @@ Faux Orator is a web-based AI assistant application designed to aid Dungeon Mast
 
 ## Project Structure
 
-'''
+```
 your_project/
 ├── app.py
 ├── config.py
@@ -41,7 +41,7 @@ your_project/
 ├── .vscode/
 │ ├── tasks.json
 │ ├── launch.json
-'''
+```
 
 ## Setup Instructions
 
