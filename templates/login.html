@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login/Register</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <div class="section">
+            <h1>Login</h1>
+            <form method="post" action="{{ url_for('auth.login') }}">
+                {{ login_form.hidden_tag() }}
+                <div>
+                    <label for="email">Email</label>
+                    {{ login_form.email }}
+                </div>
+                <div>
+                    <label for="password">Password</label>
+                    {{ login_form.password }}
+                </div>
+                <button type="submit">Login</button>
+            </form>
+            <div>
+                <a href="{{ url_for('auth.ms_login') }}">
+                    <img src="{{ url_for('static', filename='img/microsoft-login.png') }}" alt="Login with Microsoft" style="width: 200px;">
+                </a>
+            </div>
+        </div>
+        <div class="section">
+            <h2>Register</h2>
+            <form method="post" action="{{ url_for('auth.register') }}">
+                {{ register_form.hidden_tag() }}
+                <div>
+                    <label for="email">Email</label>
+                    {{ register_form.email }}
+                </div>
+                <div>
+                    <label for="username">Username</label>
+                    {{ register_form.username }}
+                </div>
+                <div>
+                    <label for="password">Password</label>
+                    {{ register_form.password }}
+                </div>
+                <div>
+                    <label for="confirm_password">Confirm Password</label>
+                    {{ register_form.confirm_password }}
+                </div>
+                <button type="submit">Register</button>
+            </form>
+        </div>
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <div class="flash {{ category }}">{{ message }}</div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+    </div>
+</body>
+</html>

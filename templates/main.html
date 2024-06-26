@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Faux Orator{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <style>
+        /* Styles for the context menu */
+        .context-menu {
+            display: none;
+            position: absolute;
+            z-index: 1000;
+            background-color: #fff;
+            border: 1px solid #ccc;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+        }
+        .context-menu-item {
+            padding: 8px 12px;
+            cursor: pointer;
+        }
+        .context-menu-item:hover {
+            background-color: #eee;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <div id="sidebar" class="flex-shrink-0 overflow-x-hidden bg-token-sidebar-surface-primary">
+            <h2>Campaigns</h2>
+            <ul id="campaign-list">
+                {% for campaign in campaigns %}
+                <li data-campaign-id="{{ campaign.id }}" class="campaign-item">
+                    <span class="star-button {% if campaign.id == user.favorite_campaign_id %}selected{% endif %}" 
+                          data-campaign-id="{{ campaign.id }}"></span>
+                    <label for="fav-{{ campaign.id }}">{{ campaign.name }}</label>
+                </li>
+                {% endfor %}
+            </ul>
+            <form action="{{ url_for('main.add_campaign') }}" method="post">
+                {{ form.hidden_tag() }}
+                <input type="text" name="name" placeholder="New Campaign" required>
+                <button type="submit">Add</button>
+            </form>
+        </div>
+        <div id="content">
+            <div class="top-bar">
+                <div class="profile-dropdown">
+                    <button class="profile-icon">
+                        <img src="{{ url_for('static', filename='img/profile-icon.svg') }}" alt="Profile">
+                    </button>
+                    <div class="dropdown-content">
+                        <a href="#">Profile</a>
+                        <a href="#">Options</a>
+                        <a href="{{ url_for('auth.logout') }}">Logout</a>
+                    </div>
+                </div>
+            </div>
+            <h1 id="main-header">{% block header %}Main Screen{% endblock %}</h1>
+            <p>Welcome, {{ session['username'] }}</p>
+            <div class="toggle-switch">
+                <input type="radio" id="planning" name="phase" value="planning" {% if phase == 'planning' %}checked{% endif %}>
+                <label for="planning" class="toggle-option">Planning</label>
+
+                <input type="radio" id="playing" name="phase" value="playing" {% if phase == 'playing' %}checked{% endif %}>
+                <label for="playing" class="toggle-option">Playing</label>
+
+                <input type="radio" id="review" name="phase" value="review" {% if phase == 'review' %}checked{% endif %}>
+                <label for="review" class="toggle-option">Review</label>
+            </div>
+            <div id="main-content">
+                <div id="chat-window" style="width: 33%; float: left;">
+                    <div id="chat-messages"></div>
+                    <form id="chat-form" method="post">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                        <input type="text" id="chat-input" name="message" placeholder="Type your message...">
+                        <button type="submit">Send</button>
+                    </form>
+                    <form id="custom-story-form" method="post">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                        <input type="text" id="custom-story-prompt" name="prompt" placeholder="Enter custom story prompt...">
+                        <button type="submit">Get Custom Story</button>
+                    </form>
+                </div>
+                <div id="other-content" style="width: 66%; float: right;">
+                    {% block content %}{% endblock %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="flash {{ category }}">{{ message }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+    <div class="context-menu" id="context-menu">
+        <div class="context-menu-item" id="edit-campaign">Edit</div>
+        <div class="context-menu-item" id="delete-campaign">Delete</div>
+    </div>
+    <script src="{{ url_for('static', filename='js/gma_chat.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/campaign.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/favorite_campaign.js') }}"></script>
+</body>
+</html>
