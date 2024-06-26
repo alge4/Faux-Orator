@@ -5,3 +5,4 @@ Discord/node_modules/
 instance/
 .logs
 __pycache__/
+node_modules/
