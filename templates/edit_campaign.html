@@ -1,0 +1,14 @@
+{% extends "main.html" %}
+{% block title %}Edit Campaign{% endblock %}
+{% block header %}Edit Campaign{% endblock %}
+{% block content %}
+<form action="{{ url_for('main.edit_campaign', campaign_id=campaign.id) }}" method="post">
+    {{ form.hidden_tag() }}
+    <div>
+        <label for="name">Campaign Name</label>
+        {{ form.name }}
+    </div>
+    <button type="submit">Update Campaign</button>
+</form>
+<a href="{{ url_for('main.main') }}">Back to Main</a>
+{% endblock %}
