@@ -1,4 +1,4 @@
-#main/routes.py
+# main/routes.py
 from flask import Blueprint, request, jsonify, session, redirect, url_for, render_template, flash
 from flask_login import login_required, current_user, logout_user
 from models import User, Campaign, db
@@ -14,7 +14,8 @@ def landing_page():
 @login_required
 def main():
     user = current_user
-    campaigns = user.campaigns
+    campaigns = Campaign.query.filter_by(user_id=user.id).order_by(Campaign.order).all()
+    campaigns.sort(key=lambda x: x.id != user.favorite_campaign_id)
     form = AddCampaignForm()
     return render_template('main.html', phase='planning', campaigns=campaigns, user=user, form=form)
 
@@ -63,26 +64,22 @@ def delete_campaign(campaign_id):
     db.session.commit()
     return jsonify(success=True)
 
-@main_bp.route('/planning')
+@main_bp.route('/update_campaign_order', methods=['POST'])
 @login_required
-def planning():
-    user = current_user
-    form = AddCampaignForm()
-    return render_template('planning.html', phase='planning', campaigns=user.campaigns, user=user, form=form)
+def update_campaign_order():
+    data = request.get_json()
+    order = data.get('order')
+    favorite_campaign_id = current_user.favorite_campaign_id
 
-@main_bp.route('/playing')
-@login_required
-def playing():
-    user = current_user
-    form = AddCampaignForm()
-    return render_template('playing.html', phase='playing', campaigns=user.campaigns, user=user, form=form)
+    if order[0] != favorite_campaign_id:
+        return jsonify(success=False, message='Favorite campaign must be at the top.')
 
-@main_bp.route('/review')
-@login_required
-def review():
-    user = current_user
-    form = AddCampaignForm()
-    return render_template('review.html', phase='review', campaigns=user.campaigns, user=user, form=form)
+    for index, campaign_id in enumerate(order):
+        campaign = Campaign.query.get(campaign_id)
+        if campaign.user_id == current_user.id:
+            campaign.order = index
+    db.session.commit()
+    return jsonify(success=True)
 
 @main_bp.route('/set_favorite_campaign', methods=['POST'])
 @login_required
@@ -90,6 +87,12 @@ def set_favorite_campaign():
     user = current_user
     data = request.get_json()
     campaign_id = data.get('campaign_id')
+    campaign = Campaign.query.get_or_404(campaign_id)
+    
+    if campaign.user_id != user.id:
+        return jsonify(success=False, message='Permission denied.')
+
+    # Update the user's favorite campaign
     user.favorite_campaign_id = campaign_id
     db.session.commit()
-    return jsonify(success=True)
+    return jsonify(success=True, campaign_id=campaign_id)

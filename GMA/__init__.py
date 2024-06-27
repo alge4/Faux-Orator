@@ -3,4 +3,4 @@ from flask import Blueprint
 
 gma_bp = Blueprint('gma', __name__)
 
-from . import ai, routes
+from . import agents, routes

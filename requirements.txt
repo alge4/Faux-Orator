@@ -8,7 +8,7 @@ flask_sqlalchemy==3.1.1
 flask_wtf==1.2.1
 itsdangerous==2.2.0
 msal==1.29.0
-openai==1.35.3
+openai==1.35.5
 pytest==8.2.2
 python-dotenv==1.0.1
 Requests==2.32.3

@@ -1,0 +1,85 @@
+/* static/css/sidebar.css */
+
+#container {
+    display: flex;
+    flex-direction: row;
+    height: 100vh;
+}
+
+#sidebar {
+    max-width: 300px;
+    width: 20vw;
+    transition: width 0.5s ease, opacity 0.5s ease;
+    overflow: hidden;
+}
+.campaign-item {
+    cursor: move;
+}
+
+#sidebar.hidden {
+    width: 0;
+    opacity: 0;
+}
+
+#sidebar.reduced {
+    width: 60px; 
+    opacity: 1;
+}
+
+#content {
+    flex-grow: 1;
+    transition: margin-left 0.5s ease, width 0.5s ease;
+}
+
+.sidebar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 10px;
+}
+
+.btn-toggle {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 1.2em;
+    padding: 0;
+    display: flex;
+    align-items: center;
+}
+
+.btn-toggle img {
+    width: 24px;
+    height: 24px;
+}
+
+/* New styles for hover effect */
+#hover-area {
+    width: 20px;
+    height: 100vh;
+    position: absolute;
+    left: 0;
+    top: 0;
+    z-index: 1000;
+}
+
+#sidebar.reduced .sidebar-header,
+#sidebar.reduced .campaign-item {
+    display: flex;
+    justify-content: center;
+}
+
+#sidebar.reduced .sidebar-header h2,
+#sidebar.reduced .campaign-item label {
+    display: none;
+}
+
+.favorite-icon {
+    cursor: pointer;
+    font-size: 1.5em;
+    color: gray;
+}
+
+.favorite-icon.favorited {
+    color: gold;
+}

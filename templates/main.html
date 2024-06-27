@@ -5,36 +5,28 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Faux Orator{% endblock %}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/sidebar.css') }}">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <style>
-        /* Styles for the context menu */
-        .context-menu {
-            display: none;
-            position: absolute;
-            z-index: 1000;
-            background-color: #fff;
-            border: 1px solid #ccc;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
-        }
-        .context-menu-item {
-            padding: 8px 12px;
-            cursor: pointer;
-        }
-        .context-menu-item:hover {
-            background-color: #eee;
-        }
-    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.14.0/Sortable.min.js"></script>
 </head>
 <body>
     <div id="container">
         <div id="sidebar" class="flex-shrink-0 overflow-x-hidden bg-token-sidebar-surface-primary">
-            <h2>Campaigns</h2>
+            <div class="sidebar-header">
+                <h2>Campaigns</h2>
+                <button class="btn-toggle" id="toggle-sidebar">
+                    <svg viewBox="0 0 100 80" width="40" height="40">
+                        <rect width="100" height="20"></rect>
+                        <rect y="30" width="100" height="20"></rect>
+                        <rect y="60" width="100" height="20"></rect>
+                    </svg>
+                </button>
+            </div>
             <ul id="campaign-list">
                 {% for campaign in campaigns %}
                 <li data-campaign-id="{{ campaign.id }}" class="campaign-item">
-                    <span class="star-button {% if campaign.id == user.favorite_campaign_id %}selected{% endif %}" 
-                          data-campaign-id="{{ campaign.id }}"></span>
+                    <span class="favorite-icon {% if campaign.id == user.favorite_campaign_id %}favorited{% endif %}" 
+                          data-campaign-id="{{ campaign.id }}">&starf;</span> <!-- Unicode star character -->
                     <label for="fav-{{ campaign.id }}">{{ campaign.name }}</label>
                 </li>
                 {% endfor %}
@@ -97,12 +89,7 @@
         {% endfor %}
       {% endif %}
     {% endwith %}
-    <div class="context-menu" id="context-menu">
-        <div class="context-menu-item" id="edit-campaign">Edit</div>
-        <div class="context-menu-item" id="delete-campaign">Delete</div>
-    </div>
     <script src="{{ url_for('static', filename='js/gma_chat.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/campaign.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/favorite_campaign.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/campaign_manager.js') }}"></script>
 </body>
 </html>
