@@ -1,4 +1,4 @@
-#gma/routes.py
+# gma/routes.py
 from flask import Blueprint, request, jsonify, current_app
 from flask_socketio import emit
 from flask_login import login_required
@@ -19,14 +19,12 @@ def send_message():
     emit('gma_response', response, broadcast=True)
     return jsonify(success=True, response=response)
 
-# Test route
 @gma_bp.route('/test_openai', methods=['GET'])
 def test_openai():
     gma = get_gma()
     response = gma.story_agent.get_idea()
     return jsonify(success=True, response=response)
 
-# Example route to get a custom story from StoryAgent
 @gma_bp.route('/get_custom_story', methods=['POST'])
 @login_required
 def get_custom_story():

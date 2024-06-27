@@ -1,4 +1,4 @@
-#gma/agents.py
+# gma/agents.py
 import openai
 from flask import current_app
 
@@ -27,6 +27,8 @@ class GameMastersAssistant:
             return self.get_pc_info(message)
         elif "faction" in message.lower():
             return self.get_faction_info(message)
+        elif "custom story" in message.lower():
+            return self.get_custom_story(message)
         return "I didn't understand that. Can you specify what you need help with (e.g., story, lore, npc)?"
 
     def get_story_idea(self):
@@ -46,6 +48,9 @@ class GameMastersAssistant:
 
     def get_faction_info(self, faction_name):
         return self.faction_agent.get_info(faction_name)
+
+    def get_custom_story(self, prompt):
+        return self.story_agent.get_custom_story(prompt)
 
 class StoryAgent:
     def get_idea(self):

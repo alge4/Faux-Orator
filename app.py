@@ -1,6 +1,6 @@
-# app.py in the root directory
 from __init__ import create_app, socketio
 
 app = create_app()
 
-if __name__ == '__main__':    socketio.run(app, debug=True)
+if __name__ == '__main__':
+    socketio.run(app)

@@ -1,4 +1,8 @@
-# __init__.py in the root directory
+import sys
+import os
+
+sys.path.append(os.path.abspath(os.path.dirname(__file__)))
+
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask_bcrypt import Bcrypt
@@ -9,6 +13,9 @@ from flask_wtf import CSRFProtect
 from flask_login import LoginManager
 from config import Config
 from models import db, User
+
+#print("Current working directory:", os.getcwd())
+#print("Config module location:", os.path.abspath('config.py'))
 
 bcrypt = Bcrypt()
 migrate = Migrate()

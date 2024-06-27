@@ -48,9 +48,20 @@ class Campaign(db.Model):
     name = db.Column(db.String(128), nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     interactions = db.relationship('Interaction', backref='campaign', lazy=True)
+    order = db.Column(db.Integer, default=0)
 
 class Interaction(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     campaign_id = db.Column(db.Integer, db.ForeignKey('campaign.id'), nullable=False)
     content = db.Column(db.Text, nullable=False)
     timestamp = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+
+class AgentSettings(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    campaign_id = db.Column(db.Integer, db.ForeignKey('campaign.id'), nullable=False)
+    agent_type = db.Column(db.String(50), nullable=False)  # e.g., "StoryAgent", "LoreAgent"
+    parameters = db.Column(db.JSON, nullable=False)  # Store parameters as JSON
+
+    campaign = db.relationship('Campaign', back_populates='agent_settings')
+
+Campaign.agent_settings = db.relationship('AgentSettings', back_populates='campaign', cascade='all, delete-orphan')
