@@ -5,23 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Faux Orator{% endblock %}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/sidebar.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/context-menu.css') }}">
+    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.14.0/Sortable.min.js"></script>
 </head>
 <body>
     <div id="container">
         <div id="sidebar" class="flex-shrink-0 overflow-x-hidden bg-token-sidebar-surface-primary">
-            <div class="sidebar-header">
-                <h2>Campaigns</h2>
-                <button class="btn-toggle" id="toggle-sidebar">
-                    <svg viewBox="0 0 100 80" width="40" height="40">
-                        <rect width="100" height="20"></rect>
-                        <rect y="30" width="100" height="20"></rect>
-                        <rect y="60" width="100" height="20"></rect>
-                    </svg>
-                </button>
-            </div>
+            <h2>Campaigns</h2>
             <ul id="campaign-list">
                 {% for campaign in campaigns %}
                 <li data-campaign-id="{{ campaign.id }}" class="campaign-item">
@@ -89,6 +80,11 @@
         {% endfor %}
       {% endif %}
     {% endwith %}
+    <div class="context-menu" id="context-menu">
+        <div class="context-menu-item" id="edit-campaign">Edit</div>
+        <div class="context-menu-item" id="delete-campaign">Delete</div>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.14.0/Sortable.min.js"></script>
     <script src="{{ url_for('static', filename='js/gma_chat.js') }}"></script>
     <script src="{{ url_for('static', filename='js/campaign_manager.js') }}"></script>
 </body>

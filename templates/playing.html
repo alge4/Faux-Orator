@@ -1,6 +1,16 @@
-{% extends "main.html" %}
-{% block title %}Playing Phase{% endblock %}
-{% block header %}Playing Phase{% endblock %}
-{% block content %}
-<!-- Playing-specific content goes here -->
-{% endblock %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Playing Phase</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script>
+        const CAMPAIGN_ID = "{{ campaign.id }}"; // Pass the campaign ID to the JS script
+    </script>
+</head>
+<body>
+    <div id="speech-logs"></div>
+    <script src="{{ url_for('static', filename='js/fetch_speech_logs.js') }}"></script>
+</body>
+</html>

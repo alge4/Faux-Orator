@@ -1,3 +1,4 @@
+# models.py
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import UserMixin
 from datetime import datetime
@@ -49,6 +50,8 @@ class Campaign(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     interactions = db.relationship('Interaction', backref='campaign', lazy=True)
     order = db.Column(db.Integer, default=0)
+    agent_settings = db.relationship('AgentSettings', back_populates='campaign', cascade='all, delete-orphan')
+    discord_logs = db.relationship('DiscordLog', backref='campaign', lazy=True)
 
 class Interaction(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -64,4 +67,26 @@ class AgentSettings(db.Model):
 
     campaign = db.relationship('Campaign', back_populates='agent_settings')
 
-Campaign.agent_settings = db.relationship('AgentSettings', back_populates='campaign', cascade='all, delete-orphan')
+class SpeechLog(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    campaign_id = db.Column(db.Integer, db.ForeignKey('campaign.id'))
+    username = db.Column(db.String(64))
+    text = db.Column(db.Text)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            'username': self.username,
+            'text': self.text,
+            'timestamp': self.timestamp.strftime('%Y-%m-%d %H:%M:%S')
+        }
+
+class DiscordLog(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    campaign_id = db.Column(db.Integer, db.ForeignKey('campaign.id'), nullable=False)
+    username = db.Column(db.String(64), nullable=False)
+    message = db.Column(db.Text, nullable=False)
+    timestamp = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+
+    campaign = db.relationship('Campaign', back_populates='discord_logs')

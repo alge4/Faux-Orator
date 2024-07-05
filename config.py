@@ -27,7 +27,11 @@ class Config:
     MS_CLIENT_ID = os.getenv('MS_CLIENT_ID')
     MS_CLIENT_SECRET = os.getenv('MS_CLIENT_SECRET')
     MS_AUTHORITY = os.getenv('MS_AUTHORITY')
-
+    #azure
+    AZURE_SPEECH_KEY = os.getenv('AZURE_SPEECH_KEY')
+    AZURE_SERVICE_REGION = os.getenv('AZURE_SERVICE_REGION')
+    #discord
+    DISCORD_TOKEN = os.getenv('DISCORD_TOKEN')
     
 class TestConfig(Config):
     TESTING = True
