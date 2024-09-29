@@ -24,7 +24,7 @@ class GameMastersAssistant:
         self.npc_ai.update_config(configs)
         self.lore_ai.update_config(configs)
     
-    def review_session(self, session_data):
+    def perpend_session(self, session_data):
         # Review and update session data
         pass
 

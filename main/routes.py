@@ -83,12 +83,12 @@ def playing():
     discord_logs = DiscordLog.query.filter_by(campaign_id=user.favorite_campaign_id).all()
     return render_template('playing.html', phase='playing', campaigns=user.campaigns, user=user, form=form, discord_logs=discord_logs)
 
-@main_bp.route('/review')
+@main_bp.route('/perpend')
 @login_required
-def review():
+def perpend():
     user = current_user
     form = AddCampaignForm()
-    return render_template('review.html', phase='review', campaigns=user.campaigns, user=user, form=form)
+    return render_template('perpend.html', phase='perpend', campaigns=user.campaigns, user=user, form=form)
 
 @main_bp.route('/set_favorite_campaign', methods=['POST'])
 @login_required

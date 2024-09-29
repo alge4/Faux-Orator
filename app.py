@@ -24,9 +24,9 @@ def playing():
 def planning():
     return render_template('planning.html')
 
-@app.route('/review')
-def review():
-    return render_template('review.html')
+@app.route('/perpend')
+def perpend():
+    return render_template('perpend.html')
 
 if __name__ == "__main__":
     Thread(target=run_discord_bot).start()
