@@ -1,7 +1,7 @@
-from flask import Blueprint, request, jsonify, render_template, flash, session
+from flask import Blueprint, request, jsonify, render_template, flash, session, redirect, url_for
 from flask_login import login_required, current_user, logout_user
-from models import User, Campaign, Interaction, DiscordLog, db,SpeechLog
-from main.forms import AddCampaignForm
+from models import User, Campaign, Interaction, DiscordLog, db, SpeechLog
+from main.forms import AddCampaignForm, VoxSettingsForm
 
 main_bp = Blueprint('main', __name__)
 
@@ -112,6 +112,27 @@ def fetch_speech_logs():
     campaign_id = request.args.get('campaign_id')
     logs = SpeechLog.query.filter_by(campaign_id=campaign_id).order_by(SpeechLog.timestamp.desc()).all()
     return jsonify(logs=[log.to_dict() for log in logs])
+
+@main_bp.route('/settings', methods=['GET', 'POST'])
+@login_required
+def settings():
+    form = VoxSettingsForm()
+    
+    if request.method == 'GET':
+        # Pre-populate form with current settings
+        vox_settings = current_user.get_vox_settings()
+        form.vox_debug_enabled.data = vox_settings.debug_enabled
+        form.vox_log_level.data = vox_settings.log_level
+
+    if form.validate_on_submit():
+        current_user.update_vox_settings(
+            debug_enabled=form.vox_debug_enabled.data,
+            log_level=form.vox_log_level.data
+        )
+        flash('Settings updated successfully', 'success')
+        return redirect(url_for('main.settings'))
+
+    return render_template('settings.html', form=form)
 
 # Add a function to convert model to dict
 class SpeechLog(db.Model):

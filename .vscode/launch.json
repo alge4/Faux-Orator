@@ -2,21 +2,27 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Python: Flask",
-            "type": "debugpy",
+            "name": "Flask with Edge",
+            "type": "python",
             "request": "launch",
-            "program": "${workspaceFolder}/app.py",
-            "console": "integratedTerminal",
+            "module": "flask",
             "env": {
                 "FLASK_APP": "app.py",
-                "FLASK_ENV": "development"
+                "FLASK_ENV": "development",
+                "FLASK_DEBUG": "1"
             },
             "args": [
                 "run",
                 "--no-debugger",
                 "--no-reload"
             ],
-            "preLaunchTask": "Run Flask App"
+            "jinja": true,
+            "justMyCode": true,
+            "serverReadyAction": {
+                "action": "debugWithEdge",
+                "pattern": "Running on (http?://\\S+|[0-9]+)",
+                "uriFormat": "http://localhost:5000"
+            }
         }
     ]
 }
