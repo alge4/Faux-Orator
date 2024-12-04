@@ -294,10 +294,18 @@ h1, p {
     opacity: 1;
 }
 
+/* Main Content Area */
 #content {
     flex-grow: 1;
-    transition: margin-left 0.5s ease, width 0.5s ease;
+    padding: 20px;
+    box-sizing: border-box;
+    overflow-x: hidden;
+    display: flex;
+    flex-direction: column;
+    /* Adjust the width to account for both sidebars */
+    width: calc(100% - 500px); /* Subtract left and right sidebar widths (250px each) */
 }
+
 
 #hover-area {
     width: 20px;
