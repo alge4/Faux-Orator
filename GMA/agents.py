@@ -1,6 +1,7 @@
 # gma/agents.py
 import openai
 from flask import current_app
+import os
 
 class GameMastersAssistant:
     def __init__(self, api_key):
@@ -54,7 +55,10 @@ class GameMastersAssistant:
 
 class StoryAgent:
     def get_idea(self):
-        response = openai.ChatCompletion.create(
+        client = openai.OpenAI(
+            api_key=os.getenv('OPENAI_API_KEY')
+        )
+        response = client.chat.completions.create(
             model="gpt-4",
             messages=[{"role": "system", "content": "Generate a creative story idea for a DnD campaign."}],
             max_tokens=100
@@ -62,7 +66,10 @@ class StoryAgent:
         return response.choices[0].message['content'].strip()
 
     def get_custom_story(self, prompt):
-        response = openai.ChatCompletion.create(
+        client = openai.OpenAI(
+            api_key=os.getenv('OPENAI_API_KEY')
+        )
+        response = client.chat.completions.create(
             model="gpt-4",
             messages=[{"role": "system", "content": prompt}],
             max_tokens=100
@@ -71,7 +78,10 @@ class StoryAgent:
 
 class LoreAgent:
     def get_info(self, topic):
-        response = openai.ChatCompletion.create(
+        client = openai.OpenAI(
+            api_key=os.getenv('OPENAI_API_KEY')
+        )
+        response = client.chat.completions.create(
             model="gpt-4",
             messages=[{"role": "system", "content": f"Provide detailed lore about {topic} in a DnD setting."}],
             max_tokens=100
@@ -80,7 +90,10 @@ class LoreAgent:
 
 class NPCAgent:
     def get_dialogue(self, npc_name):
-        response = openai.ChatCompletion.create(
+        client = openai.OpenAI(
+            api_key=os.getenv('OPENAI_API_KEY')
+        )
+        response = client.chat.completions.create(
             model="gpt-4",
             messages=[{"role": "system", "content": f"Create a dialogue for an NPC named {npc_name} in a DnD campaign."}],
             max_tokens=100
@@ -89,7 +102,10 @@ class NPCAgent:
 
 class RulesAgent:
     def get_clarification(self, query):
-        response = openai.ChatCompletion.create(
+        client = openai.OpenAI(
+            api_key=os.getenv('OPENAI_API_KEY')
+        )
+        response = client.chat.completions.create(
             model="gpt-4",
             messages=[{"role": "system", "content": f"Provide clarification for the following rule: {query}."}],
             max_tokens=100
@@ -98,7 +114,10 @@ class RulesAgent:
 
 class PCAgent:
     def get_info(self, pc_name):
-        response = openai.ChatCompletion.create(
+        client = openai.OpenAI(
+            api_key=os.getenv('OPENAI_API_KEY')
+        )
+        response = client.chat.completions.create(
             model="gpt-4",
             messages=[{"role": "system", "content": f"Provide the current status and background of the player character named {pc_name}."}],
             max_tokens=100
@@ -107,7 +126,10 @@ class PCAgent:
 
 class FactionAgent:
     def get_info(self, faction_name):
-        response = openai.ChatCompletion.create(
+        client = openai.OpenAI(
+            api_key=os.getenv('OPENAI_API_KEY')
+        )
+        response = client.chat.completions.create(
             model="gpt-4",
             messages=[{"role": "system", "content": f"Provide the current status and outlook of the faction named {faction_name}."}],
             max_tokens=100

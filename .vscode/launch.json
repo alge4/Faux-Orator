@@ -3,7 +3,7 @@
     "configurations": [
         {
             "name": "Flask with Edge",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "module": "flask",
             "env": {

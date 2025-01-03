@@ -37,3 +37,16 @@ def init_database():
     yield db  # this is where the testing happens!
 
     db.drop_all()
+
+@pytest.fixture
+def login_user(client):
+    """Fixture to login a test user"""
+    with client.session_transaction() as session:
+        session['user_id'] = 1
+    return client
+
+# Update test files to use the fixture correctly:
+def test_send_message(client, login_user):
+    # Use the logged-in client
+    response = login_user.post('/gma/send_message', data={'message': 'Test message'})
+    assert response.status_code == 200

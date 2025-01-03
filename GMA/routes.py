@@ -19,11 +19,11 @@ def send_message():
     emit('gma_response', response, broadcast=True)
     return jsonify(success=True, response=response)
 
-@gma_bp.route('/test_openai', methods=['GET'])
+@gma_bp.route('/test_openai')
 def test_openai():
-    gma = get_gma()
-    response = gma.story_agent.get_idea()
-    return jsonify(success=True, response=response)
+    response = get_gma().story_agent.get_idea()
+    # Convert response to serializable format
+    return jsonify(success=True, response=str(response))
 
 @gma_bp.route('/get_custom_story', methods=['POST'])
 @login_required
