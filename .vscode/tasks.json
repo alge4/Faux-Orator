@@ -2,39 +2,39 @@
     "version": "2.0.0",
     "tasks": [
         {
+            "label": "Check Virtual Environment",
+            "type": "shell",
+            "command": "if (-not $env:VIRTUAL_ENV) { Write-Error 'Virtual environment not activated' -ErrorAction Stop }",
+            "problemMatcher": []
+        },
+        {
             "label": "Run Flask App",
             "type": "shell",
-            "command": "${workspaceFolder}/update_requirements.bat",
-            "group": {
-                "kind": "build",
-                "isDefault": true
+            "command": "${command:python.interpreterPath} -m flask run",
+            "options": {
+                "env": {
+                    "FLASK_APP": "app.py",
+                    "FLASK_ENV": "development",
+                    "PYTHONPATH": "${workspaceFolder}"
+                }
             },
-            "problemMatcher": [],
-            "dependsOn": ["open-edge-browser"]
+            "dependsOn": ["Check Virtual Environment"],
+            "problemMatcher": []
         },
         {
             "label": "open-edge-browser",
             "type": "shell",
-            "command": "start msedge http://localhost:5000",
-            "problemMatcher": [],
-            "presentation": {
-                "echo": true,
-                "reveal": "always",
-                "focus": false,
-                "panel": "shared"
+            "command": "powershell -Command \"Start-Sleep -Seconds 2; $existing = Get-Process msedge | Where-Object {$_.MainWindowTitle -like '*localhost:5000*'}; if (-not $existing) { start msedge http://localhost:5000 }\"",
+            "dependsOn": ["Run Flask App"],
+            "problemMatcher": []
+        },
+        {
+            "label": "Start Application",
+            "dependsOn": ["Run Flask App", "open-edge-browser"],
+            "group": {
+                "kind": "test",
+                "isDefault": true
             }
-        },
-        {
-            "label": "Activate venv and install dependencies",
-            "type": "shell",
-            "command": ".\\venv\\Scripts\\activate && pip install -r requirements.txt",
-            "problemMatcher": []
-        },
-        {
-            "label": "Update and Install Dependencies",
-            "type": "shell",
-            "command": ".\\update_requirements.bat",
-            "problemMatcher": []
         }
     ]
 }

@@ -1,8 +1,7 @@
 .env
 venv/
-Discord/.env
-Discord/node_modules/
 instance/
 .logs
 __pycache__/
 node_modules/
+.codegpt

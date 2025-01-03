@@ -3,16 +3,9 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_login import UserMixin
 from datetime import datetime
 from flask_bcrypt import Bcrypt
-from dataclasses import dataclass
-from typing import Dict
 
 db = SQLAlchemy()
 bcrypt = Bcrypt()
-
-@dataclass
-class VoxSettings:
-    debug_enabled: bool = False
-    log_level: str = 'ERROR'  # DEBUG, INFO, WARNING, ERROR
 
 class User(UserMixin, db.Model):
     """Database model for users."""
@@ -22,53 +15,23 @@ class User(UserMixin, db.Model):
     username = db.Column(db.String(150), unique=True, nullable=False)
     email = db.Column(db.String(150), unique=True, nullable=False)
     password = db.Column(db.String(128), nullable=False)
-    favorite_campaign_id = db.Column(db.Integer, db.ForeignKey('campaigns.id'))
-    settings = db.Column(db.JSON, default=lambda: VoxSettings().to_dict())
+    favorite_campaign_id = db.Column(db.Integer, db.ForeignKey('campaigns.id'), nullable=True)
 
     # Relationships
-    campaigns = db.relationship('Campaign', back_populates='owner', lazy=True)
+    campaigns = db.relationship('Campaign', back_populates='owner', foreign_keys='Campaign.user_id')
+    favorite_campaign = db.relationship('Campaign', foreign_keys=[favorite_campaign_id])
     speech_logs = db.relationship('SpeechLog', back_populates='user', lazy=True)
 
     def __init__(self, **kwargs):
         super(User, self).__init__(**kwargs)
         if 'password' in kwargs:
             self.password = bcrypt.generate_password_hash(kwargs['password']).decode('utf-8')
-        if 'settings' not in kwargs:
-            self.settings = VoxSettings().to_dict()
-        self.set_default_campaign()
-
-    def set_default_campaign(self):
-        """Set a default campaign for new users."""
-        if self.favorite_campaign_id is None:
-            default_campaign = Campaign(name='Lost Mines of Phandelver', owner=self)
-            db.session.add(default_campaign)
-            db.session.commit()
-            self.favorite_campaign_id = default_campaign.id
-            db.session.commit()
 
     def get_id(self):
         return self.id
 
     def __repr__(self):
         return f"<User {self.username}>"
-
-    def get_vox_settings(self) -> VoxSettings:
-        """Get Vox Communis settings"""
-        return VoxSettings(**self.settings.get('vox', {}))
-
-    def update_vox_settings(self, debug_enabled: bool = None, log_level: str = None):
-        """Update Vox Communis settings"""
-        settings = self.settings or {}
-        vox_settings = settings.get('vox', {})
-        
-        if debug_enabled is not None:
-            vox_settings['debug_enabled'] = debug_enabled
-        if log_level is not None:
-            vox_settings['log_level'] = log_level
-            
-        settings['vox'] = vox_settings
-        self.settings = settings
-        db.session.commit()
 
 class Campaign(db.Model):
     """Database model for campaigns."""
