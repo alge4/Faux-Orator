@@ -12,14 +12,20 @@ class User(UserMixin, db.Model):
     __tablename__ = 'users'
 
     id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(150), unique=True, nullable=False)
-    email = db.Column(db.String(150), unique=True, nullable=False)
-    password = db.Column(db.String(128), nullable=False)
+    username = db.Column(db.String(80), unique=True, nullable=False)
+    email = db.Column(db.String(120), unique=True, nullable=False)
+    password = db.Column(db.String(120), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
     favorite_campaign_id = db.Column(db.Integer, db.ForeignKey('campaigns.id'), nullable=True)
 
     # Relationships
-    campaigns = db.relationship('Campaign', back_populates='owner', foreign_keys='Campaign.user_id')
-    favorite_campaign = db.relationship('Campaign', foreign_keys=[favorite_campaign_id])
+    campaigns = db.relationship('Campaign', 
+                              foreign_keys='Campaign.user_id',
+                              back_populates='owner',
+                              lazy=True)
+    favorite_campaign = db.relationship('Campaign',
+                                      foreign_keys=[favorite_campaign_id],
+                                      uselist=False)
     speech_logs = db.relationship('SpeechLog', back_populates='user', lazy=True)
 
     def __init__(self, **kwargs):
@@ -38,16 +44,28 @@ class Campaign(db.Model):
     __tablename__ = 'campaigns'
 
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(150), nullable=False)
-    order = db.Column(db.Integer, default=0)
+    name = db.Column(db.String(100), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
 
     # Relationships
-    owner = db.relationship('User', back_populates='campaigns')
-    interactions = db.relationship('Interaction', back_populates='campaign', lazy=True)
-    agent_settings = db.relationship('AgentSettings', back_populates='campaign', cascade='all, delete-orphan')
-    discord_logs = db.relationship('DiscordLog', back_populates='campaign', lazy=True)
-    speech_logs = db.relationship('SpeechLog', back_populates='campaign', lazy=True)
+    owner = db.relationship('User', 
+                          foreign_keys=[user_id],
+                          back_populates='campaigns')
+    
+    interactions = db.relationship('Interaction', 
+                                 back_populates='related_campaign',
+                                 lazy=True)
+    discord_logs = db.relationship('DiscordLog', 
+                                 back_populates='related_campaign',
+                                 lazy=True)
+    speech_logs = db.relationship('SpeechLog', 
+                                back_populates='related_campaign',
+                                lazy=True)
+    agent_settings = db.relationship('AgentSettings',
+                                   back_populates='related_campaign',
+                                   lazy=True,
+                                   uselist=False)
 
     def __repr__(self):
         return f"<Campaign {self.name}>"
@@ -62,7 +80,7 @@ class Interaction(db.Model):
     timestamp = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
 
     # Relationships
-    campaign = db.relationship('Campaign', back_populates='interactions')
+    related_campaign = db.relationship('Campaign', back_populates='interactions', overlaps="campaign")
 
     def __repr__(self):
         return f"<Interaction {self.id} in Campaign {self.campaign_id}>"
@@ -77,7 +95,7 @@ class AgentSettings(db.Model):
     parameters = db.Column(db.JSON, nullable=False)  # Store parameters as JSON
 
     # Relationships
-    campaign = db.relationship('Campaign', back_populates='agent_settings')
+    related_campaign = db.relationship('Campaign', back_populates='agent_settings', overlaps="campaign")
 
     def __repr__(self):
         return f"<AgentSettings {self.agent_type} for Campaign {self.campaign_id}>"
@@ -88,14 +106,14 @@ class SpeechLog(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
-    campaign_id = db.Column(db.Integer, db.ForeignKey('campaigns.id'))
+    campaign_id = db.Column(db.Integer, db.ForeignKey('campaigns.id'), nullable=False)
     username = db.Column(db.String(150))
     text = db.Column(db.Text)
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
 
     # Relationships
     user = db.relationship('User', back_populates='speech_logs')
-    campaign = db.relationship('Campaign', back_populates='speech_logs')
+    related_campaign = db.relationship('Campaign', back_populates='speech_logs', overlaps="campaign")
 
     def to_dict(self):
         return {
@@ -118,7 +136,7 @@ class DiscordLog(db.Model):
     timestamp = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
 
     # Relationships
-    campaign = db.relationship('Campaign', back_populates='discord_logs')
+    related_campaign = db.relationship('Campaign', back_populates='discord_logs', overlaps="campaign")
 
     def __repr__(self):
         return f"<DiscordLog by {self.username} at {self.timestamp}>"
