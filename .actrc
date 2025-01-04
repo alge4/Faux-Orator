@@ -1,0 +1,3 @@
+-P windows-latest=mcr.microsoft.com/windows/servercore:ltsc2019
+--artifact-server-path .artifacts
+--container-architecture windows/amd64 
