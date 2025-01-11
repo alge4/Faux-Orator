@@ -1,197 +1,96 @@
-# Faux Orator
-
-Faux Orator is a web-based AI assistant application designed to aid Dungeon Masters (DMs) of Dungeons and Dragons fifth edition. The application integrates with various AI-driven functionalities to enhance the gameplay experience.
+# Development Setup
 
 ## Prerequisites
 
-- Python 3.8 or higher
-- Windows 11 Pro (for Windows containers)
-  - **Note:** Windows 11 Home users should use the `sqlite-dev` branch (TODO)
-- PostgreSQL 13 or higher
-- Docker Desktop
-- Visual Studio Code
-- Microsoft Azure Account (for OAuth2 authentication)
+- Docker Desktop (latest version)
+- VS Code
+- Git
+- WSL2 (required for Windows)
 
-## System Requirements
+## Quick Start
 
-### Windows Containers (Main Branch)
-- Windows 11 Pro, Enterprise, or Education
-- Hyper-V enabled
-- Docker Desktop with Windows containers enabled
+### Using VS Code (Recommended)
 
-### Alternative Setup (Coming Soon)
-For developers without Windows 11 Pro:
-- SQLite-based development environment (see `sqlite-dev` branch)
-- Local PostgreSQL installation
-- WSL2 with Linux containers
+1. Open the project in VS Code
+2. Press `Ctrl + Shift + P`
+3. Type "Tasks: Run Task" and select "Setup Development Environment"
 
-## Setup Instructions
+### Manual Setup
 
-1. Clone the repository:
-
-   ```bash
-   git clone https://github.com/yourusername/faux-orator.git
-   cd faux-orator
-   ```
-
-2. Create and activate a virtual environment:
-
-   ```bash
-   python -m venv venv
-   # On Windows:
-   venv\Scripts\activate
-   # On Unix or MacOS:
-   source venv/bin/activate
-   ```
-
-3. Install dependencies:
-
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-4. Set up environment variables in `.env`:
-
-   ```bash
-   # Database Configuration
-   DB_USER=your_postgres_username
-   DB_PASSWORD=your_postgres_password
-   DB_HOST=localhost
-   DB_PORT=5432
-   DB_NAME=faux_orator
-
-   # Flask Configuration
-   FLASK_APP=app.py
-   FLASK_ENV=development
-   SECRET_KEY=your_secret_key
-
-   # Microsoft OAuth Configuration
-   MICROSOFT_CLIENT_ID=your_client_id
-   MICROSOFT_CLIENT_SECRET=your_client_secret
-   MICROSOFT_REDIRECT_URI=http://localhost:5000/ms_callback
-   ```
-
-5. Initialize the database:
-   ```bash
-   flask db upgrade
-   ```
-
-## Running Tests
-
-1. Create a test database:
-
-   ```bash
-   createdb faux_orator_test
-   ```
-
-2. Run the test suite:
-
-   ```bash
-   # Run all tests
-   pytest
-
-   # Run with coverage report
-   pytest --cov=. tests/
-
-   # Run specific test file
-   pytest tests/test_auth.py
-
-   # Run tests with print output
-   pytest -s
-   ```
-
-## Development
-
-1. Start the development server:
-
-   ```bash
-   flask run
-   ```
-
-2. Access the application at `http://localhost:5000`
-
-## Project Structure
-
-```
-faux-orator/
-├── app.py                  # Application entry point
-├── config.py              # Configuration settings
-├── models.py              # Database models
-├── __init__.py           # Application factory
-├── auth/                 # Authentication blueprint
-│   ├── __init__.py
-│   ├── routes.py
-│   ├── forms.py
-├── main/                 # Main application blueprint
-│   ├── __init__.py
-│   ├── routes.py
-│   ├── forms.py
-├── gma/                  # Game Master Assistant blueprint
-│   ├── __init__.py
-│   ├── agents.py
-│   ├── routes.py
-├── tests/                # Test suite
-│   ├── conftest.py      # Test configurations and fixtures
-│   ├── test_helpers.py  # Test helper functions
-│   ├── test_auth.py     # Authentication tests
-│   └── ...
-├── templates/            # Jinja2 templates
-├── static/              # Static files (CSS, JS, images)
-├── migrations/          # Database migrations
-└── requirements.txt     # Project dependencies
+```powershell
+# Using PowerShell
+wsl ./dev-setup/scripts/setup-dev-env.sh
 ```
 
-## Testing
+## Making Scripts Executable (Windows)
 
-The project uses pytest for testing. Key test files:
+Option 1 - Using PowerShell:
 
-- `tests/conftest.py`: Test fixtures and configurations
-- `tests/test_helpers.py`: Helper functions for testing
-- `tests/test_auth.py`: Authentication flow tests
-- `tests/test_routes.py`: Route testing
-- `tests/test_models.py`: Database model tests
+```powershell
+# Set execution policy (may require admin privileges)
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 
-### Test Coverage
+# Give execution permissions to the scripts
+icacls "dev-setup\scripts\setup-dev-env.sh" /grant:r "%USERNAME%:(RX)"
+icacls "dev-setup\scripts\init-db.sh" /grant:r "%USERNAME%:(RX)"
+```
 
-To generate a test coverage report:
+Option 2 - Using WSL (Recommended):
 
 ```bash
-pytest --cov=. --cov-report=html tests/
+# Navigate to your project directory in WSL
+cd /mnt/c/path/to/your/project
+
+# Set permissions
+chmod +x dev-setup/scripts/*.sh
 ```
 
-This will create a `htmlcov` directory with a detailed coverage report.
+## What Gets Set Up
 
-## Contributing
+The setup script will:
 
-1. Create a new branch for your feature
-2. Write tests for new functionality
-3. Ensure all tests pass
-4. Submit a pull request
+1. Clean up any existing development environment
+2. Verify required tools are installed
+3. Create and configure Docker containers:
+   - PostgreSQL database
+   - [List other services]
+4. Initialize the database with required schemas
+5. Verify the environment is working correctly
 
 ## Troubleshooting
 
-### Common Issues
+If you encounter issues:
 
-1. Database connection errors:
+1. Try running the setup script again - it's designed to be idempotent
+2. Check Docker Desktop is running
+3. Ensure all prerequisites are installed
+4. Common issues:
+   - Port conflicts: Check if ports 5432 (PostgreSQL) are already in use
+   - Docker network issues: Try restarting Docker Desktop
+   - WSL2 issues: Ensure WSL2 is properly installed and set as default
 
-   - Verify PostgreSQL is running
-   - Check database credentials in `.env`
-   - Ensure database exists
+## Manual Reset
 
-2. Test failures:
-   - Verify test database exists
-   - Check test configuration in `config.py`
-   - Ensure virtual environment is activated
+To completely reset your development environment:
 
-### Debug Mode
+```powershell
+# Stop and remove all containers
+wsl docker-compose -f dev-setup/docker/docker-compose.dev.yml down --volumes
 
-To run in debug mode with VS Code:
+# Then run the setup script again
+wsl ./dev-setup/scripts/setup-dev-env.sh
+```
 
-1. Set up `launch.json` in `.vscode`
-2. Use the "Python: Flask" debug configuration
-3. Set breakpoints in your code
-4. Press F5 to start debugging
+## Environment Details
 
-## License
+The development environment includes:
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+- PostgreSQL database (port 5432)
+- [List other services and their ports]
+
+## Configuration
+
+Environment variables can be modified in:
+
+- `dev-setup/docker/docker-compose.dev.yml`
+- [List other configuration files]
