@@ -1,67 +1,103 @@
-document.addEventListener('DOMContentLoaded', (event) => {
-    const socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port);
+class GMAChat {
+  constructor() {
+    this.socket = io.connect(
+      location.protocol + "//" + document.domain + ":" + location.port
+    );
+    this.currentMode = "planning";
+    this.initializeSocketListeners();
+    this.initializeUIHandlers();
+  }
 
-    socket.on('gma_response', function(data) {
-        addMessageToChat('GMA', data);
+  initializeSocketListeners() {
+    this.socket.on("gma_response", (data) => {
+      this.addMessageToChat("GMA", data.message, data.mode);
+    });
+  }
+
+  initializeUIHandlers() {
+    // Handle tab changes
+    document.querySelectorAll(".nav-link").forEach((tab) => {
+      tab.addEventListener("click", (e) => {
+        const mode = e.target.getAttribute("href").replace("#", "");
+        this.currentMode = mode;
+      });
     });
 
-    document.getElementById('chat-form').addEventListener('submit', function(event) {
-        event.preventDefault();
-        const messageInput = document.getElementById('chat-input');
-        const message = messageInput.value;
+    // Handle message sending for each mode
+    ["", "-playing", "-perpend"].forEach((suffix) => {
+      const input = document.getElementById(`gma-input${suffix}`);
+      const button = document.getElementById(`send-gma-message${suffix}`);
 
-        fetch('/gma/send_message', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-                'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-            },
-            body: new URLSearchParams({
-                message: message
-            })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                addMessageToChat('You', message);
-                messageInput.value = '';
-            } else {
-                alert('Failed to send message.');
-            }
+      if (input && button) {
+        const mode = suffix ? suffix.replace("-", "") : "planning";
+
+        input.addEventListener("keypress", (e) => {
+          if (e.key === "Enter") {
+            this.sendMessage(input.value, mode);
+            input.value = "";
+          }
         });
-    });
 
-    document.getElementById('custom-story-form').addEventListener('submit', function(event) {
-        event.preventDefault();
-        const promptInput = document.getElementById('custom-story-prompt');
-        const prompt = promptInput.value;
-
-        fetch('/gma/get_custom_story', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-                'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-            },
-            body: new URLSearchParams({
-                prompt: prompt
-            })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                addMessageToChat('GMA', data.response);
-                promptInput.value = '';
-            } else {
-                alert('Failed to get custom story.');
-            }
+        button.addEventListener("click", () => {
+          this.sendMessage(input.value, mode);
+          input.value = "";
         });
+      }
     });
+  }
 
-    function addMessageToChat(sender, message) {
-        const chatMessages = document.getElementById('chat-messages');
-        const messageElement = document.createElement('div');
-        messageElement.classList.add('chat-message');
-        messageElement.innerHTML = `<strong>${sender}:</strong> ${message}`;
-        chatMessages.appendChild(messageElement);
-    }
+  sendMessage(message, mode) {
+    if (!message.trim()) return;
+
+    this.addMessageToChat("You", message, mode);
+
+    fetch("/gma/send_message", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRFToken": document.querySelector('meta[name="csrf-token"]')
+          .content,
+      },
+      body: JSON.stringify({
+        message: message,
+        mode: mode,
+        campaign_id: this.getCurrentCampaignId(),
+      }),
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        if (!data.success) {
+          console.error("Failed to send message:", data.error);
+        }
+      });
+  }
+
+  addMessageToChat(sender, message, mode) {
+    const chatId =
+      mode === "planning" ? "gma-messages" : `gma-messages-${mode}`;
+    const chatContainer = document.getElementById(chatId);
+
+    if (!chatContainer) return;
+
+    const messageElement = document.createElement("div");
+    messageElement.classList.add("chat-message");
+    messageElement.innerHTML = `
+            <span class="message-sender">${sender}:</span>
+            <span class="message-content">${message}</span>
+            <span class="message-time">${new Date().toLocaleTimeString()}</span>
+        `;
+
+    chatContainer.appendChild(messageElement);
+    chatContainer.scrollTop = chatContainer.scrollHeight;
+  }
+
+  getCurrentCampaignId() {
+    const campaignElement = document.querySelector(".campaign-item.active");
+    return campaignElement ? campaignElement.dataset.campaignId : null;
+  }
+}
+
+// Initialize GMA chat when document is ready
+document.addEventListener("DOMContentLoaded", () => {
+  window.gmaChat = new GMAChat();
 });

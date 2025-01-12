@@ -6,72 +6,188 @@
     <title>{% block title %}Faux Orator{% endblock %}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/context-menu.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/campaign-manager.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/vox-communis.css') }}">
     <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
 </head>
 <body>
     <div id="container">
         <div id="sidebar" class="flex-shrink-0 overflow-x-hidden bg-token-sidebar-surface-primary">
             <h2>Campaigns</h2>
-            <ul id="campaign-list">
-                {% for campaign in campaigns %}
-                <li data-campaign-id="{{ campaign.id }}" class="campaign-item">
-                    <span class="favorite-icon {% if campaign.id == user.favorite_campaign_id %}favorited{% endif %}" 
-                          data-campaign-id="{{ campaign.id }}">&starf;</span> <!-- Unicode star character -->
-                    <label for="fav-{{ campaign.id }}">{{ campaign.name }}</label>
-                </li>
-                {% endfor %}
-            </ul>
+            <div class="campaigns-container">
+                <div id="campaign-list" class="campaign-list">
+                    {% for campaign in campaigns %}
+                    <div class="campaign-item" data-campaign-id="{{ campaign.id }}" data-is-favorite="{{ campaign.is_favorite|lower }}">
+                        <div class="campaign-content">
+                            <i class="fa-star favorite-icon {% if campaign.is_favorite %}fas favorited{% else %}far{% endif %}" 
+                               data-campaign-id="{{ campaign.id }}"
+                               title="{% if campaign.is_favorite %}Remove from favorites{% else %}Add to favorites{% endif %}">
+                            </i>
+                            <div class="campaign-name">{{ campaign.name }}</div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
             <form action="{{ url_for('main.add_campaign') }}" method="post">
                 {{ form.hidden_tag() }}
                 <input type="text" name="name" placeholder="New Campaign" required>
                 <button type="submit">Add</button>
             </form>
         </div>
+
         <div id="content">
-            <div class="top-bar">
-                <div class="profile-dropdown">
-                    <button class="profile-icon">
-                        <img src="{{ url_for('static', filename='img/profile-icon.svg') }}" alt="Profile">
-                    </button>
-                    <div class="dropdown-content">
-                        <a href="#">Profile</a>
-                        <a href="#">Options</a>
-                        <a href="{{ url_for('auth.logout') }}">Logout</a>
+            <!-- Dashboard Widgets moved here -->
+            <div class="dashboard-overview">
+                <div class="widget-row">
+                    <!-- Campaign Invites Widget -->
+                    <div class="widget" data-widget-id="invites">
+                        <h2>Campaign Invites</h2>
+                        <div class="widget-content">
+                            {% for invite in invites %}
+                            <div class="invite-item">
+                                <p>Invited to: {{ invite.campaign.name }}</p>
+                                <p>By: {{ invite.inviter.username }}</p>
+                                <div class="invite-actions">
+                                    <button onclick="respondToInvite('{{ invite.id }}', 'accept')">Accept</button>
+                                    <button onclick="respondToInvite('{{ invite.id }}', 'reject')">Decline</button>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <!-- Website Updates Widget -->
+                    <div class="widget" data-widget-id="updates">
+                        <h2>Recent Updates</h2>
+                        <div class="widget-content">
+                            {% for update in updates %}
+                            <div class="update-item">
+                                <h3>{{ update.title }}</h3>
+                                <p>{{ update.content }}</p>
+                                <span class="date">{{ update.date.strftime('%Y-%m-%d') }}</span>
+                            </div>
+                            {% endfor %}
+                        </div>
                     </div>
                 </div>
             </div>
-            <h1 id="main-header">{% block header %}Main Screen{% endblock %}</h1>
-            <p>Welcome, {{ session['username'] }}</p>
-            <div class="toggle-switch">
-                <input type="radio" id="planning" name="phase" value="planning" {% if phase == 'planning' %}checked{% endif %}>
-                <label for="planning" class="toggle-option">Planning</label>
 
-                <input type="radio" id="playing" name="phase" value="playing" {% if phase == 'playing' %}checked{% endif %}>
-                <label for="playing" class="toggle-option">Playing</label>
-
-                <input type="radio" id="perpend" name="phase" value="perpend" {% if phase == 'perpend' %}checked{% endif %}>
-                <label for="perpend" class="toggle-option">Perpend</label>
-            </div>
-            <div id="main-content">
-                <div id="chat-window" style="width: 33%; float: left;">
-                    <div id="chat-messages"></div>
-                    <form id="chat-form" method="post">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                        <input type="text" id="chat-input" name="message" placeholder="Type your message...">
-                        <button type="submit">Send</button>
-                    </form>
-                    <form id="custom-story-form" method="post">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                        <input type="text" id="custom-story-prompt" name="prompt" placeholder="Enter custom story prompt...">
-                        <button type="submit">Get Custom Story</button>
-                    </form>
+            <div class="top-bar">
+                <div class="campaign-info">
+                    <h2 id="selected-campaign-name">Select a Campaign</h2>
                 </div>
-                <div id="other-content" style="width: 66%; float: right;">
-                    {% block content %}{% endblock %}
+                <div class="tab-navigation">
+                    <ul class="nav nav-tabs">
+                        <li class="nav-item">
+                            <a class="nav-link active" data-bs-toggle="tab" href="#planning">Planning</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" data-bs-toggle="tab" href="#playing">Playing</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" data-bs-toggle="tab" href="#perpend">Perpend</a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="tab-content">
+                {% if campaign and current_user.id == campaign.user_id %}
+                <div class="tab-pane fade show active" id="planning">
+                    <div class="content-area">
+                        <div class="campaign-content">
+                            <div class="planning-tools">
+                                <div class="notes-section">
+                                    <h3>Campaign Notes</h3>
+                                    <div class="notes-editor" contenteditable="true"></div>
+                                </div>
+                                <div class="todo-section">
+                                    <h3>Preparation Tasks</h3>
+                                    <div class="todo-list"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="gma-interaction">
+                            <div class="gma-context">Planning Mode - GMA will help you plan your next session</div>
+                            <div id="gma-messages" class="chat-messages"></div>
+                            <div class="chat-input">
+                                <input type="text" id="gma-input" placeholder="Ask GMA about campaign planning...">
+                                <button id="send-gma-message">Send</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% elif campaign %}
+                <!-- Player View -->
+                <div class="no-campaign-selected">
+                    <p>Player view coming soon</p>
+                </div>
+                {% else %}
+                <!-- No Campaign Selected View -->
+                <div class="no-campaign-selected">
+                    <p>Select or create a campaign to get started</p>
+                </div>
+                {% endif %}
+
+                <div class="tab-pane fade" id="playing">
+                    <div class="content-area">
+                        {% if current_user.id == campaign.user_id %}
+                        <!-- DM Playing View with GMA -->
+                        <div class="campaign-content">
+                            <div class="no-campaign-selected">
+                                <p>Select a campaign to view playing details</p>
+                            </div>
+                        </div>
+                        <div class="gma-interaction">
+                            <div class="gma-context">Playing Mode - GMA will assist during your active session</div>
+                            <div id="gma-messages-playing" class="chat-messages"></div>
+                            <div class="chat-input">
+                                <input type="text" id="gma-input-playing" placeholder="Ask GMA during your session...">
+                                <button id="send-gma-message-playing">Send</button>
+                            </div>
+                        </div>
+                        {% else %}
+                        <!-- Player Playing View with Virtual Tabletop -->
+                        <div class="virtual-tabletop">
+                            <div class="vtt-canvas">
+                                <!-- Virtual tabletop canvas will go here -->
+                                <canvas id="vtt-canvas"></canvas>
+                            </div>
+                            <div class="vtt-controls">
+                                <button id="move-token">Move</button>
+                                <button id="measure-distance">Measure</button>
+                                <button id="roll-dice">Roll Dice</button>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="tab-pane fade" id="perpend">
+                    <div class="content-area">
+                        <div class="campaign-content">
+                            <div class="no-campaign-selected">
+                                <p>Select a campaign to view perpend details</p>
+                            </div>
+                        </div>
+                        <div class="gma-interaction">
+                            <div class="gma-context">Perpend Mode - GMA will help you review and analyze your session</div>
+                            <div id="gma-messages-perpend" class="chat-messages"></div>
+                            <div class="chat-input">
+                                <input type="text" id="gma-input-perpend" placeholder="Ask GMA about session review...">
+                                <button id="send-gma-message-perpend">Send</button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
+
+        <!-- Right Sidebar (Vox Communis) -->
+        {% include 'components/vox_communis.html' %}
     </div>
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
@@ -80,12 +196,128 @@
         {% endfor %}
       {% endif %}
     {% endwith %}
-    <div class="context-menu" id="context-menu">
-        <div class="context-menu-item" id="edit-campaign">Edit</div>
-        <div class="context-menu-item" id="delete-campaign">Delete</div>
+    <div id="contextMenu" class="context-menu">
+        <div class="menu-item" data-action="edit">
+            <i class="fas fa-edit"></i> Rename
+        </div>
+        <div class="menu-item" data-action="delete">
+            <i class="fas fa-trash"></i> Delete
+        </div>
     </div>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.14.0/Sortable.min.js"></script>
     <script src="{{ url_for('static', filename='js/gma_chat.js') }}"></script>
     <script src="{{ url_for('static', filename='js/campaign_manager.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/campaign-management.js') }}"></script>
+
+    <!-- Templates for dynamic content (hidden by default) -->
+    <template id="planning-template">
+        <div class="planning-content">
+            <div class="dm-workspace">
+                <!-- Main Working Area -->
+                <div class="active-focus">
+                    <div class="focus-header">
+                        <h2 id="current-focus-title">Session Planning</h2>
+                        <div class="breadcrumb" id="navigation-trail">
+                            Campaign > Next Session
+                        </div>
+                    </div>
+                    <div class="focus-content" id="main-workspace">
+                        <!-- Content changes based on what DM is working on -->
+                    </div>
+                </div>
+
+                <!-- Smart Sidebar -->
+                <div class="smart-sidebar">
+                    <!-- Context-aware helper that changes based on main workspace -->
+                    <div class="context-header">
+                        <h3>Related Information</h3>
+                    </div>
+                    <div class="quick-access">
+                        <!-- Relevant NPCs, Locations, etc. based on current focus -->
+                    </div>
+                    <div class="gma-suggestions">
+                        <div class="agent-insights">
+                            <!-- Relevant agent suggestions appear here -->
+                        </div>
+                        <div class="chat-input">
+                            <input type="text" 
+                                   id="gma-input" 
+                                   placeholder="Ask about anything...">
+                            <button id="send-gma-message">Ask</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bottom Panel - Quick Access -->
+            <div class="quick-tools">
+                <button class="tool-btn" data-tool="session">
+                    <i class="fas fa-scroll"></i>
+                    Session
+                </button>
+                <button class="tool-btn" data-tool="world">
+                    <i class="fas fa-globe"></i>
+                    World
+                </button>
+                <button class="tool-btn" data-tool="characters">
+                    <i class="fas fa-users"></i>
+                    Characters
+                </button>
+                <button class="tool-btn" data-tool="plots">
+                    <i class="fas fa-book"></i>
+                    Plots
+                </button>
+                <button class="tool-btn" data-tool="search">
+                    <i class="fas fa-search"></i>
+                    Search
+                </button>
+            </div>
+        </div>
+    </template>
+
+    <template id="playing-template">
+        <div class="playing-content">
+            <div class="discord-logs">
+                <h3>Session Logs</h3>
+                <div class="logs-container"></div>
+            </div>
+            <div class="active-players">
+                <h3>Active Players</h3>
+                <ul class="players-list"></ul>
+            </div>
+        </div>
+    </template>
+
+    <template id="perpend-template">
+        <div class="perpend-content">
+            <div class="summary-section">
+                <h3>Campaign Summary</h3>
+                <div class="summary-content" contenteditable="true"></div>
+            </div>
+            <div class="notes-section">
+                <h3>Session Notes</h3>
+                <div class="notes-content" contenteditable="true"></div>
+            </div>
+        </div>
+    </template>
+
+    <script>
+    function respondToInvite(inviteId, response) {
+        fetch(`/campaign-invite/${inviteId}/${response}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                document.querySelector(`[data-invite-id="${inviteId}"]`).remove();
+            }
+        });
+    }
+    </script>
+    <script src="{{ url_for('static', filename='js/vox_communis.js') }}"></script>
 </body>
 </html>

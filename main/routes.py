@@ -1,115 +1,43 @@
-from flask import Blueprint, request, jsonify, render_template, flash, session
-from flask_login import login_required, current_user, logout_user
-from models import User, Campaign, Interaction, DiscordLog, db,SpeechLog
-from main.forms import AddCampaignForm
-from datetime import datetime
+from flask import Blueprint, render_template, current_app
+from flask_login import login_required, current_user
+import traceback
+import sys
 
 main_bp = Blueprint('main', __name__)
 
 @main_bp.route('/')
-def landing_page():
-    return render_template('index.html')
-
-@main_bp.route('/main')
 @login_required
 def main():
-    user = current_user
-    campaigns = user.campaigns
-    form = AddCampaignForm()
-    phase = 'planning'  # Default phase or get from the session
-    discord_logs = []
+    try:
+        # Log that we're entering the route
+        print("Entering main route")
+        current_app.logger.info("Entering main route")
 
-    if phase == 'playing':
-        # Fetch discord logs only if the phase is playing
-        discord_logs = DiscordLog.query.filter_by(campaign_id=user.favorite_campaign_id).all()
+        # Log the current user
+        print(f"Current user: {current_user}")
+        current_app.logger.info(f"Current user: {current_user}")
 
-    return render_template('main.html', phase=phase, campaigns=campaigns, user=user, form=form, discord_logs=discord_logs)
-
-@main_bp.route('/logout')
-@login_required
-def logout():
-    logout_user()
-    return redirect(url_for('auth.login'))
-
-@main_bp.route('/add_campaign', methods=['POST'])
-@login_required
-def add_campaign():
-    user = current_user
-    form = AddCampaignForm()
-    if form.validate_on_submit():
-        name = form.name.data
-        new_campaign = Campaign(name=name, user_id=user.id)
-        db.session.add(new_campaign)
-        db.session.commit()
-        flash('Campaign added successfully.', 'success')
-    else:
-        flash('Error adding campaign. Please try again.', 'danger')
-    return redirect(url_for('main.main'))
-
-@main_bp.route('/edit_campaign/<int:campaign_id>', methods=['POST'])
-@login_required
-def edit_campaign(campaign_id):
-    campaign = Campaign.query.get_or_404(campaign_id)
-    if campaign.user_id != current_user.id:
-        return jsonify(success=False, message='Permission denied.')
-
-    data = request.get_json()
-    campaign.name = data['name']
-    db.session.commit()
-    return jsonify(success=True)
-
-@main_bp.route('/delete_campaign/<int:campaign_id>', methods=['POST'])
-@login_required
-def delete_campaign(campaign_id):
-    campaign = Campaign.query.get_or_404(campaign_id)
-    if campaign.user_id != current_user.id:
-        return jsonify(success=False, message='Permission denied.')
-
-    db.session.delete(campaign)
-    db.session.commit()
-    return jsonify(success=True)
-
-@main_bp.route('/planning')
-@login_required
-def planning():
-    user = current_user
-    form = AddCampaignForm()
-    return render_template('planning.html', phase='planning', campaigns=user.campaigns, user=user, form=form)
-
-@main_bp.route('/playing')
-@login_required
-def playing():
-    user = current_user
-    form = AddCampaignForm()
-    discord_logs = DiscordLog.query.filter_by(campaign_id=user.favorite_campaign_id).all()
-    return render_template('playing.html', phase='playing', campaigns=user.campaigns, user=user, form=form, discord_logs=discord_logs)
-
-@main_bp.route('/perpend')
-@login_required
-def perpend():
-    user = current_user
-    form = AddCampaignForm()
-    return render_template('perpend.html', phase='perpend', campaigns=user.campaigns, user=user, form=form)
-
-@main_bp.route('/set_favorite_campaign', methods=['POST'])
-@login_required
-def set_favorite_campaign():
-    user = current_user
-    data = request.get_json()
-    campaign_id = data.get('campaign_id')
-    campaign = Campaign.query.get_or_404(campaign_id)
-
-    if campaign.user_id != user.id:
-        return jsonify(success=False, message='Permission denied.')
-
-    # Update the user's favorite campaign
-    user.favorite_campaign_id = campaign_id
-    db.session.commit()
-    return jsonify(success=True, campaign_id=campaign_id)
-
-@main_bp.route('/fetch_speech_logs', methods=['GET'])
-@login_required
-def fetch_speech_logs():
-    campaign_id = request.args.get('campaign_id')
-    logs = SpeechLog.query.filter_by(campaign_id=campaign_id).order_by(SpeechLog.timestamp.desc()).all()
-    return jsonify(logs=[log.to_dict() for log in logs])
+        # Try to render with absolute minimum
+        return render_template('main.html')
+                             
+    except Exception as e:
+        error_info = {
+            'type': type(e).__name__,
+            'message': str(e),
+            'traceback': traceback.format_exc()
+        }
+        
+        # Print to console
+        print("\n=== ERROR IN MAIN ROUTE ===")
+        print(f"Error Type: {error_info['type']}")
+        print(f"Error Message: {error_info['message']}")
+        print("\nTraceback:")
+        print(error_info['traceback'])
+        print("===========================\n")
+        
+        # Log to application logger
+        current_app.logger.error(f"Error Type: {error_info['type']}")
+        current_app.logger.error(f"Error Message: {error_info['message']}")
+        current_app.logger.error(f"Traceback: {error_info['traceback']}")
+        
+        raise

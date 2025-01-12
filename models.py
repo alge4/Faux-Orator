@@ -47,6 +47,8 @@ class Campaign(db.Model):
     name = db.Column(db.String(100), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    order_index = db.Column(db.Integer, default=0)
+    is_favorite = db.Column(db.Boolean, default=False)
 
     # Relationships
     owner = db.relationship('User', 
@@ -140,3 +142,30 @@ class DiscordLog(db.Model):
 
     def __repr__(self):
         return f"<DiscordLog by {self.username} at {self.timestamp}>"
+
+class CampaignInvite(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    campaign_id = db.Column(db.Integer, db.ForeignKey('campaign.id'), nullable=False)
+    inviter_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    invitee_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    status = db.Column(db.String(20), default='pending')  # pending, accepted, rejected
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+class Character(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    campaign_id = db.Column(db.Integer, db.ForeignKey('campaign.id'))
+    character_data = db.Column(db.JSON)
+
+class WebsiteUpdate(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(200), nullable=False)
+    content = db.Column(db.Text, nullable=False)
+    date = db.Column(db.DateTime, default=datetime.utcnow)
+    type = db.Column(db.String(50))  # feature, bugfix, announcement
+
+class UserLayoutPreference(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    layout_data = db.Column(db.JSON)
