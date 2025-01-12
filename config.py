@@ -8,11 +8,12 @@ load_dotenv()
 basedir = os.path.abspath(os.path.dirname(__file__))
 
 class Config:
-    SECRET_KEY = os.environ.get('SECRET_KEY') or 'your-secret-key-here'
+    SECRET_KEY = os.environ.get('SECRET_KEY') or 'your-secret-key'
     
     # PostgreSQL database URI
-    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or \
-        f"postgresql://{os.environ.get('DB_USER')}:{os.environ.get('DB_PASSWORD')}@{os.environ.get('DB_HOST')}:{os.environ.get('DB_PORT')}/{os.environ.get('DB_NAME')}"
+    SQLALCHEMY_DATABASE_URL = os.environ.get('DATABASE_URL') or \
+        'postgresql://username:password@localhost/faux_orator'
+    SQLALCHEMY_DATABASE_URI = SQLALCHEMY_DATABASE_URL
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     
     MAIL_SERVER = os.environ.get('MAIL_SERVER')

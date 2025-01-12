@@ -1,0 +1,65 @@
+<div id="vox-sidebar" class="flex-shrink-0 overflow-x-hidden">
+    <div class="vox-header">
+        <h2>Vox Communis</h2>
+    </div>
+    
+    {% if selected_campaign %}
+        <div class="voice-channels">
+            <div class="voice-channels-header">
+                <h3>Voice Channels</h3>
+                {% if current_user.id == selected_campaign.user_id %}
+                    <button id="create-voice-channel" class="btn-icon" title="Create Voice Channel">
+                        <i class="fas fa-plus"></i>
+                    </button>
+                {% endif %}
+            </div>
+            <div id="voice-channel-list" class="sortable-list">
+                {% for channel in voice_channels %}
+                    <div class="voice-channel-item" data-channel-id="{{ channel.id }}">
+                        <div class="channel-content">
+                            <i class="fas fa-grip-lines handle"></i>
+                            <i class="fas fa-volume-up channel-icon"></i>
+                            <span class="channel-status-indicator"></span>
+                            <span class="channel-name">{{ channel.name }}</span>
+                            <span class="channel-user-count">0</span>
+                            {% if current_user.id == selected_campaign.user_id %}
+                                <div class="channel-actions">
+                                    <button class="btn-icon edit-channel" title="Edit Channel">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button class="btn-icon delete-channel" title="Delete Channel">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="channel-users droppable-area" data-channel-id="{{ channel.id }}">
+                            <!-- Users will be added dynamically -->
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    {% else %}
+        <div class="no-campaign-selected">
+            <p>Select a campaign to view voice channels</p>
+        </div>
+    {% endif %}
+</div>
+
+<!-- Channel Management Modal -->
+{% if selected_campaign %}
+    <div id="channel-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2 id="modal-title">Create Voice Channel</h2>
+            <form id="channel-form">
+                <div class="form-group">
+                    <label for="channel-name">Channel Name:</label>
+                    <input type="text" id="channel-name" name="name" required>
+                </div>
+                <button type="submit" class="btn btn-primary">Save</button>
+            </form>
+        </div>
+    </div>
+{% endif %} 

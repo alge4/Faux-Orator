@@ -1,0 +1,134 @@
+/* Vox Communis Sidebar */
+#vox-sidebar {
+    width: 250px;
+    background-color: #2f3136;
+    color: #ffffff;
+    border-left: 1px solid #202225;
+    display: flex;
+    flex-direction: column;
+}
+
+.vox-header {
+    padding: 15px;
+    border-bottom: 1px solid #202225;
+}
+
+.voice-channels {
+    padding: 15px;
+}
+
+.voice-channel-item {
+    display: flex;
+    align-items: center;
+    padding: 8px;
+    margin: 2px 0;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.voice-channel-item:hover {
+    background-color: #36393f;
+}
+
+.handle {
+    cursor: grab;
+    margin-right: 8px;
+    color: #72767d;
+}
+
+.channel-icon {
+    margin-right: 8px;
+    color: #72767d;
+}
+
+.channel-controls {
+    margin-left: auto;
+    display: none;
+}
+
+.voice-channel-item:hover .channel-controls {
+    display: flex;
+    gap: 8px;
+}
+
+.gma-chat {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 15px;
+    border-top: 1px solid #202225;
+}
+
+.chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    margin-bottom: 15px;
+}
+
+.chat-input {
+    display: flex;
+    gap: 8px;
+}
+
+.chat-input input {
+    flex: 1;
+    padding: 8px;
+    border-radius: 4px;
+    border: none;
+    background-color: #40444b;
+    color: #ffffff;
+}
+
+.chat-input button {
+    padding: 8px 15px;
+    border-radius: 4px;
+    border: none;
+    background-color: #5865f2;
+    color: #ffffff;
+    cursor: pointer;
+}
+
+.chat-input button:hover {
+    background-color: #4752c4;
+}
+
+/* Message styles */
+.message {
+    padding: 8px;
+    margin: 4px 0;
+    border-radius: 4px;
+}
+
+.message.user {
+    background-color: #36393f;
+}
+
+.message.gma {
+    background-color: #32353b;
+}
+
+.message .username {
+    font-weight: bold;
+    color: #72767d;
+    margin-bottom: 4px;
+}
+
+.message .content {
+    color: #dcddde;
+}
+
+/* Voice channel status indicators */
+.channel-status {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-right: 8px;
+}
+
+.channel-status.active {
+    background-color: #43b581;
+}
+
+.channel-status.inactive {
+    background-color: #72767d;
+} 

@@ -1,26 +1,22 @@
-from flask import Flask, render_template
-from config import Config
-from gma.routes import gma_bp
+from flask import Flask
+from flask_migrate import Migrate
+from flask_socketio import SocketIO
 from __init__ import create_app, socketio
+from models import db
+import logging
 
-app = create_app()
-app.config.from_object(Config)
+# Set up logging
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
 
-@app.route('/')
-def home():
-    return render_template('index.html')
+app = create_app()  # create_app should handle db initialization
+app.config['DEBUG'] = True  # Enable debug mode
+migrate = Migrate(app, db)
 
-@app.route('/playing')
-def playing():
-    return render_template('playing.html')
+@app.errorhandler(500)
+def handle_500(error):
+    app.logger.error(f'500 error: {error}')
+    return 'Internal Server Error', 500
 
-@app.route('/planning')
-def planning():
-    return render_template('planning.html')
-
-@app.route('/perpend')
-def perpend():
-    return render_template('perpend.html')
-
-if __name__ == "__main__":
-    socketio.run(app)
+if __name__ == '__main__':
+    socketio.run(app, debug=True)

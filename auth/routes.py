@@ -1,6 +1,7 @@
 #auth/routes.py
 from flask import Blueprint, render_template, redirect, url_for, request, flash, session, current_app
 from flask_login import login_user, logout_user, login_required, current_user
+from werkzeug.security import check_password_hash
 from models import User, db, Campaign
 from flask_bcrypt import Bcrypt
 from itsdangerous import URLSafeTimedSerializer
@@ -18,17 +19,21 @@ serializer = URLSafeTimedSerializer('your-secret-key')
 def login():
     if current_user.is_authenticated:
         return redirect(url_for('main.main'))
+    
     login_form = LoginForm()
     register_form = RegistrationForm()
+    
     if login_form.validate_on_submit():
         user = User.query.filter_by(email=login_form.email.data).first()
         if user and bcrypt.check_password_hash(user.password, login_form.password.data):
-            login_user(user)
+            login_user(user, remember=login_form.remember.data)
             session['username'] = user.username
+            next_page = request.args.get('next')
             flash('You have been logged in!', 'success')
-            return redirect(url_for('main.main'))
+            return redirect(next_page) if next_page else redirect(url_for('main.main'))
         else:
             flash('Invalid credentials, please try again.', 'danger')
+    
     return render_template('login.html', login_form=login_form, register_form=register_form)
 
 @auth_bp.route('/register', methods=['GET', 'POST'])
