@@ -1,8 +1,0 @@
-{
-    "recommendations": [
-        "commandvariable.commandvariable",
-        "ms-vscode-remote.remote-wsl",
-        "ms-azuretools.vscode-docker"
-    ],
-    "unwantedRecommendations": []
-} 

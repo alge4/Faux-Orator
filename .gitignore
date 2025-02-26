@@ -1,7 +1,0 @@
-.env
-venv/
-instance/
-.logs
-__pycache__/
-node_modules/
-.codegpt
