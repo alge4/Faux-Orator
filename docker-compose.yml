@@ -5,11 +5,11 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - DATABASE_URL=postgres://fauxorator:your_password@db:5432/fauxorator_db
+      DATABASE_URL: postgres://postgres:password@db:5432/fauxorator
+    volumes:
+      - backend_data:/app/data
     depends_on:
       - db
-    volumes:
-      - backend-data:/app/data
   frontend:
     build: ./frontend
     ports:
@@ -19,12 +19,12 @@ services:
   db:
     image: postgres:13
     environment:
-      - POSTGRES_USER=fauxorator
-      - POSTGRES_PASSWORD=your_password
-      - POSTGRES_DB=fauxorator_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: fauxorator
     volumes:
-      - db-data:/var/lib/postgresql/data
+      - db_data:/var/lib/postgresql/data
 
 volumes:
-  backend-data:
-  db-data:
+  backend_data:
+  db_data:
