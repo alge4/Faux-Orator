@@ -1,0 +1,30 @@
+version: "3.9"
+services:
+  backend:
+    build: ./backend
+    ports:
+      - "3000:3000"
+    environment:
+      - DATABASE_URL=postgres://fauxorator:your_password@db:5432/fauxorator_db
+    depends_on:
+      - db
+    volumes:
+      - backend-data:/app/data
+  frontend:
+    build: ./frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+  db:
+    image: postgres:13
+    environment:
+      - POSTGRES_USER=fauxorator
+      - POSTGRES_PASSWORD=your_password
+      - POSTGRES_DB=fauxorator_db
+    volumes:
+      - db-data:/var/lib/postgresql/data
+
+volumes:
+  backend-data:
+  db-data:

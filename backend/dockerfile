@@ -1,0 +1,14 @@
+# Use a lightweight Alpine-based Node.js
+FROM node:18-alpine 
+
+WORKDIR /app
+
+COPY package*.json ./
+# Install only production dependencies
+RUN npm install --omit=dev  
+
+COPY . .
+
+EXPOSE 3000
+
+CMD [ "npm", "start" ]
