@@ -1,14 +1,14 @@
 {
-  "name": "faux-orator-backend",
+  "name": "backend",
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "start": "node app.js",
-    "dev": "nodemon app.ts"
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
+  "description": "",
   "dependencies": {
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
@@ -19,10 +19,9 @@
   },
   "devDependencies": {
     "@types/cors": "^2.8.17",
-    "@types/express": "^4.17.25",
-    "@types/node": "^20.11.24",
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.13.5",
     "nodemon": "^3.1.9",
-    "typescript": "^5.4.2"
-  },
-  "description": ""
+    "typescript": "^5.7.3"
+  }
 }
