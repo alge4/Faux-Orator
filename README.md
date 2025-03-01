@@ -940,13 +940,18 @@ faux-orator/
 │   └── ...
 ├── backend/          # Node.js/Express backend application
 │   ├── src/          # Source code
-│   ├── models/       # Sequelize models
-│   ├── routes/       # Express routes
-│   ├── config/       # Configuration files
-│   ├── package.json  # Dependencies and scripts
-│   └── ...
-├── README.md         # Project documentation
-└── .gitignore        # Git ignore file
+│   │   ├── models/       # Models are now here
+│   │   │   ├── index.ts
+│   │   │   ├── User.ts
+│   │   │   └── Campaign.ts
+│   │   ├── routes/
+│   │   │   └── userRoutes.ts
+│   │   ├── middleware/
+│   │   │   └── authMiddleware.ts
+│   │   └── app.ts
+│   ├── package.json
+│   └── Dockerfile
+└── README.md         # Project documentation
 ```
 
 - Monorepo: Using a single repository for both frontend and backend code.

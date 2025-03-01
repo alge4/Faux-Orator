@@ -1,23 +1,32 @@
-import React from 'react';
-import logo from './logo.svg';
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import './App.css';
 
 function App() {
+  const [campaigns, setCampaigns] = useState([]);
+
+  useEffect(() => {
+    const fetchCampaigns = async () => {
+      try {
+        const response = await axios.get('/api/campaigns'); // No auth yet
+        setCampaigns(response.data);
+      } catch (error) {
+        console.error("Error fetching campaigns:", error);
+      }
+    };
+
+    fetchCampaigns();
+  }, []);
+
   return (
     <div className="App">
       <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.tsx</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
+        <h1>Campaigns</h1>
+        <ul>
+          {campaigns.map((campaign: any) => (
+            <li key={campaign.id}>{campaign.name}</li>
+          ))}
+        </ul>
       </header>
     </div>
   );
