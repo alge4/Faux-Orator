@@ -1,46 +1,78 @@
 import express from 'express';
 import dotenv from 'dotenv';
 import cors from 'cors';
-import userRoutes from './routes/userRoutes'; // This path is correct
-import { sequelize } from './models/index'; // This path is now correct
+import passport from 'passport';
+import session from 'express-session';
+import { initializeDatabase } from './models/index';
+import userRoutes from './routes/userRoutes';
+import authRoutes from './routes/authRoutes';
+import { initializePassport } from './config/passport';
 
+// Load environment variables
 dotenv.config();
 
+// Initialize Express app
 const app = express();
-const port = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3000;
 
-// Configure CORS (allow requests from your frontend)
+// Configure CORS
 app.use(cors({
-    origin: 'http://localhost:80' // Allow requests from your frontend's origin
+  origin: process.env.FRONTEND_URL || 'http://localhost',
+  credentials: true
 }));
+
+// Parse JSON bodies
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-// Use the user routes
+// Configure session
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'your-session-secret',
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    secure: process.env.NODE_ENV === 'production', // Use secure cookies in production
+    maxAge: 24 * 60 * 60 * 1000 // 24 hours
+  }
+}));
+
+// Initialize Passport
+app.use(passport.initialize());
+app.use(passport.session());
+initializePassport();
+
+// Routes
 app.use('/api/users', userRoutes);
+app.use('/api/auth', authRoutes);
 
+// Root endpoint
 app.get('/', (req, res) => {
-    res.send('Faux Orator Backend is running!');
+  res.send('Backend is running!');
 });
 
-// Only start the server if this file is run directly
-if (require.main === module) {
-    // Test database connection first
-    sequelize.authenticate()
-        .then(() => {
-            console.log('Database connection has been established successfully.');
-            
-            // Then sync the models
-            return sequelize.sync({ force: false, alter: true });
-        })
-        .then(() => {
-            console.log('Database synced successfully.');
-            app.listen(port, () => {
-                console.log(`Server is running on port ${port}`);
-            });
-        })
-        .catch((err: any) => {
-            console.error('Unable to connect to the database or sync models:', err);
-        });
-}
+// Error handling middleware
+app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  console.error('Error:', err);
+  res.status(500).json({ message: 'Internal server error', error: err.message });
+});
+
+// Initialize database and start server
+const startServer = async () => {
+  try {
+    await initializeDatabase();
+    
+    if (require.main === module) {
+      app.listen(PORT, () => {
+        console.log(`Server running on port ${PORT}`);
+        console.log(`Frontend URL: ${process.env.FRONTEND_URL || 'http://localhost'}`);
+        console.log(`Backend URL: ${process.env.BACKEND_URL || 'http://localhost:3000'}`);
+      });
+    }
+  } catch (error) {
+    console.error('Failed to start server:', error);
+  }
+};
+
+startServer();
 
 export default app;

@@ -1,4 +1,4 @@
-import express, { Request, Response } from 'express';
+import express, { Request, Response, NextFunction } from 'express';
 import { User } from '../models/index'; // Updated path
 import bcrypt from 'bcryptjs'; // For password hashing
 import jwt from 'jsonwebtoken'; // For generating JWTs
@@ -11,53 +11,50 @@ const router = express.Router();
 // User Registration
 router.post('/register', async (req: Request, res: Response) => {
     try {
-        const { azureAdUserId, username, email, firstName, lastName, password } = req.body;
+        const { username, firstName, lastName, email, password, role } = req.body;
 
-        // Basic validation (you should add more robust validation)
-        if (!azureAdUserId || !username || !email || !password) {
-            return res.status(400).json({ message: 'Missing required fields' });
-        }
-
-        // Check if user already exists (by email or Azure AD ID)
-        const existingUser = await User.findOne({ where: { [Op.or]: [{ email }, { azureAdUserId }] } });
+        // Check if user already exists
+        const existingUser = await User.findOne({ where: { email } });
         if (existingUser) {
-            return res.status(409).json({ message: 'User already exists' });
+            return res.status(400).json({ message: 'User already exists' });
         }
 
-        // Hash the password
+        // Hash password
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(password, salt);
 
-        // Create the user
-        const newUser = await User.create({
-            azureAdUserId,
+        // Create new user
+        const user = await User.create({
             username,
-            email,
             firstName,
             lastName,
-            password: hashedPassword, // Store the hashed password
-            role: 'Player', // Or determine the role based on your logic
+            email,
+            password: hashedPassword,
+            role: role || 'user'
         });
 
-        // Generate a JWT (JSON Web Token) for authentication
-        const token = jwt.sign({ id: newUser.id }, process.env.JWT_SECRET || 'your-secret-key', {
-            expiresIn: '1h', // Token expires in 1 hour (adjust as needed)
-        });
+        // Generate JWT token
+        const token = jwt.sign(
+            { id: user.id, email: user.email, role: user.role },
+            process.env.JWT_SECRET || 'your-jwt-secret',
+            { expiresIn: '1h' }
+        );
 
-        // Return the user data and token (excluding the password)
         res.status(201).json({
-            id: newUser.id,
-            username: newUser.username,
-            email: newUser.email,
-            firstName: newUser.firstName,
-            lastName: newUser.lastName,
-            role: newUser.role,
+            message: 'User registered successfully',
             token,
+            user: {
+                id: user.id,
+                username: user.username,
+                email: user.email,
+                firstName: user.firstName,
+                lastName: user.lastName,
+                role: user.role
+            }
         });
-
     } catch (error) {
-        console.error("Error during user registration:", error);
-        res.status(500).json({ message: 'Server error during registration' });
+        console.error('Registration error:', error);
+        res.status(500).json({ message: 'Server error' });
     }
 });
 
@@ -66,52 +63,70 @@ router.post('/login', async (req: Request, res: Response) => {
     try {
         const { email, password } = req.body;
 
-        // Basic validation
-        if (!email || !password) {
-            return res.status(400).json({ message: 'Missing required fields' });
-        }
-
-        // Find the user by email
+        // Find user by email
         const user = await User.findOne({ where: { email } });
         if (!user) {
-            return res.status(401).json({ message: 'Invalid credentials' });
+            return res.status(400).json({ message: 'Invalid credentials' });
         }
 
-        // Check the password
-        const isMatch = await bcrypt.compare(password, user.password);
+        // Verify password
+        const isMatch = await bcrypt.compare(password, user.password || '');
         if (!isMatch) {
-            return res.status(401).json({ message: 'Invalid credentials' });
+            return res.status(400).json({ message: 'Invalid credentials' });
         }
 
-        // Generate a JWT
-        const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET || 'your-secret-key', {
-            expiresIn: '1h',
-        });
+        // Generate JWT token
+        const token = jwt.sign(
+            { id: user.id, email: user.email, role: user.role },
+            process.env.JWT_SECRET || 'your-jwt-secret',
+            { expiresIn: '1h' }
+        );
 
-        // Return the user data and token
-        res.status(200).json({
+        res.json({
+            message: 'Login successful',
+            token,
+            user: {
+                id: user.id,
+                username: user.username,
+                email: user.email,
+                firstName: user.firstName,
+                lastName: user.lastName,
+                role: user.role
+            }
+        });
+    } catch (error) {
+        console.error('Login error:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
+// Get Current User (Protected Route)
+router.get('/me', (req: Request, res: Response, next: NextFunction) => {
+    authenticateJWT(req as AuthRequest, res, next);
+}, async (req: Request, res: Response) => {
+    try {
+        const authReq = req as AuthRequest;
+        if (!authReq.user) {
+            return res.status(401).json({ message: 'Unauthorized' });
+        }
+
+        const user = await User.findByPk(authReq.user.id);
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        res.json({
             id: user.id,
             username: user.username,
             email: user.email,
             firstName: user.firstName,
             lastName: user.lastName,
-            role: user.role,
-            token,
+            role: user.role
         });
-
     } catch (error) {
-        console.error("Error during user login:", error);
-        res.status(500).json({ message: 'Server error during login' });
+        console.error('Get user error:', error);
+        res.status(500).json({ message: 'Server error' });
     }
-});
-
-// Get Current User (Protected Route)
-router.get('/me', authenticateJWT, (req: AuthRequest, res: Response) => {
-    if (!req.user) {
-        return res.status(401).json({ message: 'Unauthorized' });
-    }
-
-    res.status(200).json(req.user);
 });
 
 // Add other routes here (e.g., router.use('/campaigns', campaignRoutes);)
