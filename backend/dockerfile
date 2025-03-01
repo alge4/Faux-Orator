@@ -1,26 +1,19 @@
-FROM node:18-alpine
+FROM node:20-alpine
 
 WORKDIR /app
 
 # Copy package files first for better caching
-COPY package*.json ./
+COPY package.json package-lock.json ./
+RUN npm ci
 
-# Install dependencies
-RUN npm install
-
-# Copy source code
+# Copy the rest of the application
 COPY . .
 
-# Show the directory structure for debugging
-RUN ls -la
-
-# Build TypeScript code
+# Build TypeScript
 RUN npm run build
 
-# Show the dist directory to verify compilation
-RUN ls -la dist
-
+# Expose the port the app runs on
 EXPOSE 3000
 
-# Use the correct path to the compiled app.js
+# Command to run the application
 CMD ["node", "dist/app.js"]

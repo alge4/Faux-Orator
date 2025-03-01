@@ -1,15 +1,24 @@
+name: faux-orator
 
 services:
   backend:
-    build: 
-      context: ./backend
-      dockerfile: Dockerfile
+    build: ./backend
     ports:
       - "3000:3000"
     environment:
-      DATABASE_URL: postgres://postgres:password@db:5432/fauxorator
-      NODE_ENV: development
-      JWT_SECRET: your_jwt_secret_key_here
+      - NODE_ENV=${NODE_ENV}
+      - AZURE_CLIENT_ID=${AZURE_CLIENT_ID}
+      - AZURE_TENANT_ID=${AZURE_TENANT_ID}
+      - AZURE_CLIENT_SECRET=${AZURE_CLIENT_SECRET}
+      - JWT_SECRET=${JWT_SECRET}
+      - SESSION_SECRET=${SESSION_SECRET}
+      - DB_NAME=${DB_NAME}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_HOST=${DB_HOST}
+      - DB_PORT=${DB_PORT}
+      - FRONTEND_URL=${FRONTEND_URL}
+      - BACKEND_URL=${BACKEND_URL}
     volumes:
       - ./backend:/app
       - /app/node_modules
@@ -17,26 +26,35 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    restart: unless-stopped
-  
+    restart: always
+
   # Use a simpler approach for the frontend
   frontend:
-    image: nginx:alpine
+    build:
+      context: ./frontend
+      args:
+        - REACT_APP_AZURE_CLIENT_ID=${AZURE_CLIENT_ID}
+        - REACT_APP_AZURE_TENANT_ID=${AZURE_TENANT_ID}
+        - REACT_APP_API_URL=${BACKEND_URL}
     ports:
       - "80:80"
-    volumes:
-      - ./frontend/build:/usr/share/nginx/html
+    environment:
+      - REACT_APP_AZURE_CLIENT_ID=${AZURE_CLIENT_ID}
+      - REACT_APP_AZURE_TENANT_ID=${AZURE_TENANT_ID}
+      - REACT_APP_API_URL=${BACKEND_URL}
     depends_on:
       - backend
-  
+
   db:
-    image: postgres:13
+    image: postgres:14-alpine
+    ports:
+      - "5432:5432"
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: fauxorator
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_DB=${DB_NAME}
     volumes:
-      - db_data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
@@ -44,4 +62,4 @@ services:
       retries: 5
 
 volumes:
-  db_data:
+  postgres_data:

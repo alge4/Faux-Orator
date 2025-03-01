@@ -22,7 +22,7 @@ export function initUserModel(sequelize: Sequelize) {
         },
         azureAdUserId: {
             type: DataTypes.STRING,
-            allowNull: false,
+            allowNull: true,
             unique: true,
         },
         username: {

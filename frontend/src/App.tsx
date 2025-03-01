@@ -1,34 +1,38 @@
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { MsalProvider } from '@azure/msal-react';
+import { PublicClientApplication } from '@azure/msal-browser';
+import { msalConfig } from './authConfig';
+import { AuthProvider } from './context/AuthContext';
+import ProtectedRoute from './components/ProtectedRoute';
+import AuthCallback from './components/AuthCallback';
+import Login from './pages/Login';
+import Home from './pages/Home'; // Create this component for your main page
 import './App.css';
 
+// Initialize MSAL instance
+const msalInstance = new PublicClientApplication(msalConfig);
+
 function App() {
-  const [campaigns, setCampaigns] = useState([]);
-
-  useEffect(() => {
-    const fetchCampaigns = async () => {
-      try {
-        const response = await axios.get('/api/campaigns'); // No auth yet
-        setCampaigns(response.data);
-      } catch (error) {
-        console.error("Error fetching campaigns:", error);
-      }
-    };
-
-    fetchCampaigns();
-  }, []);
-
   return (
-    <div className="App">
-      <header className="App-header">
-        <h1>Campaigns</h1>
-        <ul>
-          {campaigns.map((campaign: any) => (
-            <li key={campaign.id}>{campaign.name}</li>
-          ))}
-        </ul>
-      </header>
-    </div>
+    <MsalProvider instance={msalInstance}>
+      <AuthProvider>
+        <Router>
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route path="/auth/callback" element={<AuthCallback />} />
+            <Route 
+              path="/" 
+              element={
+                <ProtectedRoute>
+                  <Home />
+                </ProtectedRoute>
+              } 
+            />
+          </Routes>
+        </Router>
+      </AuthProvider>
+    </MsalProvider>
   );
 }
 
