@@ -2,14 +2,25 @@ FROM node:18-alpine
 
 WORKDIR /app
 
+# Copy package files first for better caching
 COPY package*.json ./
 
+# Install dependencies
 RUN npm install
 
+# Copy source code
 COPY . .
 
+# Show the directory structure for debugging
+RUN ls -la
+
+# Build TypeScript code
 RUN npm run build
+
+# Show the dist directory to verify compilation
+RUN ls -la dist
 
 EXPOSE 3000
 
-CMD [ "npm", "start" ]
+# Use the correct path to the compiled app.js
+CMD ["node", "dist/app.js"]

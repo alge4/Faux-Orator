@@ -1,21 +1,34 @@
-version: "3.9"
+
 services:
   backend:
-    build: ./backend
+    build: 
+      context: ./backend
+      dockerfile: Dockerfile
     ports:
       - "3000:3000"
     environment:
       DATABASE_URL: postgres://postgres:password@db:5432/fauxorator
+      NODE_ENV: development
+      JWT_SECRET: your_jwt_secret_key_here
     volumes:
-      - backend_data:/app/data
+      - ./backend:/app
+      - /app/node_modules
+      - /app/dist
     depends_on:
-      - db
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+  
+  # Use a simpler approach for the frontend
   frontend:
-    build: ./frontend
+    image: nginx:alpine
     ports:
       - "80:80"
+    volumes:
+      - ./frontend/build:/usr/share/nginx/html
     depends_on:
       - backend
+  
   db:
     image: postgres:13
     environment:
@@ -24,7 +37,11 @@ services:
       POSTGRES_DB: fauxorator
     volumes:
       - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
 volumes:
-  backend_data:
   db_data:
