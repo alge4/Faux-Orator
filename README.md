@@ -2,16 +2,16 @@
 
 **1. Core Functionality:**
 
-- A platform for Dungeon Masters (DMs) to create and manage D\&D campaigns.
-- Tools for creating and managing characters, locations, and other campaign elements.
-- A real-time voice communication system for players and DMs.
-- AI-powered assistance for generating content and managing the game.
-- Integration with D\&D Beyond for accessing character sheets and other resources (deferred to post-MVP).
-- Support for the planning workspace and game session workspace UI features.
+- [x] A platform for Dungeon Masters (DMs) to create and manage D\&D campaigns.
+- [ ] Tools for creating and managing characters, locations, and other campaign elements.
+- [ ] A real-time voice communication system for players and DMs.
+- [ ] AI-powered assistance for generating content and managing the game.
+- [ ] Integration with D\&D Beyond for accessing character sheets and other resources (deferred to post-MVP).
+- [ ] Support for the planning workspace and game session workspace UI features.
 
 **2. Data Model:**
 
-- **User:**
+- **User:** ✅
   - Attributes:
     - `id` (UUID, Primary Key): Unique identifier for the user.
     - `azureAdUserId` (String, Unique): The user ID from Azure AD. This will be used to link the user account to their Azure AD identity.
@@ -22,7 +22,7 @@
     - `createdAt` (Timestamp): Timestamp of when the user account was created.
     - `updatedAt` (Timestamp): Timestamp of when the user account was last updated.
     - `role` (Enum: "DM", "Player", "Observer"): User's role in the system.
-- **Campaign:**
+- **Campaign:** ✅
   - Attributes:
     - `id` (UUID, Primary Key): Unique identifier for the campaign.
     - `name` (String): Name of the campaign.
@@ -164,7 +164,7 @@
 
 **3. API Endpoints:**
 
-- **User Endpoints:**
+- **User Endpoints:** ✅
 
   - `POST /api/users/register`: Register a new user.
 
@@ -228,7 +228,7 @@
       }
       ```
 
-- **Campaign Endpoints:**
+- **Campaign Endpoints:** ✅
 
   - `GET /api/campaigns`: Get a list of all campaigns for the logged-in user (requires authentication).
 

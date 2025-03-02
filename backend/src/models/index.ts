@@ -1,6 +1,7 @@
 import sequelize from '../config/database';
 import { User, initUserModel } from './User';
 import { Campaign, initCampaignModel } from './Campaign';
+import { CampaignSection, initCampaignSectionModel } from './CampaignSection';
 
 // Initialize models
 const initializeDatabase = async (app?: any) => {
@@ -8,6 +9,7 @@ const initializeDatabase = async (app?: any) => {
     // Initialize models
     initUserModel(sequelize);
     initCampaignModel(sequelize);
+    initCampaignSectionModel(sequelize);
     
     await sequelize.authenticate();
     console.log('Database connection has been established successfully.');
@@ -20,9 +22,13 @@ const initializeDatabase = async (app?: any) => {
     User.hasMany(Campaign, { foreignKey: 'dmId', as: 'campaigns' }); // A user can be the DM of many campaigns
     Campaign.belongsTo(User, { foreignKey: 'dmId', as: 'dm' }); // A campaign belongs to one DM
     
+    // Campaign Section associations
+    Campaign.hasMany(CampaignSection, { foreignKey: 'campaignId', as: 'sections' });
+    CampaignSection.belongsTo(Campaign, { foreignKey: 'campaignId', as: 'campaign' });
+    
   } catch (error) {
     console.error('Unable to connect to the database:', error);
   }
 };
 
-export { User, Campaign, initializeDatabase, sequelize }; 
+export { User, Campaign, CampaignSection, initializeDatabase, sequelize }; 

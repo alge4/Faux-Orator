@@ -7,6 +7,7 @@ import { initializeDatabase } from './models/index';
 import userRoutes from './routes/userRoutes';
 import authRoutes from './routes/authRoutes';
 import campaignRoutes from './routes/campaignRoutes';
+import campaignSectionRoutes from './routes/campaignSectionRoutes';
 import { initializePassport } from './config/passport';
 
 // Load environment variables
@@ -46,6 +47,7 @@ initializePassport();
 app.use('/api/users', userRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/campaigns', campaignRoutes);
+app.use('/api/sections', campaignSectionRoutes);
 
 // Root endpoint
 app.get('/', (req, res) => {
