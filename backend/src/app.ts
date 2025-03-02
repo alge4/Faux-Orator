@@ -6,6 +6,7 @@ import session from 'express-session';
 import { initializeDatabase } from './models/index';
 import userRoutes from './routes/userRoutes';
 import authRoutes from './routes/authRoutes';
+import campaignRoutes from './routes/campaignRoutes';
 import { initializePassport } from './config/passport';
 
 // Load environment variables
@@ -44,6 +45,7 @@ initializePassport();
 // Routes
 app.use('/api/users', userRoutes);
 app.use('/api/auth', authRoutes);
+app.use('/api/campaigns', campaignRoutes);
 
 // Root endpoint
 app.get('/', (req, res) => {

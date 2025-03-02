@@ -3,6 +3,7 @@ import { Strategy as BearerStrategy } from 'passport-http-bearer';
 import { OIDCStrategy, IOIDCStrategyOptionWithRequest } from 'passport-azure-ad';
 import jwt from 'jsonwebtoken';
 import { User } from '../models/User';
+import crypto from 'crypto';
 
 // Load environment variables
 const clientID = process.env.AZURE_CLIENT_ID || '';
@@ -11,19 +12,37 @@ const tenantID = process.env.AZURE_TENANT_ID || 'consumers'; // Use 'consumers' 
 const jwtSecret = process.env.JWT_SECRET || 'your-secret-key';
 const backendUrl = process.env.BACKEND_URL || 'http://localhost:3000';
 
+// Generate PKCE code verifier and challenge
+const generatePKCE = () => {
+  // Generate a random code verifier
+  const codeVerifier = crypto.randomBytes(32).toString('base64url');
+  
+  // Generate the code challenge from the verifier
+  const codeChallenge = crypto
+    .createHash('sha256')
+    .update(codeVerifier)
+    .digest('base64url');
+  
+  return { codeVerifier, codeChallenge };
+};
+
+// Store PKCE values (in a real app, this should be in a session or database)
+const pkceStore = new Map<string, string>();
+
 // Configure Azure AD Strategy
 const azureAdOptions: IOIDCStrategyOptionWithRequest = {
   identityMetadata: `https://login.microsoftonline.com/${tenantID}/v2.0/.well-known/openid-configuration`,
   clientID: clientID,
-  responseType: 'id_token',
+  responseType: 'id_token',  // Changed to just 'id_token' to avoid authorization code flow
   responseMode: 'form_post',
   redirectUrl: `${backendUrl}/api/auth/microsoft/callback`,
-  allowHttpForRedirectUrl: true, // Set to false in production
+  allowHttpForRedirectUrl: true,  // Allow HTTP for development
   clientSecret: clientSecret,
-  validateIssuer: false, // Set to true in production
-  passReqToCallback: true as true, // Explicitly type as true
-  scope: ['profile', 'email', 'openid'],
-  loggingLevel: 'info'
+  validateIssuer: false,  // Set to false for development
+  passReqToCallback: true as true,
+  scope: ['profile', 'email', 'openid'],  // Removed offline_access since we're not using refresh tokens
+  loggingLevel: 'info',
+  loggingNoPII: process.env.NODE_ENV === 'production'
 };
 
 // Initialize Passport strategies
@@ -114,3 +133,6 @@ export const initializePassport = () => {
     }
   });
 };
+
+// Export PKCE functions for use in routes
+export const pkce = { generatePKCE, pkceStore };

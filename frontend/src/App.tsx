@@ -22,7 +22,7 @@ function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/auth/callback" element={<AuthCallback />} />
             <Route 
-              path="/" 
+              path="/*" 
               element={
                 <ProtectedRoute>
                   <Home />

@@ -1,75 +1,48 @@
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { useMsal } from '@azure/msal-react';
+import { Routes, Route } from 'react-router-dom';
+import Sidebar from '../components/Sidebar';
+import './Home.css';
+
+const CampaignDashboard: React.FC = () => {
+  return (
+    <div className="campaign-dashboard">
+      <h1>Your Campaigns</h1>
+      <p>Select a campaign from the sidebar or create a new one to get started.</p>
+    </div>
+  );
+};
+
+const CampaignDetail: React.FC = () => {
+  // This will be expanded in the future to show campaign details
+  return (
+    <div className="campaign-detail">
+      <h1>Campaign Details</h1>
+      <p>This page will show the details of the selected campaign.</p>
+    </div>
+  );
+};
 
 const Home: React.FC = () => {
-  const [campaigns, setCampaigns] = useState([]);
   const { user, logout } = useAuth();
-  const { instance, accounts } = useMsal();
-
-  useEffect(() => {
-    const fetchCampaigns = async () => {
-      try {
-        // Get access token for API calls
-        const token = localStorage.getItem('authToken');
-        
-        if (!token) {
-          console.error("No auth token found");
-          return;
-        }
-        
-        const backendUrl = process.env.REACT_APP_API_URL || 'http://localhost:3000';
-        const response = await axios.get(`${backendUrl}/api/campaigns`, {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        });
-        setCampaigns(response.data);
-      } catch (error) {
-        console.error("Error fetching campaigns:", error);
-      }
-    };
-
-    fetchCampaigns();
-  }, []);
-
-  const getAccessToken = async () => {
-    if (accounts.length === 0) {
-      throw new Error("No accounts logged in");
-    }
-    
-    const clientId = process.env.REACT_APP_AZURE_CLIENT_ID;
-    
-    const request = {
-      scopes: [`api://${clientId}/access_as_user`],
-      account: accounts[0]
-    };
-    
-    try {
-      const response = await instance.acquireTokenSilent(request);
-      return response.accessToken;
-    } catch (error) {
-      // If silent token acquisition fails, try interactive
-      const response = await instance.acquireTokenPopup(request);
-      return response.accessToken;
-    }
-  };
 
   return (
-    <div className="App">
-      <header className="App-header">
-        <div className="user-info">
-          <p>Welcome, {user?.name || 'User'}</p>
-          <button onClick={logout}>Sign Out</button>
+    <div className="home-container">
+      <Sidebar />
+      <div className="main-content">
+        <div className="top-bar">
+          <div className="user-info">
+            <span>Welcome, {user?.name || 'User'}</span>
+            <button onClick={logout} className="logout-btn">Sign Out</button>
+          </div>
         </div>
-        <h1>Campaigns</h1>
-        <ul>
-          {campaigns.map((campaign: any) => (
-            <li key={campaign.id}>{campaign.name}</li>
-          ))}
-        </ul>
-      </header>
+        <div className="content-area">
+          <Routes>
+            <Route path="/" element={<CampaignDashboard />} />
+            <Route path="/campaigns/:campaignId" element={<CampaignDetail />} />
+          </Routes>
+        </div>
+      </div>
     </div>
   );
 };
