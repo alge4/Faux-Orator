@@ -1,52 +1,91 @@
-"use client"
+import React, { useState, useRef, useEffect, ChangeEvent, FormEvent } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { 
+  AppBar, 
+  Avatar, 
+  Box, 
+  Button, 
+  Card, 
+  CardContent, 
+  Collapse, 
+  Container, 
+  Divider,
+  Drawer, 
+  Grid, 
+  IconButton, 
+  List, 
+  ListItem, 
+  ListItemAvatar, 
+  ListItemButton, 
+  ListItemIcon, 
+  ListItemText, 
+  Menu, 
+  MenuItem, 
+  TextField, 
+  Toolbar, 
+  Typography 
+} from '@mui/material';
+import { 
+  ArrowDropDown as ChevronDownIcon, 
+  Computer as CpuIcon, 
+  Folder as FolderIcon, 
+  Mic as MicIcon, 
+  MicOff as MicOffIcon, 
+  BubbleChart as NetworkIcon, 
+  Add as PlusIcon, 
+  Search as SearchIcon, 
+  Storage as ServerIcon, 
+  Settings as SettingsIcon, 
+  Edit as EditIcon, 
+  Delete as TrashIcon
+} from '@mui/icons-material';
+import ReactDOM from 'react-dom';
 
-import * as React from "react"
-import { ChevronDown, Cpu, Folder, Mic, MicOff, Network, Plus, Search, Server, Settings } from "lucide-react"
+// Campaign interface (from previous CampaignItem.tsx)
+interface Campaign {
+  id: string;
+  name: string;
+  description: string;
+  imageUrl?: string;
+  role: string;
+}
 
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
-import { Input } from "@/components/ui/input"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { Separator } from "@/components/ui/separator"
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarGroupLabel,
-  SidebarHeader,
-  SidebarInset,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  SidebarProvider,
-  SidebarRail,
-  SidebarTrigger,
-} from "@/components/ui/sidebar"
+// Person interface for server members
+interface Person {
+  id: string;
+  name: string;
+  avatar: string;
+  broadcasting: boolean;
+}
+
+// Server interface for the server list
+interface Server {
+  id: string;
+  name: string;
+  people: Person[];
+}
 
 // Sample data for campaigns
-const campaigns = [
-  { id: "1", name: "Sirione", icon: Folder },
-  { id: "2", name: "Barovia", icon: Folder },
-  { id: "3", name: "Lost Mines of Phandelver", icon: Folder },
-  { id: "4", name: "Test", icon: Folder },
-]
+const sampleCampaigns: Campaign[] = [
+  { id: "1", name: "Sirione", description: "A heroic fantasy campaign", role: "DM" },
+  { id: "2", name: "Barovia", description: "Horror-themed campaign", role: "Player" },
+  { id: "3", name: "Lost Mines of Phandelver", description: "Starter campaign", role: "DM" },
+  { id: "4", name: "Test", description: "Test campaign", role: "DM" },
+];
 
-const favoriteCampaigns = [
-  { id: "1", name: "Sirione", icon: Folder },
-  { id: "2", name: "Barovia", icon: Folder },
-]
+const sampleFavoriteCampaigns: Campaign[] = [
+  { id: "1", name: "Sirione", description: "A heroic fantasy campaign", role: "DM" },
+  { id: "2", name: "Barovia", description: "Horror-themed campaign", role: "Player" },
+];
 
-const recentCampaigns = [
-  { id: "1", name: "Sirione", icon: Folder },
-  { id: "2", name: "Barovia", icon: Folder },
-  { id: "4", name: "Test", icon: Folder },
-]
+const sampleRecentCampaigns: Campaign[] = [
+  { id: "1", name: "Sirione", description: "A heroic fantasy campaign", role: "DM" },
+  { id: "2", name: "Barovia", description: "Horror-themed campaign", role: "Player" },
+  { id: "4", name: "Test", description: "Test campaign", role: "DM" },
+];
 
 // Sample data for servers and people
-const servers = [
+const servers: Server[] = [
   {
     id: "1",
     name: "General",
@@ -66,193 +105,320 @@ const servers = [
     name: "AFK",
     people: [],
   },
-]
+];
 
 export default function NodalGraphDashboard() {
-  const [activeCampaign, setActiveCampaign] = React.useState<string | null>(null)
-  const [expandedServers, setExpandedServers] = React.useState<string[]>([])
+  const navigate = useNavigate();
+  const [activeCampaign, setActiveCampaign] = useState<string | null>(null);
+  const [expandedServers, setExpandedServers] = useState<string[]>([]);
+  const [campaigns, setCampaigns] = useState<Campaign[]>(sampleCampaigns);
+  const [favoriteCampaigns, setFavoriteCampaigns] = useState<Campaign[]>(sampleFavoriteCampaigns);
+  const [recentCampaigns, setRecentCampaigns] = useState<Campaign[]>(sampleRecentCampaigns);
+  const [isRenaming, setIsRenaming] = useState<string | null>(null);
+  const [newName, setNewName] = useState('');
+  
+  const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
+  const [menuCampaignId, setMenuCampaignId] = useState<string | null>(null);
+  
+  const renameInputRef = useRef<HTMLInputElement>(null);
+  
+  // Focus rename input when renaming starts
+  useEffect(() => {
+    if (isRenaming && renameInputRef.current) {
+      renameInputRef.current.focus();
+      renameInputRef.current.select();
+    }
+  }, [isRenaming]);
 
   const toggleServer = (serverId: string) => {
-    setExpandedServers((prev) => (prev.includes(serverId) ? prev.filter((id) => id !== serverId) : [...prev, serverId]))
-  }
+    setExpandedServers((prev: string[]) => (prev.includes(serverId) ? prev.filter((id: string) => id !== serverId) : [...prev, serverId]));
+  };
+
+  const handleCampaignClick = (campaignId: string) => {
+    if (isRenaming !== campaignId) {
+      navigate(`/campaigns/${campaignId}`);
+    }
+  };
+
+  const handleOpenMenu = (event: React.MouseEvent<HTMLElement>, campaignId: string) => {
+    setMenuAnchorEl(event.currentTarget);
+    setMenuCampaignId(campaignId);
+  };
+
+  const handleCloseMenu = () => {
+    setMenuAnchorEl(null);
+    setMenuCampaignId(null);
+  };
+
+  const handleRenameClick = (campaign: Campaign) => {
+    setIsRenaming(campaign.id);
+    setNewName(campaign.name);
+    handleCloseMenu();
+  };
+
+  const handleRenameSubmit = (e: FormEvent) => {
+    e.preventDefault();
+    if (isRenaming && newName.trim() && newName !== campaigns.find((c: Campaign) => c.id === isRenaming)?.name) {
+      onRename(isRenaming, newName);
+    }
+    setIsRenaming(null);
+  };
+
+  const handleDeleteClick = (campaignId: string) => {
+    if (window.confirm(`Are you sure you want to delete this campaign?`)) {
+      onDelete(campaignId);
+    }
+    handleCloseMenu();
+  };
+
+  const onDelete = (id: string) => {
+    setCampaigns(campaigns.filter((campaign: Campaign) => campaign.id !== id));
+    setFavoriteCampaigns(favoriteCampaigns.filter((campaign: Campaign) => campaign.id !== id));
+    setRecentCampaigns(recentCampaigns.filter((campaign: Campaign) => campaign.id !== id));
+  };
+
+  const onRename = (id: string, newName: string) => {
+    setCampaigns(campaigns.map((campaign: Campaign) => 
+      campaign.id === id ? { ...campaign, name: newName } : campaign
+    ));
+    setFavoriteCampaigns(favoriteCampaigns.map((campaign: Campaign) => 
+      campaign.id === id ? { ...campaign, name: newName } : campaign
+    ));
+    setRecentCampaigns(recentCampaigns.map((campaign: Campaign) => 
+      campaign.id === id ? { ...campaign, name: newName } : campaign
+    ));
+  };
+
+  const renderCampaignItem = (campaign: Campaign) => (
+    <ListItem
+      key={campaign.id}
+      disablePadding
+      secondaryAction={
+        <IconButton edge="end" onClick={(e: React.MouseEvent<HTMLElement>) => handleOpenMenu(e, campaign.id)}>
+          <ChevronDownIcon />
+        </IconButton>
+      }
+    >
+      {isRenaming === campaign.id ? (
+        <Box component="form" onSubmit={handleRenameSubmit} sx={{ width: '100%', pl: 2, pr: 2 }}>
+          <TextField
+            inputRef={renameInputRef}
+            value={newName}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewName(e.target.value)}
+            onBlur={handleRenameSubmit}
+            onClick={(e: React.MouseEvent<HTMLElement>) => e.stopPropagation()}
+            size="small"
+            fullWidth
+            autoFocus
+          />
+        </Box>
+      ) : (
+        <ListItemButton onClick={() => handleCampaignClick(campaign.id)}>
+          <ListItemIcon>
+            <FolderIcon />
+          </ListItemIcon>
+          <ListItemText 
+            primary={campaign.name} 
+            secondary={campaign.role}
+          />
+        </ListItemButton>
+      )}
+    </ListItem>
+  );
 
   return (
-    <SidebarProvider>
+    <Box sx={{ display: 'flex', height: '100vh' }}>
       {/* Left Sidebar - Categories */}
-      <Sidebar className="border-r">
-        <SidebarHeader>
-          <div className="flex items-center gap-2 px-4 py-2">
-            <Network className="h-6 w-6" />
-            <h2 className="text-lg font-semibold">Nodal Graph</h2>
-          </div>
-          <div className="px-4 py-2">
-            <div className="relative">
-              <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input placeholder="Search campaigns..." className="pl-8" />
-            </div>
-          </div>
-        </SidebarHeader>
-        <SidebarContent>
-          <SidebarGroup>
-            <SidebarGroupLabel>Favorite Campaigns</SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {favoriteCampaigns.map((campaign) => (
-                  <SidebarMenuItem key={campaign.id}>
-                    <SidebarMenuButton>
-                      <campaign.icon className="h-4 w-4" />
-                      <span>{campaign.name}</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-          <SidebarGroup>
-            <SidebarGroupLabel>Recent</SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {recentCampaigns.map((campaign) => (
-                  <SidebarMenuItem key={campaign.id}>
-                    <SidebarMenuButton>
-                      <campaign.icon className="h-4 w-4" />
-                      <span>{campaign.name}</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-          <SidebarGroup>
-            <SidebarGroupLabel className="flex items-center justify-between">
-              <span>Campaigns</span>
-              <Button variant="ghost" size="icon" className="h-5 w-5">
-                <Plus className="h-4 w-4" />
-              </Button>
-            </SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {campaigns.map((campaign) => (
-                  <SidebarMenuItem key={campaign.id}>
-                    <SidebarMenuButton>
-                      <campaign.icon className="h-4 w-4" />
-                      <span>{campaign.name}</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        </SidebarContent>
-        <SidebarRail />
-      </Sidebar>
+      <Drawer
+        variant="permanent"
+        sx={{
+          width: 260,
+          flexShrink: 0,
+          '& .MuiDrawer-paper': {
+            width: 260,
+            boxSizing: 'border-box',
+          },
+        }}
+      >
+        <Box sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+          <NetworkIcon />
+          <Typography variant="h6">Nodal Graph</Typography>
+        </Box>
+        <Box sx={{ p: 2 }}>
+          <TextField 
+            placeholder="Search campaigns..." 
+            size="small"
+            fullWidth
+            InputProps={{
+              startAdornment: <SearchIcon fontSize="small" sx={{ mr: 1, color: 'text.secondary' }} />,
+            }}
+          />
+        </Box>
+        <Divider />
+        <Box sx={{ overflow: 'auto', flexGrow: 1 }}>
+          <List>
+            <ListItem>
+              <Typography variant="subtitle2">Favorite Campaigns</Typography>
+            </ListItem>
+            {favoriteCampaigns.map((campaign: Campaign) => renderCampaignItem(campaign))}
+            
+            <Divider sx={{ my: 2 }} />
+            <ListItem>
+              <Typography variant="subtitle2">Recent</Typography>
+            </ListItem>
+            {recentCampaigns.map((campaign: Campaign) => renderCampaignItem(campaign))}
+            
+            <Divider sx={{ my: 2 }} />
+            <ListItem
+              secondaryAction={
+                <IconButton edge="end" size="small">
+                  <PlusIcon fontSize="small" />
+                </IconButton>
+              }
+            >
+              <Typography variant="subtitle2">Campaigns</Typography>
+            </ListItem>
+            {campaigns.map((campaign: Campaign) => renderCampaignItem(campaign))}
+          </List>
+        </Box>
+      </Drawer>
 
       {/* Main Content */}
-      <SidebarInset>
-        <div className="flex h-16 items-center justify-between border-b px-6">
-          <div className="flex items-center gap-2">
-            <SidebarTrigger />
-            <h1 className="text-xl font-semibold">Nodal Graph Dashboard</h1>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm">
-              <Cpu className="mr-2 h-4 w-4" />
+      <Box component="main" sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
+        <AppBar position="static" color="default" elevation={0} sx={{ borderBottom: '1px solid rgba(0, 0, 0, 0.12)' }}>
+          <Toolbar>
+            <Typography variant="h6" sx={{ flexGrow: 1 }}>
+              Nodal Graph Dashboard
+            </Typography>
+            <Button 
+              variant="outlined" 
+              startIcon={<CpuIcon />}
+              size="small"
+              sx={{ mr: 1 }}
+            >
               New Node
             </Button>
-            <Button variant="outline" size="sm">
-              <Settings className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-        <div className="flex-1 p-6">
-          <div className="rounded-lg border border-dashed p-8 text-center">
-            <Network className="mx-auto h-12 w-12 text-muted-foreground" />
-            <h3 className="mt-4 text-lg font-medium">Nodal Graph Visualization</h3>
-            <p className="mt-2 text-sm text-muted-foreground">
+            <IconButton>
+              <SettingsIcon />
+            </IconButton>
+          </Toolbar>
+        </AppBar>
+        <Container sx={{ flexGrow: 1, p: 3 }}>
+          <Card 
+            variant="outlined" 
+            sx={{ 
+              height: '100%', 
+              display: 'flex', 
+              flexDirection: 'column', 
+              alignItems: 'center', 
+              justifyContent: 'center',
+              p: 4
+            }}
+          >
+            <NetworkIcon sx={{ fontSize: 60, color: 'text.secondary', mb: 2 }} />
+            <Typography variant="h5" gutterBottom>
+              Nodal Graph Visualization
+            </Typography>
+            <Typography variant="body2" color="text.secondary" align="center">
               Select categories from the left sidebar and view server details in the right sidebar.
-            </p>
-          </div>
-        </div>
-      </SidebarInset>
+            </Typography>
+          </Card>
+        </Container>
+      </Box>
 
       {/* Right Sidebar - Servers and People */}
-      <Sidebar side="right" className="border-l">
-        <SidebarHeader>
-          <div className="flex items-center justify-between px-4 py-2">
-            <h2 className="text-lg font-semibold">Servers</h2>
-            <Button variant="ghost" size="icon">
-              <Plus className="h-4 w-4" />
-            </Button>
-          </div>
-        </SidebarHeader>
-        <SidebarContent>
-          <ScrollArea className="h-[calc(100vh-4rem)]">
-            {servers.map((server) => (
-              <div key={server.id} className="px-4 py-2">
-                <Collapsible open={expandedServers.includes(server.id)} onOpenChange={() => toggleServer(server.id)}>
-                  <CollapsibleTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      className="flex w-full items-center justify-between rounded-md p-2 text-left"
-                    >
-                      <div className="flex items-center">
-                        <Server className="mr-2 h-4 w-4" />
-                        <span>{server.name}</span>
-                      </div>
-                      {server.people.length > 0 && (
-                        <Badge variant="outline" className="ml-2">
-                          {server.people.length}
-                        </Badge>
-                      )}
-                      {server.people.length > 0 && (
-                        <ChevronDown
-                          className={`h-4 w-4 transition-transform ${
-                            expandedServers.includes(server.id) ? "rotate-180" : ""
-                          }`}
-                        />
-                      )}
-                    </Button>
-                  </CollapsibleTrigger>
-                  {server.people.length > 0 && (
-                    <CollapsibleContent>
-                      <div className="mt-1 space-y-1 pl-6">
-                        {server.people.map((person) => (
-                          <div
-                            key={person.id}
-                            className="flex items-center justify-between rounded-md p-2 hover:bg-muted"
-                          >
-                            <div className="flex items-center gap-2">
-                              <Avatar className="h-6 w-6">
-                                <AvatarImage src={person.avatar} alt={person.name} />
-                                <AvatarFallback>{person.name.charAt(0)}</AvatarFallback>
-                              </Avatar>
-                              <span className="text-sm">{person.name}</span>
-                            </div>
-                            {person.broadcasting ? (
-                              <Badge variant="default" className="flex items-center gap-1 bg-green-500">
-                                <Mic className="h-3 w-3" />
-                                <span className="text-xs">Live</span>
-                              </Badge>
-                            ) : (
-                              <Badge variant="outline" className="flex items-center gap-1">
-                                <MicOff className="h-3 w-3" />
-                                <span className="text-xs">Muted</span>
-                              </Badge>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </CollapsibleContent>
-                  )}
-                </Collapsible>
-                <Separator className="my-2" />
-              </div>
-            ))}
-          </ScrollArea>
-        </SidebarContent>
-        <SidebarRail />
-      </Sidebar>
-    </SidebarProvider>
-  )
+      <Drawer
+        variant="permanent"
+        anchor="right"
+        sx={{
+          width: 260,
+          flexShrink: 0,
+          '& .MuiDrawer-paper': {
+            width: 260,
+            boxSizing: 'border-box',
+          },
+        }}
+      >
+        <Box sx={{ p: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <Typography variant="h6">Servers</Typography>
+          <IconButton>
+            <PlusIcon />
+          </IconButton>
+        </Box>
+        <Divider />
+        <List sx={{ overflow: 'auto', flexGrow: 1 }}>
+          {servers.map((server) => (
+            <React.Fragment key={server.id}>
+              <ListItem
+                button
+                onClick={() => toggleServer(server.id)}
+                secondaryAction={
+                  server.people.length > 0 && (
+                    <IconButton edge="end" size="small">
+                      <ChevronDownIcon 
+                        sx={{
+                          transform: expandedServers.includes(server.id) ? 'rotate(180deg)' : 'rotate(0)',
+                          transition: 'transform 0.3s',
+                        }}
+                      />
+                    </IconButton>
+                  )
+                }
+              >
+                <ListItemIcon>
+                  <ServerIcon />
+                </ListItemIcon>
+                <ListItemText primary={server.name} />
+              </ListItem>
+              <Collapse in={expandedServers.includes(server.id)} timeout="auto" unmountOnExit>
+                <List component="div" disablePadding>
+                  {server.people.map((person) => (
+                    <ListItem key={person.id} sx={{ pl: 4 }}>
+                      <ListItemAvatar>
+                        <Avatar src={person.avatar} alt={person.name} />
+                      </ListItemAvatar>
+                      <ListItemText 
+                        primary={person.name} 
+                        secondary={
+                          person.broadcasting 
+                            ? <Box component="span" sx={{ display: 'flex', alignItems: 'center', color: 'success.main' }}>
+                                <MicIcon fontSize="small" sx={{ mr: 0.5 }} /> Live
+                              </Box>
+                            : <Box component="span" sx={{ display: 'flex', alignItems: 'center', color: 'text.secondary' }}>
+                                <MicOffIcon fontSize="small" sx={{ mr: 0.5 }} /> Muted
+                              </Box>
+                        }
+                      />
+                    </ListItem>
+                  ))}
+                </List>
+              </Collapse>
+              <Divider />
+            </React.Fragment>
+          ))}
+        </List>
+      </Drawer>
+
+      {/* Context Menu */}
+      <Menu
+        anchorEl={menuAnchorEl}
+        open={Boolean(menuAnchorEl)}
+        onClose={handleCloseMenu}
+      >
+        <MenuItem onClick={() => menuCampaignId && handleRenameClick(campaigns.find(c => c.id === menuCampaignId)!)}>
+          <ListItemIcon>
+            <EditIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>Rename</ListItemText>
+        </MenuItem>
+        <MenuItem onClick={() => menuCampaignId && handleDeleteClick(menuCampaignId)} sx={{ color: 'error.main' }}>
+          <ListItemIcon>
+            <TrashIcon fontSize="small" sx={{ color: 'error.main' }} />
+          </ListItemIcon>
+          <ListItemText>Delete</ListItemText>
+        </MenuItem>
+      </Menu>
+    </Box>
+  );
 }
 
