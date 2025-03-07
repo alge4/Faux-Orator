@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, ChangeEvent, FormEvent } from 'react';
+import React, { useState, useRef, useEffect, FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   AppBar, 
@@ -39,7 +39,6 @@ import {
   Edit as EditIcon, 
   Delete as TrashIcon
 } from '@mui/icons-material';
-import ReactDOM from 'react-dom';
 
 // Campaign interface (from previous CampaignItem.tsx)
 interface Campaign {
@@ -420,5 +419,4 @@ export default function NodalGraphDashboard() {
       </Menu>
     </Box>
   );
-}
-
+} 

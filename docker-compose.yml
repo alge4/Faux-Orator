@@ -28,20 +28,20 @@ services:
         condition: service_healthy
     restart: always
 
-  # Use a simpler approach for the frontend
+  # Updated for Next.js frontend
   frontend:
     build:
       context: ./frontend
       args:
-        - REACT_APP_AZURE_CLIENT_ID=${AZURE_CLIENT_ID}
-        - REACT_APP_AZURE_TENANT_ID=${AZURE_TENANT_ID}
-        - REACT_APP_API_URL=${BACKEND_URL}
+        - NEXT_PUBLIC_AZURE_CLIENT_ID=${AZURE_CLIENT_ID}
+        - NEXT_PUBLIC_AZURE_TENANT_ID=${AZURE_TENANT_ID}
+        - NEXT_PUBLIC_API_URL=${BACKEND_URL}
     ports:
-      - "80:80"
+      - "80:3000"
     environment:
-      - REACT_APP_AZURE_CLIENT_ID=${AZURE_CLIENT_ID}
-      - REACT_APP_AZURE_TENANT_ID=${AZURE_TENANT_ID}
-      - REACT_APP_API_URL=${BACKEND_URL}
+      - NEXT_PUBLIC_AZURE_CLIENT_ID=${AZURE_CLIENT_ID}
+      - NEXT_PUBLIC_AZURE_TENANT_ID=${AZURE_TENANT_ID}
+      - NEXT_PUBLIC_API_URL=${BACKEND_URL}
     depends_on:
       - backend
 
