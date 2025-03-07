@@ -1,0 +1,66 @@
+.home-container {
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.top-bar {
+  height: 60px;
+  background-color: #2c2c2c;
+  border-bottom: 1px solid #444;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  padding: 0 20px;
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+}
+
+.user-info span {
+  margin-right: 16px;
+  color: #ddd;
+}
+
+.logout-btn {
+  background-color: transparent;
+  border: 1px solid #555;
+  color: #ddd;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.logout-btn:hover {
+  background-color: #3a3a3a;
+}
+
+.content-area {
+  flex: 1;
+  padding: 20px;
+  overflow-y: auto;
+  background-color: #1e1e1e;
+}
+
+.campaign-dashboard, .campaign-detail {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.campaign-dashboard h1, .campaign-detail h1 {
+  margin-top: 0;
+  color: #fff;
+}
+
+.campaign-dashboard p, .campaign-detail p {
+  color: #aaa;
+} 

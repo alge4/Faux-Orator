@@ -1,0 +1,40 @@
+# Build stage
+FROM node:20-alpine as build
+
+WORKDIR /app
+
+# Define build arguments
+ARG REACT_APP_AZURE_CLIENT_ID
+ARG REACT_APP_AZURE_TENANT_ID
+ARG REACT_APP_API_URL
+
+# Set as environment variables during build
+ENV REACT_APP_AZURE_CLIENT_ID=$REACT_APP_AZURE_CLIENT_ID
+ENV REACT_APP_AZURE_TENANT_ID=$REACT_APP_AZURE_TENANT_ID
+ENV REACT_APP_API_URL=$REACT_APP_API_URL
+
+# Copy only package.json first
+COPY package.json ./
+
+# Install dependencies
+RUN npm install
+
+# Copy the rest of the application
+COPY . .
+
+# Build the application
+RUN npm run build
+RUN ls -la /app/build || echo "Build directory does not exist"
+
+# Production stage
+FROM nginx:alpine
+COPY --from=build /app/build /usr/share/nginx/html
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+
+# Add a script to replace environment variables at runtime
+RUN apk add --no-cache bash
+COPY ./env.sh /docker-entrypoint.d/40-env.sh
+RUN chmod +x /docker-entrypoint.d/40-env.sh
+
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]

@@ -1,0 +1,15 @@
+node_modules/
+dist
+.git
+.gitignore
+.env
+*.logs
+*.log
+/build
+/dist
+.DS_Store
+npm-debug.log
+.vscode
+.idea
+**/tmp
+**/temp

@@ -1,0 +1,65 @@
+name: faux-orator
+
+services:
+  backend:
+    build: ./backend
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=${NODE_ENV}
+      - AZURE_CLIENT_ID=${AZURE_CLIENT_ID}
+      - AZURE_TENANT_ID=${AZURE_TENANT_ID}
+      - AZURE_CLIENT_SECRET=${AZURE_CLIENT_SECRET}
+      - JWT_SECRET=${JWT_SECRET}
+      - SESSION_SECRET=${SESSION_SECRET}
+      - DB_NAME=${DB_NAME}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_HOST=${DB_HOST}
+      - DB_PORT=${DB_PORT}
+      - FRONTEND_URL=${FRONTEND_URL}
+      - BACKEND_URL=${BACKEND_URL}
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+      - /app/dist
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: always
+
+  # Use a simpler approach for the frontend
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        - REACT_APP_AZURE_CLIENT_ID=${AZURE_CLIENT_ID}
+        - REACT_APP_AZURE_TENANT_ID=${AZURE_TENANT_ID}
+        - REACT_APP_API_URL=${BACKEND_URL}
+    ports:
+      - "80:80"
+    environment:
+      - REACT_APP_AZURE_CLIENT_ID=${AZURE_CLIENT_ID}
+      - REACT_APP_AZURE_TENANT_ID=${AZURE_TENANT_ID}
+      - REACT_APP_API_URL=${BACKEND_URL}
+    depends_on:
+      - backend
+
+  db:
+    image: postgres:14-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_DB=${DB_NAME}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
