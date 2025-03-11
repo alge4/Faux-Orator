@@ -7,7 +7,7 @@ import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import AuthCallback from './components/AuthCallback';
 import Login from './pages/Login';
-import Home from './pages/Home'; // Create this component for your main page
+import NodalGraphDashboard from './pages/Dashboard_new_part1.tsx.bak';
 import './App.css';
 
 // Initialize MSAL instance
@@ -22,10 +22,10 @@ function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/auth/callback" element={<AuthCallback />} />
             <Route 
-              path="/*" 
+              path="/dashboard" 
               element={
                 <ProtectedRoute>
-                  <Home />
+                  <NodalGraphDashboard />
                 </ProtectedRoute>
               } 
             />
