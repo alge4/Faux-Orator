@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, ChangeEvent, FormEvent } from 'react';
+import React, { useState, useRef, useEffect, /* ChangeEvent, */ FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { 
@@ -9,7 +9,7 @@ import {
   Card, 
   CardContent, 
   Collapse, 
-  Container, 
+  // Container, // Unused import
   Divider,
   Drawer, 
   Grid, 
@@ -33,19 +33,22 @@ import {
 } from '@mui/material';
 import { 
   ArrowDropDown as ChevronDownIcon, 
-  Computer as CpuIcon, 
+  // Computer as CpuIcon, // Unused import
   Folder as FolderIcon, 
   Mic as MicIcon, 
   MicOff as MicOffIcon, 
-  BubbleChart as NetworkIcon, 
+  // BubbleChart as NetworkIcon, // Unused import
   Add as PlusIcon, 
   Search as SearchIcon, 
-  Storage as ServerIcon, 
+  // Storage as ServerIcon, // Unused import
   Settings as SettingsIcon, 
   Edit as EditIcon, 
-  Delete as TrashIcon
+  Delete as TrashIcon,
+  AccountCircle as AccountIcon,
+  Logout as LogoutIcon
 } from '@mui/icons-material';
 import CreateCampaign from '../components/CreateCampaign';
+import { useMsal } from '@azure/msal-react';
 
 // Campaign interface (matching CampaignList.tsx)
 interface Campaign {
@@ -96,6 +99,8 @@ const servers: Server[] = [
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  // Add eslint-disable-next-line for unused state variables
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [activeCampaign, setActiveCampaign] = useState<string | null>(null);
   const [expandedServers, setExpandedServers] = useState<string[]>(["1"]); // Default expand General
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
@@ -110,11 +115,15 @@ export default function Dashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
-  // New state for delete confirmation dialog
+  // New state for delete confirmation
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const [campaignToDelete, setCampaignToDelete] = useState<string | null>(null);
   
   const renameInputRef = useRef<HTMLInputElement>(null);
+  
+  const { instance } = useMsal(); // For handling logout with MSAL
+  const [userMenuAnchorEl, setUserMenuAnchorEl] = useState<null | HTMLElement>(null);
+  const userMenuOpen = Boolean(userMenuAnchorEl);
   
   // Environment variable validation
   useEffect(() => {
@@ -195,6 +204,7 @@ export default function Dashboard() {
     }
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handleOpenMenu = (event: React.MouseEvent<HTMLElement>, campaignId: string) => {
     setMenuAnchorEl(event.currentTarget);
     setMenuCampaignId(campaignId);
@@ -247,6 +257,7 @@ export default function Dashboard() {
       }
       
       const backendUrl = process.env.REACT_APP_API_URL || 'http://localhost:3000';
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const response = await axios.post(
         `${backendUrl}/api/campaigns`, 
         { name, description },
@@ -422,8 +433,90 @@ export default function Dashboard() {
     </ListItem>
   );
 
+  const handleUserMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
+    setUserMenuAnchorEl(event.currentTarget);
+  };
+
+  const handleUserMenuClose = () => {
+    setUserMenuAnchorEl(null);
+  };
+
+  const handleLogout = async () => {
+    try {
+      // Clear local storage
+      localStorage.removeItem('authToken');
+      localStorage.removeItem('user');
+      
+      // Logout from MSAL
+      await instance.logoutRedirect({
+        postLogoutRedirectUri: window.location.origin,
+      });
+    } catch (error) {
+      console.error('Logout failed', error);
+      // Fallback to redirect if MSAL logout fails
+      navigate('/login');
+    }
+  };
+
+  const handleProfileSettings = () => {
+    // Navigate to profile settings page
+    navigate('/profile');
+    handleUserMenuClose();
+  };
+
   return (
     <Box sx={{ display: 'flex', height: '100vh' }}>
+      {/* AppBar for top navigation */}
+      <AppBar position="fixed" sx={{ zIndex: (theme) => theme.zIndex.drawer + 1 }}>
+        <Toolbar>
+          <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
+            Faux Orator
+          </Typography>
+          
+          {/* User menu */}
+          <IconButton
+            onClick={handleUserMenuOpen}
+            size="large"
+            edge="end"
+            color="inherit"
+            aria-label="account of current user"
+            aria-controls="menu-appbar"
+            aria-haspopup="true"
+          >
+            <AccountIcon />
+          </IconButton>
+          <Menu
+            id="menu-appbar"
+            anchorEl={userMenuAnchorEl}
+            anchorOrigin={{
+              vertical: 'bottom',
+              horizontal: 'right',
+            }}
+            keepMounted
+            transformOrigin={{
+              vertical: 'top',
+              horizontal: 'right',
+            }}
+            open={userMenuOpen}
+            onClose={handleUserMenuClose}
+          >
+            <MenuItem onClick={handleProfileSettings}>
+              <ListItemIcon>
+                <AccountIcon fontSize="small" />
+              </ListItemIcon>
+              Profile Settings
+            </MenuItem>
+            <Divider />
+            <MenuItem onClick={handleLogout}>
+              <ListItemIcon>
+                <LogoutIcon fontSize="small" />
+              </ListItemIcon>
+              Logout
+            </MenuItem>
+          </Menu>
+        </Toolbar>
+      </AppBar>
+
       {/* Left Sidebar - Campaign List */}
       <Drawer
         variant="permanent"
@@ -642,8 +735,7 @@ export default function Dashboard() {
         <List>
           {servers.map((server) => (
             <React.Fragment key={server.id}>
-              <ListItem 
-                button 
+              <ListItemButton
                 onClick={() => toggleServer(server.id)}
                 sx={{ py: 0.5 }}
               >
@@ -658,7 +750,7 @@ export default function Dashboard() {
                   )}
                 </ListItemIcon>
                 <ListItemText primary={server.name} />
-              </ListItem>
+              </ListItemButton>
               <Collapse in={expandedServers.includes(server.id)} timeout="auto" unmountOnExit>
                 <List component="div" disablePadding>
                   {server.people.length > 0 ? (
@@ -718,10 +810,10 @@ export default function Dashboard() {
       </Menu>
 
       {/* Create Campaign Modal */}
-      <CreateCampaign 
-        isOpen={isCreateModalOpen} 
-        onClose={() => setIsCreateModalOpen(false)} 
-        onSubmit={handleCreateCampaign} 
+      <CreateCampaign
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        onSubmit={handleCreateCampaign}
       />
       
       {/* Delete Confirmation Dialog */}

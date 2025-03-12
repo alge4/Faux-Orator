@@ -1,75 +1,105 @@
-import { Model, DataTypes, Sequelize } from "sequelize";
+import { Model, DataTypes, Sequelize, Optional, Association } from "sequelize";
 import bcryptjs from "bcryptjs";
+import Campaign from "./Campaign";
 
-export class User extends Model {
-  public id!: string; // Note: ! tells TypeScript this will be initialized
-  public azureAdUserId!: string;
+// User attributes interface
+interface UserAttributes {
+  id: string;
+  azureAdUserId?: string;
+  username: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  role: "DM" | "Player" | "Observer";
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// User creation attributes interface (optional fields for creation)
+interface UserCreationAttributes
+  extends Optional<UserAttributes, "id" | "createdAt" | "updatedAt"> {}
+
+// User model class
+class User
+  extends Model<UserAttributes, UserCreationAttributes>
+  implements UserAttributes
+{
+  public id!: string;
+  public azureAdUserId?: string;
   public username!: string;
   public email!: string;
-  public firstName!: string | null; // Optional fields
-  public lastName!: string | null;
-  public password!: string; // Add password field
-  public role!: "DM" | "Player" | "Observer"; // Use a string enum
-  public readonly createdAt!: Date; // Readonly, managed by Sequelize
-  public readonly updatedAt!: Date;
-}
+  public firstName!: string;
+  public lastName!: string;
+  public role!: "DM" | "Player" | "Observer";
+  public createdAt!: Date;
+  public updatedAt!: Date;
 
-export function initUserModel(sequelize: Sequelize) {
-  User.init(
-    {
-      id: {
-        type: DataTypes.UUID,
-        defaultValue: DataTypes.UUIDV4,
-        primaryKey: true,
-      },
-      azureAdUserId: {
-        type: DataTypes.STRING,
-        allowNull: true,
-        unique: true,
-      },
-      username: {
-        type: DataTypes.STRING,
-        allowNull: false,
-        unique: true,
-      },
-      email: {
-        type: DataTypes.STRING,
-        allowNull: false,
-        unique: true,
-        validate: {
-          isEmail: true,
+  // Add associations
+  public static associations: {
+    campaigns: Association<User, Campaign>;
+  };
+
+  // Static method to initialize the model
+  public static initialize(sequelize: Sequelize): void {
+    User.init(
+      {
+        id: {
+          type: DataTypes.UUID,
+          defaultValue: DataTypes.UUIDV4,
+          primaryKey: true,
+        },
+        azureAdUserId: {
+          type: DataTypes.STRING,
+          unique: true,
+          allowNull: true,
+        },
+        username: {
+          type: DataTypes.STRING,
+          unique: true,
+          allowNull: false,
+        },
+        email: {
+          type: DataTypes.STRING,
+          unique: true,
+          allowNull: false,
+        },
+        firstName: {
+          type: DataTypes.STRING,
+          allowNull: false,
+        },
+        lastName: {
+          type: DataTypes.STRING,
+          allowNull: false,
+        },
+        role: {
+          type: DataTypes.ENUM("DM", "Player", "Observer"),
+          allowNull: false,
+          defaultValue: "Player",
+        },
+        createdAt: {
+          type: DataTypes.DATE,
+          allowNull: false,
+        },
+        updatedAt: {
+          type: DataTypes.DATE,
+          allowNull: false,
         },
       },
-      firstName: {
-        type: DataTypes.STRING,
-        allowNull: true,
-      },
-      lastName: {
-        type: DataTypes.STRING,
-        allowNull: true,
-      },
-      password: {
-        type: DataTypes.STRING,
-        allowNull: false,
-      },
-      role: {
-        type: DataTypes.ENUM("DM", "Player", "Observer"),
-        allowNull: false,
-        defaultValue: "Player", // Set a default role
-      },
-      createdAt: {
-        type: DataTypes.DATE,
-        allowNull: false,
-      },
-      updatedAt: {
-        type: DataTypes.DATE,
-        allowNull: false,
-      },
-    },
-    {
-      sequelize,
-      modelName: "User",
-      tableName: "users", // Good practice: explicitly set table name
-    }
-  );
+      {
+        sequelize,
+        tableName: "Users",
+        timestamps: true,
+      }
+    );
+  }
+
+  // Add the hasMany method to the User class
+  public static hasMany(
+    target: typeof Campaign,
+    options?: any
+  ): Association<User, Campaign> {
+    return Model.hasMany.call(this, target, options);
+  }
 }
+
+export default User;

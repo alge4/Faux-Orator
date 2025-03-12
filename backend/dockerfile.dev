@@ -1,0 +1,17 @@
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+
+# Install dependencies
+RUN npm install
+
+# Install global tools
+RUN npm install -g ts-node-dev typescript
+
+EXPOSE 3000
+
+# Start the app with a direct command
+CMD ["sh", "-c", "cd /app && ts-node-dev --respawn --transpile-only src/app.ts"] 

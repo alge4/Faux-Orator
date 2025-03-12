@@ -1,76 +1,98 @@
 import React, { useState } from 'react';
-import './CreateCampaign.css';
+import {
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+  Button,
+  Box
+} from '@mui/material';
 
 interface CreateCampaignProps {
+  isOpen?: boolean;
   onClose: () => void;
-  onCreate: (name: string, description: string) => void;
+  onSubmit?: (name: string, description: string) => void;
+  onCreate?: (name: string, description: string) => void;
 }
 
-const CreateCampaign: React.FC<CreateCampaignProps> = ({ onClose, onCreate }) => {
+const CreateCampaign: React.FC<CreateCampaignProps> = ({ 
+  isOpen = true, 
+  onClose, 
+  onSubmit, 
+  onCreate 
+}) => {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
+  const [nameError, setNameError] = useState('');
+
+  const handleSubmit = () => {
+    // Validate inputs
     if (!name.trim()) {
-      setError('Campaign name is required');
+      setNameError('Campaign name is required');
       return;
     }
     
-    if (!description.trim()) {
-      setError('Campaign description is required');
-      return;
+    // Call either onSubmit or onCreate based on which was provided
+    if (onSubmit) {
+      onSubmit(name, description);
+    } else if (onCreate) {
+      onCreate(name, description);
     }
     
-    onCreate(name, description);
+    // Reset form
+    setName('');
+    setDescription('');
+    setNameError('');
   };
-  
+
+  const handleClose = () => {
+    // Reset form on close
+    setName('');
+    setDescription('');
+    setNameError('');
+    onClose();
+  };
+
   return (
-    <div className="modal-overlay">
-      <div className="modal-content">
-        <div className="modal-header">
-          <h2>Create New Campaign</h2>
-          <button className="close-btn" onClick={onClose}>&times;</button>
-        </div>
-        
-        <form onSubmit={handleSubmit}>
-          {error && <div className="error-message">{error}</div>}
-          
-          <div className="form-group">
-            <label htmlFor="campaign-name">Campaign Name</label>
-            <input
-              id="campaign-name"
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Enter campaign name"
-            />
-          </div>
-          
-          <div className="form-group">
-            <label htmlFor="campaign-description">Description</label>
-            <textarea
-              id="campaign-description"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Enter campaign description"
-              rows={4}
-            />
-          </div>
-          
-          <div className="form-actions">
-            <button type="button" className="cancel-btn" onClick={onClose}>
-              Cancel
-            </button>
-            <button type="submit" className="create-btn">
-              Create Campaign
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+    <Dialog open={isOpen} onClose={handleClose} maxWidth="sm" fullWidth>
+      <DialogTitle>Create New Campaign</DialogTitle>
+      <DialogContent>
+        <Box sx={{ pt: 1 }}>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="Campaign Name"
+            fullWidth
+            value={name}
+            onChange={(e) => {
+              setName(e.target.value);
+              if (e.target.value.trim()) {
+                setNameError('');
+              }
+            }}
+            error={!!nameError}
+            helperText={nameError}
+            sx={{ mb: 2 }}
+          />
+          <TextField
+            margin="dense"
+            label="Description"
+            fullWidth
+            multiline
+            rows={4}
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+          />
+        </Box>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={handleClose}>Cancel</Button>
+        <Button onClick={handleSubmit} variant="contained" color="primary">
+          Create
+        </Button>
+      </DialogActions>
+    </Dialog>
   );
 };
 

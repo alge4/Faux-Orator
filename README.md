@@ -1029,3 +1029,77 @@ faux-orator/
 - Community features, such as forums and user-generated content.
 
 This project plan provides a comprehensive overview of the Faux Orator project, including its core functionality, data model, API endpoints, UI components, project structure, technology stack, security considerations, AI integration strategy, and future considerations.
+
+## Developer Setup
+
+### Prerequisites
+
+- Docker and Docker Compose
+- Node.js (v16+) and npm (for local development without Docker)
+- Git
+
+### Environment Setup
+
+1. Clone the repository:
+
+   ```bash
+   git clone https://github.com/yourusername/Faux-Orator.git
+   cd Faux-Orator
+   ```
+
+2. Make sure your `.env` file is in the root directory with all necessary variables.
+
+### Development Mode
+
+For development with hot reloading:
+
+```bash
+# Start all services in development mode
+docker-compose -f docker-compose.dev.yml up
+
+# Or to rebuild containers
+docker-compose -f docker-compose.dev.yml up --build
+```
+
+This setup provides:
+
+- Hot reloading for both frontend and backend
+- Volume mounting for real-time code changes
+- Development-specific configurations
+
+### Working with the Database
+
+The PostgreSQL database is accessible at `localhost:5432` with the credentials specified in your `.env` file.
+
+### Troubleshooting
+
+If you encounter issues with the containers:
+
+1. Check container logs:
+
+   ```bash
+   docker-compose -f docker-compose.dev.yml logs backend
+   docker-compose -f docker-compose.dev.yml logs frontend
+   ```
+
+2. Rebuild the containers:
+
+   ```bash
+   docker-compose -f docker-compose.dev.yml down
+   docker-compose -f docker-compose.dev.yml up --build
+   ```
+
+3. Clean Docker cache if needed:
+   ```bash
+   docker system prune -a
+   ```
+
+## Project Structure
+
+- `frontend/`: React frontend application
+- `backend/`: Node.js/Express backend application
+- `docker-compose.dev.yml`: Development Docker configuration
+
+## Additional Documentation
+
+For more detailed information about the project, refer to the sections below.

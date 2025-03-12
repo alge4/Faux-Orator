@@ -1,0 +1,73 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:14-alpine
+    restart: always
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    ports:
+      - "${DB_PORT}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - app-network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: dockerfile.dev
+    restart: always
+    depends_on:
+      - db
+    environment:
+      NODE_ENV: development
+      PORT: 3000
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME}
+      JWT_SECRET: ${JWT_SECRET}
+      AZURE_CLIENT_ID: ${AZURE_CLIENT_ID}
+      AZURE_TENANT_ID: ${AZURE_TENANT_ID}
+      AZURE_CLIENT_SECRET: ${AZURE_CLIENT_SECRET}
+      FRONTEND_URL: ${FRONTEND_URL}
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./backend/src:/app/src
+    networks:
+      - app-network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: dockerfile.dev
+    restart: always
+    depends_on:
+      - backend
+    environment:
+      NODE_ENV: development
+      REACT_APP_API_URL: ${BACKEND_URL}
+      REACT_APP_AZURE_CLIENT_ID: ${AZURE_CLIENT_ID}
+      REACT_APP_AZURE_TENANT_ID: ${AZURE_TENANT_ID}
+      REACT_APP_REDIRECT_URI: "${FRONTEND_URL}/auth/callback"
+    ports:
+      - "80:3000"
+    volumes:
+      - ./frontend:/app
+      - frontend_node_modules:/app/node_modules
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  backend_node_modules:
+  frontend_node_modules: 

@@ -2,31 +2,29 @@ name: faux-orator
 
 services:
   backend:
-    build: ./backend
+    build:
+      context: ./backend
+      dockerfile: dockerfile
     ports:
-      - "3000:3000"
+      - "${BACKEND_PORT}:3000"
     environment:
-      - NODE_ENV=${NODE_ENV}
-      - AZURE_CLIENT_ID=${AZURE_CLIENT_ID}
-      - AZURE_TENANT_ID=${AZURE_TENANT_ID}
-      - AZURE_CLIENT_SECRET=${AZURE_CLIENT_SECRET}
-      - JWT_SECRET=${JWT_SECRET}
-      - SESSION_SECRET=${SESSION_SECRET}
-      - DB_NAME=${DB_NAME}
-      - DB_USER=${DB_USER}
-      - DB_PASSWORD=${DB_PASSWORD}
-      - DB_HOST=${DB_HOST}
-      - DB_PORT=${DB_PORT}
-      - FRONTEND_URL=${FRONTEND_URL}
-      - BACKEND_URL=${BACKEND_URL}
-    volumes:
-      - ./backend:/app
-      - /app/node_modules
-      - /app/dist
+      NODE_ENV: ${NODE_ENV}
+      PORT: ${BACKEND_PORT}
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME}
+      JWT_SECRET: ${JWT_SECRET}
+      AZURE_AD_CLIENT_ID: ${AZURE_AD_CLIENT_ID}
+      AZURE_AD_TENANT_ID: ${AZURE_AD_TENANT_ID}
+      AZURE_AD_CLIENT_SECRET: ${AZURE_AD_CLIENT_SECRET}
+      FRONTEND_URL: ${FRONTEND_URL}
     depends_on:
-      db:
-        condition: service_healthy
+      - db
     restart: always
+    networks:
+      - app-network
 
   # Use a simpler approach for the frontend
   frontend:
