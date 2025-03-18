@@ -1,12 +1,18 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { useMsal } from '@azure/msal-react';
-import { InteractionStatus } from '@azure/msal-browser';
-import { loginRequest } from '../authConfig';
 import axios from 'axios';
+import { useMsalAuth } from "../hooks/useAuth";
+
+// Define interfaces for type safety
+interface UserData {
+  name?: string;
+  username?: string;
+  token?: string;
+  [key: string]: any; // Allow other properties
+}
 
 interface AuthContextType {
   isAuthenticated: boolean;
-  user: any;
+  user: UserData | null;
   login: () => void;
   logout: () => void;
 }
@@ -19,16 +25,29 @@ const AuthContext = createContext<AuthContextType>({
 });
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { instance, accounts, inProgress } = useMsal();
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
-  const [user, setUser] = useState<any>(null);
+  // Get MSAL functionality 
+  const msalAuth = useMsalAuth();
+  const [user, setUser] = useState<UserData | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  const logAuthState = (message: string, data?: any) => {
+    console.log(`[AuthContext] ${message}`, data);
+  };
 
   useEffect(() => {
-    // Check for token in localStorage
+    // First check if MSAL has an authenticated user
+    if (msalAuth.user) {
+      logAuthState('User authenticated through MSAL', msalAuth.user);
+      setUser(msalAuth.user);
+      setIsAuthenticated(true);
+      return;
+    }
+
+    // Then fallback to your existing token-based auth
     const token = localStorage.getItem('authToken');
     
     if (token) {
-      // Fetch user data from backend
+      logAuthState('Found auth token, fetching user data');
       const fetchUser = async () => {
         try {
           const backendUrl = process.env.REACT_APP_API_URL || 'http://localhost:3000';
@@ -38,10 +57,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             }
           });
           
+          logAuthState('User data fetched successfully', response.data);
           setUser(response.data.user);
           setIsAuthenticated(true);
         } catch (error) {
-          console.error('Error fetching user data:', error);
+          logAuthState('Error fetching user data', error);
           localStorage.removeItem('authToken');
           setIsAuthenticated(false);
           setUser(null);
@@ -49,34 +69,54 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       };
       
       fetchUser();
-    } else if (accounts.length > 0) {
-      // If no token but MSAL has accounts, use MSAL
-      setIsAuthenticated(true);
-      setUser(accounts[0]);
     } else {
+      logAuthState('No authentication found');
       setIsAuthenticated(false);
       setUser(null);
     }
-  }, [accounts]);
+  }, [msalAuth.user]);
 
+  // Login function that tries MSAL first, then falls back to your custom login
   const login = async () => {
     try {
-      await instance.loginPopup(loginRequest);
+      logAuthState('Attempting MSAL login');
+      return msalAuth.login();
     } catch (error) {
-      console.error('Login failed', error);
+      logAuthState('MSAL login failed, trying custom login', error);
+      try {
+        const backendUrl = process.env.REACT_APP_API_URL || 'http://localhost:3000';
+        window.location.href = `${backendUrl}/api/auth/microsoft`;
+      } catch (error) {
+        logAuthState('Login error', error);
+      }
     }
   };
 
+  // Logout from both systems
   const logout = () => {
+    logAuthState('Logging out');
     localStorage.removeItem('authToken');
-    instance.logout();
+    setUser(null);
+    setIsAuthenticated(false);
+    
+    // Also log out from MSAL if possible
+    if (msalAuth.logout) {
+      msalAuth.logout();
+    }
   };
 
+  // Provide the authentication context to child components
   return (
-    <AuthContext.Provider value={{ isAuthenticated, user, login, logout }}>
+    <AuthContext.Provider value={{ 
+      isAuthenticated, 
+      user, 
+      login, 
+      logout 
+    }}>
       {children}
     </AuthContext.Provider>
   );
 };
 
+// Keep your original useAuth function for components to use
 export const useAuth = () => useContext(AuthContext);

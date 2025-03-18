@@ -24,21 +24,27 @@ services:
       - db
     environment:
       NODE_ENV: development
-      PORT: 3000
+      PORT: ${BACKEND_PORT:-3000}
       DB_HOST: ${DB_HOST}
       DB_PORT: ${DB_PORT}
       DB_USER: ${DB_USER}
       DB_PASSWORD: ${DB_PASSWORD}
       DB_NAME: ${DB_NAME}
       JWT_SECRET: ${JWT_SECRET}
+      SESSION_SECRET: ${SESSION_SECRET}
       AZURE_CLIENT_ID: ${AZURE_CLIENT_ID}
       AZURE_TENANT_ID: ${AZURE_TENANT_ID}
       AZURE_CLIENT_SECRET: ${AZURE_CLIENT_SECRET}
+      AZURE_REDIRECT_URI: ${AZURE_REDIRECT_URI}
       FRONTEND_URL: ${FRONTEND_URL}
+      NODE_PATH: ${NODE_PATH:-/app/node_modules}
+      CORS_ORIGIN: ${FRONTEND_URL}
     ports:
-      - "3000:3000"
+      - "${BACKEND_PORT:-3000}:3000"
     volumes:
       - ./backend/src:/app/src
+      - ./backend/tsconfig.json:/app/tsconfig.json
+      - backend_node_modules:/app/node_modules
     networks:
       - app-network
 
@@ -50,15 +56,17 @@ services:
     depends_on:
       - backend
     environment:
-      NODE_ENV: development
+      NODE_ENV: ${NODE_ENV}
       REACT_APP_API_URL: ${BACKEND_URL}
       REACT_APP_AZURE_CLIENT_ID: ${AZURE_CLIENT_ID}
       REACT_APP_AZURE_TENANT_ID: ${AZURE_TENANT_ID}
-      REACT_APP_REDIRECT_URI: "${FRONTEND_URL}/auth/callback"
+      REACT_APP_REDIRECT_URI: ${AZURE_REDIRECT_URI}
     ports:
-      - "80:3000"
+      - "${FRONTEND_PORT:-80}:3000"
     volumes:
-      - ./frontend:/app
+      - ./frontend/src:/app/src
+      - ./frontend/public:/app/public
+      - ./frontend/tsconfig.json:/app/tsconfig.json
       - frontend_node_modules:/app/node_modules
     networks:
       - app-network

@@ -1,28 +1,48 @@
-import passport from 'passport';
-import { Strategy as BearerStrategy } from 'passport-http-bearer';
-import { OIDCStrategy, IOIDCStrategyOptionWithRequest } from 'passport-azure-ad';
-import jwt from 'jsonwebtoken';
-import { User } from '../models/User';
-import crypto from 'crypto';
+import passport from "passport";
+import { Strategy as BearerStrategy } from "passport-http-bearer";
+import {
+  OIDCStrategy,
+  IOIDCStrategyOptionWithRequest,
+} from "passport-azure-ad";
+import jwt from "jsonwebtoken";
+import { User } from "../models/User";
+import crypto from "crypto";
+import logger from "../utils/logger";
+import { Request, Response } from "express";
+import { Session } from "express-session";
 
 // Load environment variables
-const clientID = process.env.AZURE_CLIENT_ID || '';
-const clientSecret = process.env.AZURE_CLIENT_SECRET || '';
-const tenantID = process.env.AZURE_TENANT_ID || 'consumers'; // Use 'consumers' for personal accounts
-const jwtSecret = process.env.JWT_SECRET || 'your-secret-key';
-const backendUrl = process.env.BACKEND_URL || 'http://localhost:3000';
+const clientID = process.env.AZURE_CLIENT_ID || "";
+const clientSecret = process.env.AZURE_CLIENT_SECRET || "";
+const tenantID = process.env.AZURE_TENANT_ID || "";
+const redirectUrl = process.env.AZURE_REDIRECT_URI || "";
+const jwtSecret = process.env.JWT_SECRET || "your-secret-key";
+
+// Log important configuration values
+logger.info("Azure AD Configuration", {
+  clientID: clientID ? "configured" : "missing",
+  clientIDPrefix: clientID.substring(0, 8) + "...",
+  tenantID: tenantID ? "configured" : "missing",
+  redirectUrl: redirectUrl,
+  usePKCE: false, // We're using manual PKCE implementation
+});
+
+// Type definition for extended session
+interface SessionWithPKCE extends Session {
+  pkceVerifier?: string;
+}
 
 // Generate PKCE code verifier and challenge
 const generatePKCE = () => {
   // Generate a random code verifier
-  const codeVerifier = crypto.randomBytes(32).toString('base64url');
-  
+  const codeVerifier = crypto.randomBytes(32).toString("base64url");
+
   // Generate the code challenge from the verifier
   const codeChallenge = crypto
-    .createHash('sha256')
+    .createHash("sha256")
     .update(codeVerifier)
-    .digest('base64url');
-  
+    .digest("base64url");
+
   return { codeVerifier, codeChallenge };
 };
 
@@ -33,97 +53,39 @@ const pkceStore = new Map<string, string>();
 const azureAdOptions: IOIDCStrategyOptionWithRequest = {
   identityMetadata: `https://login.microsoftonline.com/${tenantID}/v2.0/.well-known/openid-configuration`,
   clientID: clientID,
-  responseType: 'id_token',  // Changed to just 'id_token' to avoid authorization code flow
-  responseMode: 'form_post',
-  redirectUrl: `${backendUrl}/api/auth/microsoft/callback`,
-  allowHttpForRedirectUrl: true,  // Allow HTTP for development
+  responseType: "code",
+  responseMode: "query",
+  redirectUrl: redirectUrl,
+  allowHttpForRedirectUrl: true,
   clientSecret: clientSecret,
-  validateIssuer: false,  // Set to false for development
+  validateIssuer: false,
   passReqToCallback: true as true,
-  scope: ['profile', 'email', 'openid'],  // Removed offline_access since we're not using refresh tokens
-  loggingLevel: 'info',
-  loggingNoPII: process.env.NODE_ENV === 'production'
+  scope: ["profile", "email", "openid", "offline_access", "User.Read"],
+
+  // Disable built-in PKCE since we're handling it manually
+  usePKCE: false,
+
+  // These settings are specific to public clients
+  isB2C: false,
+  loggingLevel: "info",
+  loggingNoPII: process.env.NODE_ENV === "production",
+  responseParameters: ["id_token", "code"],
+  nonceLifetime: 600,
+  nonceMaxAmount: 10,
+  clockSkew: 300,
+  targetFramework: {
+    version: "4.0.0",
+  },
 };
 
-// Initialize Passport strategies
+// Export a function to initialize passport
 export const initializePassport = () => {
-  // Azure AD Strategy for handling Microsoft login
-  passport.use('azure-ad-openidconnect', new OIDCStrategy(
-    azureAdOptions,
-    async (req: any, iss: any, sub: any, profile: any, jwtClaims: any, accessToken: any, refreshToken: any, params: any, done: any) => {
-      try {
-        console.log('Profile from Azure AD:', profile);
-        console.log('JWT Claims:', jwtClaims);
-        
-        // Extract email from JWT claims or profile
-        const email = jwtClaims.email || profile._json?.email || profile.emails?.[0]?.value || '';
-        
-        // Generate a unique username if not available
-        let username = profile.displayName || profile.name || jwtClaims.name || '';
-        if (!username) {
-          username = email.split('@')[0] || 'user';
-        }
-        
-        console.log('Using email:', email);
-        console.log('Using username:', username);
-        
-        if (!email) {
-          console.error('No email found in profile or JWT claims');
-          return done(new Error('No email found in profile or JWT claims'), false);
-        }
-        
-        // Find or create user based on Microsoft ID
-        const [user, created] = await User.findOrCreate({
-          where: { azureAdUserId: profile.oid || jwtClaims.oid || jwtClaims.sub },
-          defaults: {
-            username: username,
-            email: email,
-            password: 'microsoft-auth', // Placeholder password for OAuth users
-            azureAdUserId: profile.oid || jwtClaims.oid || jwtClaims.sub,
-            firstName: profile.name?.givenName || '',
-            lastName: profile.name?.familyName || '',
-            role: 'Player' // Default role
-          }
-        });
-
-        if (created) {
-          console.log('Created new user from Microsoft login:', user.username);
-        } else {
-          console.log('Found existing user from Microsoft login:', user.username);
-        }
-
-        return done(null, user);
-      } catch (error) {
-        console.error('Error in Azure AD authentication:', error);
-        return done(error, false);
-      }
-    }
-  ));
-
-  // Bearer Strategy for JWT token validation
-  passport.use(new BearerStrategy(async (token, done) => {
-    try {
-      // Verify the JWT token
-      const decoded = jwt.verify(token, jwtSecret) as { id: string };
-      
-      // Find the user by ID
-      const user = await User.findByPk(decoded.id);
-      
-      if (!user) {
-        return done(null, false);
-      }
-      
-      return done(null, user, { scope: 'all' });
-    } catch (error) {
-      return done(error, false);
-    }
-  }));
-
-  // Serialize and deserialize user
+  // Serialize user to the session
   passport.serializeUser((user: any, done) => {
     done(null, user.id);
   });
 
+  // Deserialize user from the session
   passport.deserializeUser(async (id: string, done) => {
     try {
       const user = await User.findByPk(id);
@@ -132,6 +94,80 @@ export const initializePassport = () => {
       done(error, null);
     }
   });
+
+  // Register the Azure AD OIDC strategy
+  passport.use(
+    "azure-ad-openidconnect",
+    new OIDCStrategy(
+      azureAdOptions,
+      async (
+        req: Request,
+        iss: string,
+        sub: string,
+        profile: any,
+        jwtClaims: any,
+        accessToken: string,
+        refreshToken: string,
+        params: any,
+        done: (err: Error | null, user?: any) => void
+      ) => {
+        try {
+          logger.info("Azure AD authentication callback", {
+            email: profile._json.email || profile._json.preferred_username,
+            name: profile.displayName,
+          });
+
+          // Find or create user
+          let [user, created] = await User.findOrCreate({
+            where: { azureAdUserId: profile.oid } as any,
+            defaults: {
+              email: profile._json.email || profile._json.preferred_username,
+              username: profile.displayName,
+              role: "Player", // Default role
+            } as any,
+          });
+
+          if (created) {
+            logger.info("Created new user from Microsoft login", {
+              userId: user.id,
+              email: user.email,
+            });
+          }
+
+          return done(null, user);
+        } catch (error) {
+          logger.error("Error in Azure AD authentication:", error);
+          return done(error as Error, false);
+        }
+      }
+    )
+  );
+
+  // Bearer Strategy for JWT token validation
+  passport.use(
+    new BearerStrategy(
+      async (
+        token: string,
+        done: (error: Error | null, user?: any, info?: any) => void
+      ) => {
+        try {
+          // Verify the JWT token
+          const decoded = jwt.verify(token, jwtSecret) as { id: string };
+
+          // Find the user by ID
+          const user = await User.findByPk(decoded.id);
+
+          if (!user) {
+            return done(null, false);
+          }
+
+          return done(null, user, { scope: "all" });
+        } catch (error) {
+          return done(error as Error, false);
+        }
+      }
+    )
+  );
 };
 
 // Export PKCE functions for use in routes

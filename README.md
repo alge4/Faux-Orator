@@ -1,3 +1,45 @@
+# Faux Orator
+
+Your AI-powered D&D campaign assistant
+
+## Development Setup
+
+### Prerequisites
+
+- Docker Desktop for Windows
+- Git for Windows
+
+### Getting Started
+
+1. Clone the repository:
+
+   ```
+   git clone https://github.com/yourusername/faux-orator.git
+   cd faux-orator
+   ```
+
+2. Make sure you have a `.env` file in the root directory with the necessary environment variables.
+
+3. Start the development environment:
+
+   ```
+   .\dev.ps1 start
+   ```
+
+   or if using the batch script:
+
+   ```
+   dev.bat start
+   ```
+
+4. Access the application:
+   - Frontend: http://localhost
+   - Backend API: http://localhost:3000
+
+### Development Commands
+
+We've included helper scripts to make development easier:
+
 # Faux Orator Project Plan
 
 **1. Core Functionality:**
@@ -1034,72 +1076,36 @@ This project plan provides a comprehensive overview of the Faux Orator project, 
 
 ### Prerequisites
 
-- Docker and Docker Compose
-- Node.js (v16+) and npm (for local development without Docker)
-- Git
+- Docker Desktop for Windows
+- Git for Windows
 
-### Environment Setup
+### Getting Started
 
 1. Clone the repository:
 
-   ```bash
-   git clone https://github.com/yourusername/Faux-Orator.git
-   cd Faux-Orator
+   ```
+   git clone https://github.com/yourusername/faux-orator.git
+   cd faux-orator
    ```
 
-2. Make sure your `.env` file is in the root directory with all necessary variables.
+2. Make sure you have a `.env` file in the root directory with the necessary environment variables.
 
-### Development Mode
+3. Start the development environment:
 
-For development with hot reloading:
-
-```bash
-# Start all services in development mode
-docker-compose -f docker-compose.dev.yml up
-
-# Or to rebuild containers
-docker-compose -f docker-compose.dev.yml up --build
-```
-
-This setup provides:
-
-- Hot reloading for both frontend and backend
-- Volume mounting for real-time code changes
-- Development-specific configurations
-
-### Working with the Database
-
-The PostgreSQL database is accessible at `localhost:5432` with the credentials specified in your `.env` file.
-
-### Troubleshooting
-
-If you encounter issues with the containers:
-
-1. Check container logs:
-
-   ```bash
-   docker-compose -f docker-compose.dev.yml logs backend
-   docker-compose -f docker-compose.dev.yml logs frontend
+   ```
+   .\dev.ps1 start
    ```
 
-2. Rebuild the containers:
+   or if using the batch script:
 
-   ```bash
-   docker-compose -f docker-compose.dev.yml down
-   docker-compose -f docker-compose.dev.yml up --build
+   ```
+   dev.bat start
    ```
 
-3. Clean Docker cache if needed:
-   ```bash
-   docker system prune -a
-   ```
+4. Access the application:
+   - Frontend: http://localhost
+   - Backend API: http://localhost:3000
 
-## Project Structure
+### Development Commands
 
-- `frontend/`: React frontend application
-- `backend/`: Node.js/Express backend application
-- `docker-compose.dev.yml`: Development Docker configuration
-
-## Additional Documentation
-
-For more detailed information about the project, refer to the sections below.
+We've included helper scripts to make development easier:

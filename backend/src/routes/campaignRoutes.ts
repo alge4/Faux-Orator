@@ -1,12 +1,15 @@
-import express, { Request, Response, NextFunction } from 'express';
-import { Campaign } from '../models';
-import authenticateJWT, { AuthRequest } from '../middleware/authMiddleware';
-import { v4 as uuidv4 } from 'uuid';
+import express, { Request, Response, NextFunction } from "express";
+import { Campaign } from "../models";
+import authenticateJWT, { AuthRequest } from "../middleware/authMiddleware";
+import { v4 as uuidv4 } from "uuid";
+import { UserCampaignPreference } from "../models";
+import logger from "../utils/logger";
 
 const router = express.Router();
 
 // Get all campaigns for the logged-in user
-router.get('/', 
+router.get(
+  "/",
   (req: Request, res: Response, next: NextFunction) => {
     authenticateJWT(req as AuthRequest, res, next);
   },
@@ -16,70 +19,97 @@ router.get('/',
       const userId = authReq.user?.id;
 
       if (!userId) {
-        return res.status(401).json({ message: 'User not authenticated' });
+        return res.status(401).json({ message: "User not authenticated" });
       }
 
       // Find campaigns where the user is the DM
       const campaigns = await Campaign.findAll({
         where: { dmId: userId },
-        order: [['updatedAt', 'DESC']]
+        order: [["updatedAt", "DESC"]],
       });
 
       // TODO: In the future, also include campaigns where the user is a player
       // This will require implementing the CampaignUser model and relationship
 
-      return res.status(200).json(campaigns);
+      // Get user preferences for these campaigns
+      const campaignIds = campaigns.map((campaign) => campaign.id);
+      const preferences = await UserCampaignPreference.findAll({
+        where: {
+          userId,
+          campaignId: campaignIds,
+        },
+      });
+
+      // Create a map of preferences by campaign ID
+      const preferencesMap = preferences.reduce((map, pref) => {
+        map[pref.campaignId] = pref;
+        return map;
+      }, {});
+
+      // Merge campaign data with preferences
+      const campaignsWithPreferences = campaigns.map((campaign) => {
+        const pref = preferencesMap[campaign.id];
+        return {
+          ...campaign.toJSON(),
+          isFavorite: pref ? pref.isFavorite : false,
+          lastAccessed: pref ? pref.lastAccessed : null,
+        };
+      });
+
+      return res.status(200).json(campaignsWithPreferences);
     } catch (error) {
-      console.error('Error fetching campaigns:', error);
-      return res.status(500).json({ message: 'Server error' });
+      logger.error("Error fetching campaigns:", error);
+      return res.status(500).json({ message: "Server error" });
     }
   }
 );
 
 // Create a new campaign
-router.post('/', 
-  (req: Request, res: Response, next: NextFunction) => {
-    authenticateJWT(req as AuthRequest, res, next);
-  },
-  async (req: Request, res: Response) => {
-    try {
-      const authReq = req as AuthRequest;
-      const userId = authReq.user?.id;
+router.post("/", authenticateJWT, async (req: Request, res: Response) => {
+  try {
+    const authReq = req as AuthRequest;
+    const userId = authReq.user?.id;
 
-      if (!userId) {
-        return res.status(401).json({ message: 'User not authenticated' });
-      }
-
-      const { name, description, imageUrl } = req.body;
-
-      // Validate required fields
-      if (!name || !description) {
-        return res.status(400).json({ message: 'Name and description are required' });
-      }
-
-      // Create the campaign
-      const campaign = await Campaign.create({
-        id: uuidv4(),
-        name,
-        description,
-        imageUrl: imageUrl || null,
-        dmId: userId,
-        archived: false
-      });
-
-      return res.status(201).json({
-        ...campaign.get({ plain: true }),
-        role: 'DM' // The creator is always the DM
-      });
-    } catch (error) {
-      console.error('Error creating campaign:', error);
-      return res.status(500).json({ message: 'Server error' });
+    if (!userId) {
+      return res.status(401).json({ message: "User not authenticated" });
     }
+
+    const { name, description } = req.body;
+
+    // Validate input
+    if (!name) {
+      return res.status(400).json({ message: "Campaign name is required" });
+    }
+
+    // Create the campaign
+    const newCampaign = await Campaign.create({
+      id: uuidv4(),
+      name,
+      description: description || "",
+      dmId: userId,
+      // Any other fields like imageUrl can be added here
+    });
+
+    // Create initial user preference (to track favorites and access)
+    await UserCampaignPreference.create({
+      userId,
+      campaignId: newCampaign.id,
+      lastAccessed: new Date(),
+      isFavorite: false,
+    });
+
+    logger.info("Campaign created", { campaignId: newCampaign.id, userId });
+
+    return res.status(201).json(newCampaign);
+  } catch (error) {
+    logger.error("Error creating campaign:", error);
+    return res.status(500).json({ message: "Server error" });
   }
-);
+});
 
 // Get a specific campaign by ID
-router.get('/:campaignId', 
+router.get(
+  "/:campaignId",
   (req: Request, res: Response, next: NextFunction) => {
     authenticateJWT(req as AuthRequest, res, next);
   },
@@ -90,38 +120,41 @@ router.get('/:campaignId',
       const { campaignId } = req.params;
 
       if (!userId) {
-        return res.status(401).json({ message: 'User not authenticated' });
+        return res.status(401).json({ message: "User not authenticated" });
       }
 
       // Find the campaign
       const campaign = await Campaign.findOne({
-        where: { id: campaignId }
+        where: { id: campaignId },
       });
 
       if (!campaign) {
-        return res.status(404).json({ message: 'Campaign not found' });
+        return res.status(404).json({ message: "Campaign not found" });
       }
 
       // Check if the user is the DM of the campaign
       if (campaign.dmId !== userId) {
         // TODO: In the future, check if the user is a player in the campaign
         // For now, only the DM can access the campaign
-        return res.status(403).json({ message: 'You do not have permission to access this campaign' });
+        return res.status(403).json({
+          message: "You do not have permission to access this campaign",
+        });
       }
 
       return res.status(200).json({
         ...campaign.get({ plain: true }),
-        role: 'DM' // For now, only the DM can access the campaign
+        role: "DM", // For now, only the DM can access the campaign
       });
     } catch (error) {
-      console.error('Error fetching campaign:', error);
-      return res.status(500).json({ message: 'Server error' });
+      console.error("Error fetching campaign:", error);
+      return res.status(500).json({ message: "Server error" });
     }
   }
 );
 
 // Update an existing campaign
-router.put('/:campaignId', 
+router.put(
+  "/:campaignId",
   (req: Request, res: Response, next: NextFunction) => {
     authenticateJWT(req as AuthRequest, res, next);
   },
@@ -133,21 +166,23 @@ router.put('/:campaignId',
       const { name, description, imageUrl, archived } = req.body;
 
       if (!userId) {
-        return res.status(401).json({ message: 'User not authenticated' });
+        return res.status(401).json({ message: "User not authenticated" });
       }
 
       // Find the campaign
       const campaign = await Campaign.findOne({
-        where: { id: campaignId }
+        where: { id: campaignId },
       });
 
       if (!campaign) {
-        return res.status(404).json({ message: 'Campaign not found' });
+        return res.status(404).json({ message: "Campaign not found" });
       }
 
       // Check if the user is the DM of the campaign
       if (campaign.dmId !== userId) {
-        return res.status(403).json({ message: 'You do not have permission to update this campaign' });
+        return res.status(403).json({
+          message: "You do not have permission to update this campaign",
+        });
       }
 
       // Update the campaign
@@ -161,17 +196,18 @@ router.put('/:campaignId',
 
       return res.status(200).json({
         ...campaign.get({ plain: true }),
-        role: 'DM'
+        role: "DM",
       });
     } catch (error) {
-      console.error('Error updating campaign:', error);
-      return res.status(500).json({ message: 'Server error' });
+      console.error("Error updating campaign:", error);
+      return res.status(500).json({ message: "Server error" });
     }
   }
 );
 
 // Delete a campaign
-router.delete('/:campaignId', 
+router.delete(
+  "/:campaignId",
   (req: Request, res: Response, next: NextFunction) => {
     authenticateJWT(req as AuthRequest, res, next);
   },
@@ -182,32 +218,95 @@ router.delete('/:campaignId',
       const { campaignId } = req.params;
 
       if (!userId) {
-        return res.status(401).json({ message: 'User not authenticated' });
+        return res.status(401).json({ message: "User not authenticated" });
       }
 
       // Find the campaign
       const campaign = await Campaign.findOne({
-        where: { id: campaignId }
+        where: { id: campaignId },
       });
 
       if (!campaign) {
-        return res.status(404).json({ message: 'Campaign not found' });
+        return res.status(404).json({ message: "Campaign not found" });
       }
 
       // Check if the user is the DM of the campaign
       if (campaign.dmId !== userId) {
-        return res.status(403).json({ message: 'You do not have permission to delete this campaign' });
+        return res.status(403).json({
+          message: "You do not have permission to delete this campaign",
+        });
       }
 
       // Delete the campaign
       await campaign.destroy();
 
-      return res.status(200).json({ message: 'Campaign deleted successfully' });
+      return res.status(200).json({ message: "Campaign deleted successfully" });
     } catch (error) {
-      console.error('Error deleting campaign:', error);
-      return res.status(500).json({ message: 'Server error' });
+      console.error("Error deleting campaign:", error);
+      return res.status(500).json({ message: "Server error" });
     }
   }
 );
 
-export default router; 
+// Toggle favorite status
+router.patch("/:id/favorite", authenticateJWT, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { isFavorite } = req.body;
+    const userId = req.user.id;
+
+    // Update campaign favorite status in database
+    // This might be stored in a UserCampaignPreference model
+
+    // Example implementation with Sequelize:
+    const preference = await UserCampaignPreference.findOne({
+      where: { userId, campaignId: id },
+    });
+
+    if (preference) {
+      await preference.update({ isFavorite });
+    } else {
+      await UserCampaignPreference.create({
+        userId,
+        campaignId: id,
+        isFavorite,
+        lastAccessed: new Date(),
+      });
+    }
+
+    res.status(200).json({ success: true });
+  } catch (error) {
+    logger.error("Error updating campaign favorite status", error);
+    res.status(500).json({ message: "Failed to update favorite status" });
+  }
+});
+
+// Record campaign access
+router.post("/:id/access", authenticateJWT, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
+
+    // Record access time in database
+    const preference = await UserCampaignPreference.findOne({
+      where: { userId, campaignId: id },
+    });
+
+    if (preference) {
+      await preference.update({ lastAccessed: new Date() });
+    } else {
+      await UserCampaignPreference.create({
+        userId,
+        campaignId: id,
+        lastAccessed: new Date(),
+      });
+    }
+
+    res.status(200).json({ success: true });
+  } catch (error) {
+    logger.error("Error recording campaign access", error);
+    res.status(500).json({ message: "Failed to record campaign access" });
+  }
+});
+
+export default router;

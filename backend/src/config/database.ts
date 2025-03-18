@@ -1,36 +1,50 @@
-import { Sequelize } from 'sequelize';
-import dotenv from 'dotenv';
+import { Sequelize } from "sequelize";
+import dotenv from "dotenv";
+import logger from "../utils/logger";
 
 // Load environment variables
 dotenv.config();
 
-// Hardcoded database connection info for development
-const dbName = 'faux_orator';
-const dbUser = 'postgres';
-const dbPassword = 'postgres';
-const dbHost = 'db';
-const dbPort = '5432';
+// Database configuration
+const dbName = process.env.DB_NAME || "faux_orator";
+const dbUser = process.env.DB_USER || "postgres";
+const dbPassword = process.env.DB_PASSWORD || "postgres";
+const dbHost = process.env.DB_HOST || "localhost";
+const dbPort = parseInt(process.env.DB_PORT || "5432");
 
-console.log('Database connection info:', {
+// Log database connection info (hide password)
+console.log("Database connection info: ", {
   dbName,
   dbUser,
-  dbPassword: '***', // Don't log the actual password
+  dbPassword: "***",
   dbHost,
-  dbPort
+  dbPort,
 });
 
+// Try to load pg module
+try {
+  require("pg");
+  console.log("pg module loaded successfully");
+} catch (error) {
+  console.error("Failed to load pg module:", error);
+}
+
 // Create Sequelize instance
-const sequelize = new Sequelize(dbName, dbUser, dbPassword, {
+export const sequelize = new Sequelize(dbName, dbUser, dbPassword, {
   host: dbHost,
-  port: parseInt(dbPort, 10),
-  dialect: 'postgres',
-  logging: console.log, // Enable logging to see the SQL queries
-  pool: {
-    max: 5,
-    min: 0,
-    acquire: 30000,
-    idle: 10000
-  }
+  port: dbPort,
+  dialect: "postgres",
+  logging: (msg) => logger.debug(msg),
 });
+
+// Test the connection
+sequelize
+  .authenticate()
+  .then(() => {
+    logger.info("Database connection established successfully");
+  })
+  .catch((err) => {
+    logger.error("Unable to connect to the database:", err);
+  });
 
 export default sequelize;

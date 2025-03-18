@@ -6,13 +6,13 @@ const Login: React.FC = () => {
   const { isAuthenticated } = useAuth();
 
   if (isAuthenticated) {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/dashboard" replace />;
   }
 
   const handleMicrosoftLogin = () => {
-    // Redirect to backend Microsoft auth endpoint
-    // Use the correct backend URL from environment variables or default to localhost
+    // Use the backend URL for Microsoft authentication
     const backendUrl = process.env.REACT_APP_API_URL || 'http://localhost:3000';
+    // Redirect directly to the backend auth endpoint
     window.location.href = `${backendUrl}/api/auth/microsoft`;
   };
 

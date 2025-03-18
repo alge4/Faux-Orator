@@ -1,19 +1,13 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { useMsal } from '@azure/msal-react';
-import { loginRequest } from '../config/authConfig';
+import { useAuth } from '../context/AuthContext';
 import '../styles/Home.css'; // You'll need to create this CSS file
 
 const Home = () => {
-  const { instance, accounts } = useMsal();
-  const isAuthenticated = accounts.length > 0;
+  const { isAuthenticated, login, logout } = useAuth();
 
-  const handleLogin = async () => {
-    try {
-      await instance.loginRedirect(loginRequest);
-    } catch (error) {
-      console.error('Login failed', error);
-    }
+  const handleLogout = () => {
+    logout(); // Let the AuthContext handle logout
   };
 
   return (
@@ -24,7 +18,7 @@ const Home = () => {
           {isAuthenticated ? (
             <Link to="/dashboard" className="nav-button">Dashboard</Link>
           ) : (
-            <button onClick={handleLogin} className="nav-button">Login</button>
+            <button onClick={login} className="nav-button">Login</button>
           )}
         </nav>
       </header>
@@ -36,7 +30,7 @@ const Home = () => {
           {isAuthenticated ? (
             <Link to="/dashboard" className="cta-button">Go to Dashboard</Link>
           ) : (
-            <button onClick={handleLogin} className="cta-button">Get Started</button>
+            <button onClick={login} className="cta-button">Get Started</button>
           )}
         </section>
 

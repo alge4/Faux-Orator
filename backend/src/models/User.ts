@@ -1,6 +1,10 @@
 import { Model, DataTypes, Sequelize, Optional, Association } from "sequelize";
 import bcryptjs from "bcryptjs";
 import Campaign from "./Campaign";
+import { sequelize } from "../config/database";
+
+// Update the enum definition
+export type UserRole = "DM" | "Player" | "Observer";
 
 // User attributes interface
 interface UserAttributes {
@@ -10,7 +14,7 @@ interface UserAttributes {
   email: string;
   firstName: string;
   lastName: string;
-  role: "DM" | "Player" | "Observer";
+  role: UserRole;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -20,7 +24,7 @@ interface UserCreationAttributes
   extends Optional<UserAttributes, "id" | "createdAt" | "updatedAt"> {}
 
 // User model class
-class User
+export class User
   extends Model<UserAttributes, UserCreationAttributes>
   implements UserAttributes
 {
@@ -30,7 +34,7 @@ class User
   public email!: string;
   public firstName!: string;
   public lastName!: string;
-  public role!: "DM" | "Player" | "Observer";
+  public role!: UserRole;
   public createdAt!: Date;
   public updatedAt!: Date;
 
@@ -51,11 +55,6 @@ class User
         azureAdUserId: {
           type: DataTypes.STRING,
           unique: true,
-          allowNull: true,
-        },
-        username: {
-          type: DataTypes.STRING,
-          unique: true,
           allowNull: false,
         },
         email: {
@@ -63,18 +62,14 @@ class User
           unique: true,
           allowNull: false,
         },
-        firstName: {
-          type: DataTypes.STRING,
-          allowNull: false,
-        },
-        lastName: {
+        username: {
           type: DataTypes.STRING,
           allowNull: false,
         },
         role: {
           type: DataTypes.ENUM("DM", "Player", "Observer"),
-          allowNull: false,
           defaultValue: "Player",
+          allowNull: false,
         },
         createdAt: {
           type: DataTypes.DATE,
@@ -87,7 +82,7 @@ class User
       },
       {
         sequelize,
-        tableName: "Users",
+        modelName: "User",
         timestamps: true,
       }
     );

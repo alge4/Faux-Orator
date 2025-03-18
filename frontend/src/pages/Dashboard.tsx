@@ -29,7 +29,8 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
-  DialogActions
+  DialogActions,
+  Fab
 } from '@mui/material';
 import { 
   ArrowDropDown as ChevronDownIcon, 
@@ -45,10 +46,15 @@ import {
   Edit as EditIcon, 
   Delete as TrashIcon,
   AccountCircle as AccountIcon,
-  Logout as LogoutIcon
+  Logout as LogoutIcon,
+  Star as StarIcon,
+  StarBorder as StarBorderIcon,
+  MoreVert as MoreVertIcon
 } from '@mui/icons-material';
 import CreateCampaign from '../components/CreateCampaign';
 import { useMsal } from '@azure/msal-react';
+import { useAuth } from '../context/AuthContext';
+import { useWebSocketContext } from '../context/WebSocketContext';
 
 // Campaign interface (matching CampaignList.tsx)
 interface Campaign {
@@ -56,7 +62,12 @@ interface Campaign {
   name: string;
   description: string;
   imageUrl?: string;
-  role: string;
+  dmId: string;
+  role?: string;
+  createdAt: string;
+  updatedAt: string;
+  isFavorite?: boolean;
+  lastAccessed?: string;
 }
 
 // Person interface for the sidebar UI
@@ -125,6 +136,45 @@ export default function Dashboard() {
   const [userMenuAnchorEl, setUserMenuAnchorEl] = useState<null | HTMLElement>(null);
   const userMenuOpen = Boolean(userMenuAnchorEl);
   
+  const { logout, user } = useAuth(); // Get the logout function and user information from auth context
+  
+  // Use context instead
+  const { isConnected, messages, error: wsError, sendMessage } = useWebSocketContext();
+  
+  // Add sort state for campaigns
+  const [sortMethod, setSortMethod] = useState<'name' | 'date'>('name');
+  
+  // Log WebSocket connection status
+  useEffect(() => {
+    if (isConnected) {
+      console.log('WebSocket connected to server');
+    } else {
+      console.log('WebSocket disconnected from server');
+    }
+  }, [isConnected]);
+  
+  // Handle incoming WebSocket messages
+  useEffect(() => {
+    if (messages.length > 0) {
+      // Process the latest message
+      const latestMessage = messages[messages.length - 1];
+      console.log('Received WebSocket message:', latestMessage);
+      
+      // Handle different message types
+      switch (latestMessage.type) {
+        case 'campaign_update':
+          // Refresh campaign data
+          fetchCampaigns();
+          break;
+        case 'notification':
+          // Display notification to user
+          // You could use a notification library here
+          break;
+        // Add more message types as needed
+      }
+    }
+  }, [messages]);
+  
   // Environment variable validation
   useEffect(() => {
     if (!process.env.REACT_APP_API_URL) {
@@ -152,38 +202,62 @@ export default function Dashboard() {
     }
   }, [isRenaming]);
 
-  // Fetch campaigns from API
+  // Modify fetchCampaigns function to add debugging
   const fetchCampaigns = async () => {
     try {
+      console.log("Fetching campaigns...");
       setIsLoading(true);
       setError(null);
       
       const token = localStorage.getItem('authToken');
       
       if (!token) {
+        console.error("No auth token found");
         setError("No auth token found");
         setIsLoading(false);
         return;
       }
       
       const backendUrl = process.env.REACT_APP_API_URL || 'http://localhost:3000';
+      console.log(`API URL: ${backendUrl}/api/campaigns`);
+      
       const response = await axios.get(`${backendUrl}/api/campaigns`, {
         headers: {
           Authorization: `Bearer ${token}`
         }
       });
       
-      setCampaigns(response.data);
+      console.log("Campaigns response:", response.data);
       
-      // For demo purposes, we'll use the same campaigns for favorites and recent
-      // In a real app, you would have separate endpoints or filtering logic
-      setFavoriteCampaigns(response.data.slice(0, 2));
-      setRecentCampaigns(response.data.slice(0, 3));
+      // Add role property if not already present
+      const userId = user?.id;
+      const campaignsWithRole = response.data.map((campaign: Campaign) => ({
+        ...campaign,
+        role: campaign.role || (campaign.dmId === userId ? 'DM' : 'Player')
+      }));
+      
+      // Store all campaigns
+      setCampaigns(campaignsWithRole);
+      
+      // Set favorite campaigns
+      const favorites = campaignsWithRole.filter((campaign: Campaign) => campaign.isFavorite);
+      setFavoriteCampaigns(favorites);
+      
+      // Set recent campaigns
+      const recents = [...campaignsWithRole]
+        .filter(campaign => campaign.lastAccessed)
+        .sort((a, b) => {
+          // Convert string dates to Date objects for comparison
+          return new Date(b.lastAccessed || 0).getTime() - new Date(a.lastAccessed || 0).getTime();
+        })
+        .slice(0, 3);
+        
+      setRecentCampaigns(recents);
       
       setIsLoading(false);
-    } catch (error: any) {
+    } catch (error) {
       console.error("Error fetching campaigns:", error);
-      setError(error.response?.data?.message || "Failed to load campaigns");
+      setError("Failed to load campaigns");
       setIsLoading(false);
     }
   };
@@ -192,16 +266,18 @@ export default function Dashboard() {
     setExpandedServers((prev: string[]) => (prev.includes(serverId) ? prev.filter((id: string) => id !== serverId) : [...prev, serverId]));
   };
 
-  // Improved campaign click handler with error handling
+  // Modify handleCampaignClick to record access when a campaign is clicked
   const handleCampaignClick = (campaignId: string) => {
-    if (isRenaming !== campaignId) {
-      try {
-        navigate(`/campaigns/${campaignId}`);
-      } catch (error) {
-        console.error("Navigation error:", error);
-        setError("Failed to navigate to campaign");
-      }
+    // Don't navigate if we're in renaming mode for this campaign
+    if (isRenaming === campaignId) {
+      return;
     }
+    
+    // Record access
+    recordCampaignAccess(campaignId);
+    
+    // Navigate to campaign detail page
+    navigate(`/campaigns/${campaignId}`);
   };
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -221,12 +297,9 @@ export default function Dashboard() {
     handleCloseMenu();
   };
 
-  const handleRenameSubmit = (e: FormEvent) => {
+  const handleSubmitRename = (e: React.FormEvent<HTMLFormElement>, campaignId: string) => {
     e.preventDefault();
-    if (isRenaming && newName.trim() && newName !== campaigns.find((c: Campaign) => c.id === isRenaming)?.name) {
-      handleRenameCampaign(isRenaming, newName);
-    }
-    setIsRenaming(null);
+    handleRenameCampaign(campaignId, newName);
   };
 
   // Updated delete handler to use Material UI dialog
@@ -247,39 +320,30 @@ export default function Dashboard() {
 
   const handleCreateCampaign = async (name: string, description: string) => {
     try {
-      setIsLoading(true);
       const token = localStorage.getItem('authToken');
       
       if (!token) {
         setError("No auth token found");
-        setIsLoading(false);
         return;
       }
       
       const backendUrl = process.env.REACT_APP_API_URL || 'http://localhost:3000';
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const response = await axios.post(
-        `${backendUrl}/api/campaigns`, 
+        `${backendUrl}/api/campaigns`,
         { name, description },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        }
+        { headers: { Authorization: `Bearer ${token}` }}
       );
       
-      setCampaigns(prev => [...prev, response.data]);
+      console.log("Campaign created:", response.data);
       
-      // Also update favorites and recent lists if needed
-      // For simplicity, we'll just add to recent
-      setRecentCampaigns(prev => [response.data, ...prev].slice(0, 3));
-      
-      setIsLoading(false);
+      // Close the create modal
       setIsCreateModalOpen(false);
-    } catch (error: any) {
+      
+      // Refresh campaigns list
+      fetchCampaigns();
+    } catch (error) {
       console.error("Error creating campaign:", error);
-      setError(error.response?.data?.message || "Failed to create campaign");
-      setIsLoading(false);
+      setError("Failed to create campaign");
     }
   };
 
@@ -317,43 +381,27 @@ export default function Dashboard() {
 
   const handleRenameCampaign = async (campaignId: string, newName: string) => {
     try {
-      setIsLoading(true);
       const token = localStorage.getItem('authToken');
       
       if (!token) {
         setError("No auth token found");
-        setIsLoading(false);
         return;
       }
       
       const backendUrl = process.env.REACT_APP_API_URL || 'http://localhost:3000';
-      const response = await axios.put(
+      await axios.put(
         `${backendUrl}/api/campaigns/${campaignId}`, 
         { name: newName },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        }
+        { headers: { Authorization: `Bearer ${token}` }}
       );
       
-      // Update campaign in all lists
-      const updateCampaignInList = (list: Campaign[]) => 
-        list.map(campaign => 
-          campaign.id === campaignId 
-            ? { ...campaign, name: newName } 
-            : campaign
-        );
-      
-      setCampaigns(updateCampaignInList);
-      setFavoriteCampaigns(updateCampaignInList);
-      setRecentCampaigns(updateCampaignInList);
-      
-      setIsLoading(false);
-    } catch (error: any) {
+      // Refresh the campaign list
+      fetchCampaigns();
+      // Reset renaming state
+      setIsRenaming(null);
+    } catch (error) {
       console.error("Error renaming campaign:", error);
-      setError(error.response?.data?.message || "Failed to rename campaign");
-      setIsLoading(false);
+      setError("Failed to rename campaign");
     }
   };
 
@@ -368,7 +416,7 @@ export default function Dashboard() {
       }}
     >
       {isRenaming === campaign.id ? (
-        <Box component="form" onSubmit={handleRenameSubmit} sx={{ width: '100%', pl: 2, pr: 1 }}>
+        <Box component="form" onSubmit={(e) => handleSubmitRename(e, campaign.id)} sx={{ width: '100%', pl: 2, pr: 1 }}>
           <TextField
             inputRef={renameInputRef}
             value={newName}
@@ -442,20 +490,8 @@ export default function Dashboard() {
   };
 
   const handleLogout = async () => {
-    try {
-      // Clear local storage
-      localStorage.removeItem('authToken');
-      localStorage.removeItem('user');
-      
-      // Logout from MSAL
-      await instance.logoutRedirect({
-        postLogoutRedirectUri: window.location.origin,
-      });
-    } catch (error) {
-      console.error('Logout failed', error);
-      // Fallback to redirect if MSAL logout fails
-      navigate('/login');
-    }
+    // Use the logout function from AuthContext which will call the backend
+    logout();
   };
 
   const handleProfileSettings = () => {
@@ -463,6 +499,118 @@ export default function Dashboard() {
     navigate('/profile');
     handleUserMenuClose();
   };
+
+  // Add function to toggle favorite status
+  const toggleFavorite = async (campaignId: string) => {
+    try {
+      const campaign = campaigns.find(c => c.id === campaignId);
+      if (!campaign) return;
+      
+      const token = localStorage.getItem('authToken');
+      if (!token) {
+        setError("No auth token found");
+        return;
+      }
+      
+      const backendUrl = process.env.REACT_APP_API_URL || 'http://localhost:3000';
+      await axios.patch(
+        `${backendUrl}/api/campaigns/${campaignId}/favorite`, 
+        { isFavorite: !campaign.isFavorite },
+        { headers: { Authorization: `Bearer ${token}` }}
+      );
+      
+      // Update local state
+      const updatedCampaigns = campaigns.map(c => {
+        if (c.id === campaignId) {
+          return { ...c, isFavorite: !c.isFavorite };
+        }
+        return c;
+      });
+      
+      setCampaigns(updatedCampaigns);
+      
+      // Update favorites list
+      const favorites = updatedCampaigns.filter(c => c.isFavorite);
+      setFavoriteCampaigns(favorites);
+      
+    } catch (error) {
+      console.error("Error toggling favorite status:", error);
+      setError("Failed to update favorite status");
+    }
+  };
+
+  // Add function to record campaign access
+  const recordCampaignAccess = async (campaignId: string) => {
+    try {
+      const token = localStorage.getItem('authToken');
+      if (!token) return;
+      
+      const backendUrl = process.env.REACT_APP_API_URL || 'http://localhost:3000';
+      await axios.post(
+        `${backendUrl}/api/campaigns/${campaignId}/access`, 
+        {}, 
+        { headers: { Authorization: `Bearer ${token}` }}
+      );
+      
+      // Update local state
+      const now = new Date().toISOString(); // Convert to ISO string to match type
+      const updatedCampaigns = campaigns.map(c => {
+        if (c.id === campaignId) {
+          return { ...c, lastAccessed: now };
+        }
+        return c;
+      });
+      
+      setCampaigns(updatedCampaigns);
+      
+      // Update recents
+      const recents = [...updatedCampaigns]
+        .filter(campaign => campaign.lastAccessed)
+        .sort((a, b) => {
+          return new Date(b.lastAccessed || 0).getTime() - new Date(a.lastAccessed || 0).getTime();
+        })
+        .slice(0, 3);
+        
+      setRecentCampaigns(recents);
+      
+    } catch (error) {
+      console.error("Error recording campaign access:", error);
+    }
+  };
+
+  // Add sorting function for campaigns
+  const getSortedCampaigns = () => {
+    return [...campaigns].sort((a, b) => {
+      if (sortMethod === 'name') {
+        return a.name.localeCompare(b.name);
+      } else {
+        // Sort by date (most recent first)
+        const dateA = new Date(a.lastAccessed || 0);
+        const dateB = new Date(b.lastAccessed || 0);
+        return dateB.getTime() - dateA.getTime();
+      }
+    });
+  };
+
+  // Add function to handle sort change
+  const handleSortChange = (method: 'name' | 'date') => {
+    setSortMethod(method);
+  };
+
+  // Add function to handle campaign creation success (to be called from the CreateCampaign component)
+  const handleCampaignCreated = () => {
+    // Refresh campaigns list
+    fetchCampaigns();
+    // Close create modal if it's open
+    setIsCreateModalOpen(false);
+  };
+
+  // Add useEffect to load campaigns on mount
+  useEffect(() => {
+    console.log("Dashboard mounted, fetching campaigns...");
+    fetchCampaigns();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <Box sx={{ display: 'flex', height: '100vh' }}>
@@ -569,101 +717,229 @@ export default function Dashboard() {
         </List>
         <Divider />
         
-        {/* Favorites Section */}
-        <List
-          subheader={
-            <ListItem sx={{ py: 0 }}>
-              <ListItemText 
-                primary="Favorites" 
-                primaryTypographyProps={{ 
-                  variant: 'overline',
-                  color: 'text.secondary'
-                }} 
-              />
-            </ListItem>
-          }
-          sx={{ px: 1 }}
-        >
+        {/* Favorite Campaigns Section */}
+        <Box sx={{ my: 3 }}>
+          <Typography variant="h6" gutterBottom>
+            Favorite Campaigns
+          </Typography>
           {isLoading ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
-              <CircularProgress size={24} />
-            </Box>
-          ) : error ? (
-            <Typography color="error" variant="body2" sx={{ px: 2 }}>
-              {error}
-            </Typography>
-          ) : favoriteCampaigns.length === 0 ? (
-            <Typography variant="body2" color="text.secondary" sx={{ px: 2 }}>
-              No favorite campaigns
-            </Typography>
+            <CircularProgress size={24} />
+          ) : favoriteCampaigns.length > 0 ? (
+            <Grid container spacing={2}>
+              {favoriteCampaigns.map((campaign) => (
+                <Grid item xs={12} sm={6} md={4} key={campaign.id}>
+                  <Card 
+                    sx={{ 
+                      position: 'relative',
+                      cursor: isRenaming === campaign.id ? 'default' : 'pointer' 
+                    }}
+                  >
+                    <CardContent onClick={() => handleCampaignClick(campaign.id)}>
+                      {isRenaming === campaign.id ? (
+                        <form onSubmit={(e) => handleSubmitRename(e, campaign.id)}>
+                          <TextField
+                            fullWidth
+                            autoFocus
+                            inputRef={renameInputRef}
+                            defaultValue={campaign.name}
+                            variant="outlined"
+                            size="small"
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                        </form>
+                      ) : (
+                        <Typography variant="h6">{campaign.name}</Typography>
+                      )}
+                      <Typography variant="body2" color="text.secondary">
+                        {campaign.description}
+                      </Typography>
+                      
+                      <Box sx={{ mt: 1, display: 'flex', justifyContent: 'space-between' }}>
+                        <Typography variant="caption" color="text.secondary">
+                          Role: {campaign.role}
+                        </Typography>
+                        
+                        <IconButton 
+                          size="small"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleFavorite(campaign.id);
+                          }}
+                        >
+                          {campaign.isFavorite ? (
+                            <StarIcon color="warning" />
+                          ) : (
+                            <StarBorderIcon />
+                          )}
+                        </IconButton>
+                      </Box>
+                    </CardContent>
+                  </Card>
+                </Grid>
+              ))}
+            </Grid>
           ) : (
-            favoriteCampaigns.map(renderCampaignItem)
+            <Typography color="text.secondary">No favorite campaigns yet. Click the star icon to add favorites.</Typography>
           )}
-        </List>
+        </Box>
         
         {/* Recent Campaigns Section */}
-        <List
-          subheader={
-            <ListItem sx={{ py: 0 }}>
-              <ListItemText 
-                primary="Recent" 
-                primaryTypographyProps={{ 
-                  variant: 'overline',
-                  color: 'text.secondary'
-                }} 
-              />
-            </ListItem>
-          }
-          sx={{ px: 1 }}
-        >
+        <Box sx={{ my: 3 }}>
+          <Typography variant="h6" gutterBottom>
+            Recent Campaigns
+          </Typography>
           {isLoading ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
-              <CircularProgress size={24} />
-            </Box>
-          ) : error ? (
-            <Typography color="error" variant="body2" sx={{ px: 2 }}>
-              {error}
-            </Typography>
-          ) : recentCampaigns.length === 0 ? (
-            <Typography variant="body2" color="text.secondary" sx={{ px: 2 }}>
-              No recent campaigns
-            </Typography>
+            <CircularProgress size={24} />
+          ) : recentCampaigns.length > 0 ? (
+            <Grid container spacing={2}>
+              {recentCampaigns.map((campaign) => (
+                <Grid item xs={12} sm={6} md={4} key={campaign.id}>
+                  <Card 
+                    sx={{ 
+                      position: 'relative',
+                      cursor: isRenaming === campaign.id ? 'default' : 'pointer' 
+                    }}
+                  >
+                    {/* Similar content as above */}
+                    <CardContent onClick={() => handleCampaignClick(campaign.id)}>
+                      {/* Similar content as above */}
+                      <Typography variant="h6">{campaign.name}</Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        {campaign.description}
+                      </Typography>
+                      
+                      <Box sx={{ mt: 1, display: 'flex', justifyContent: 'space-between' }}>
+                        <Typography variant="caption" color="text.secondary">
+                          {campaign.lastAccessed ? 
+                            `Last accessed: ${new Date(campaign.lastAccessed).toLocaleDateString()}` : 
+                            `Created: ${new Date(campaign.createdAt).toLocaleDateString()}`}
+                        </Typography>
+                        
+                        <IconButton 
+                          size="small"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleFavorite(campaign.id);
+                          }}
+                        >
+                          {campaign.isFavorite ? (
+                            <StarIcon color="warning" />
+                          ) : (
+                            <StarBorderIcon />
+                          )}
+                        </IconButton>
+                      </Box>
+                    </CardContent>
+                  </Card>
+                </Grid>
+              ))}
+            </Grid>
           ) : (
-            recentCampaigns.map(renderCampaignItem)
+            <Typography color="text.secondary">No recently accessed campaigns.</Typography>
           )}
-        </List>
+        </Box>
         
         {/* All Campaigns Section */}
-        <List
-          subheader={
-            <ListItem sx={{ py: 0 }}>
-              <ListItemText 
-                primary="All Campaigns" 
-                primaryTypographyProps={{ 
-                  variant: 'overline',
-                  color: 'text.secondary'
-                }} 
-              />
-            </ListItem>
-          }
-          sx={{ px: 1 }}
-        >
-          {isLoading ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
-              <CircularProgress size={24} />
+        <Box sx={{ my: 3 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+            <Typography variant="h6">All Campaigns</Typography>
+            
+            <Box>
+              <Button
+                size="small"
+                onClick={() => handleSortChange('name')}
+                variant={sortMethod === 'name' ? 'contained' : 'outlined'}
+                sx={{ mr: 1 }}
+              >
+                Sort by Name
+              </Button>
+              <Button
+                size="small"
+                onClick={() => handleSortChange('date')}
+                variant={sortMethod === 'date' ? 'contained' : 'outlined'}
+              >
+                Sort by Date
+              </Button>
             </Box>
-          ) : error ? (
-            <Typography color="error" variant="body2" sx={{ px: 2 }}>
-              {error}
-            </Typography>
-          ) : campaigns.length === 0 ? (
-            <Typography variant="body2" color="text.secondary" sx={{ px: 2 }}>
-              No campaigns found
-            </Typography>
+          </Box>
+          
+          {isLoading ? (
+            <CircularProgress size={24} />
+          ) : getSortedCampaigns().length > 0 ? (
+            <Grid container spacing={2}>
+              {getSortedCampaigns().map((campaign) => (
+                <Grid item xs={12} sm={6} md={4} key={campaign.id}>
+                  <Card 
+                    sx={{ 
+                      position: 'relative',
+                      cursor: isRenaming === campaign.id ? 'default' : 'pointer' 
+                    }}
+                  >
+                    <CardContent onClick={() => handleCampaignClick(campaign.id)}>
+                      {isRenaming === campaign.id ? (
+                        <form onSubmit={(e) => {
+                          e.preventDefault();
+                          handleRenameCampaign(campaign.id, newName);
+                        }}>
+                          <TextField
+                            fullWidth
+                            autoFocus
+                            inputRef={renameInputRef}
+                            value={newName}
+                            onChange={(e) => setNewName(e.target.value)}
+                            variant="outlined"
+                            size="small"
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                        </form>
+                      ) : (
+                        <Typography variant="h6">{campaign.name}</Typography>
+                      )}
+                      <Typography variant="body2" color="text.secondary">
+                        {campaign.description}
+                      </Typography>
+                      
+                      <Box sx={{ mt: 1, display: 'flex', justifyContent: 'space-between' }}>
+                        <Typography variant="caption" color="text.secondary">
+                          {campaign.lastAccessed ? 
+                            `Last accessed: ${new Date(campaign.lastAccessed).toLocaleDateString()}` : 
+                            `Created: ${new Date(campaign.createdAt).toLocaleDateString()}`}
+                        </Typography>
+                        
+                        <Box>
+                          <IconButton 
+                            size="small"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleFavorite(campaign.id);
+                            }}
+                          >
+                            {campaign.isFavorite ? (
+                              <StarIcon color="warning" />
+                            ) : (
+                              <StarBorderIcon />
+                            )}
+                          </IconButton>
+                        </Box>
+                      </Box>
+                    </CardContent>
+                  </Card>
+                </Grid>
+              ))}
+            </Grid>
           ) : (
-            campaigns.map(renderCampaignItem)
+            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', py: 3 }}>
+              <Typography color="text.secondary" sx={{ mb: 2 }}>No campaigns found. Create one to get started!</Typography>
+              <Button 
+                variant="contained" 
+                startIcon={<PlusIcon />}
+                onClick={() => setIsCreateModalOpen(true)}
+              >
+                Create Campaign
+              </Button>
+            </Box>
           )}
-        </List>
+        </Box>
       </Drawer>
 
       {/* Main content area */}
@@ -810,11 +1086,13 @@ export default function Dashboard() {
       </Menu>
 
       {/* Create Campaign Modal */}
-      <CreateCampaign
-        isOpen={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
-        onSubmit={handleCreateCampaign}
-      />
+      {isCreateModalOpen && (
+        <CreateCampaign 
+          isOpen={isCreateModalOpen}
+          onClose={() => setIsCreateModalOpen(false)}
+          onSubmit={handleCreateCampaign}
+        />
+      )}
       
       {/* Delete Confirmation Dialog */}
       <Dialog
@@ -830,6 +1108,17 @@ export default function Dashboard() {
           <Button onClick={confirmDelete} color="error">Delete</Button>
         </DialogActions>
       </Dialog>
+
+      {/* Floating Add Button */}
+      <Box sx={{ position: 'fixed', bottom: '2rem', right: '2rem' }}>
+        <Fab 
+          color="primary" 
+          aria-label="add campaign"
+          onClick={() => setIsCreateModalOpen(true)}
+        >
+          <PlusIcon />
+        </Fab>
+      </Box>
     </Box>
   );
 } 

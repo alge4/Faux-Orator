@@ -1,5 +1,6 @@
 import { Model, DataTypes, Sequelize, Optional, Association } from "sequelize";
 import User from "./User";
+import sequelize from "../config/database";
 
 // Campaign attributes interface
 interface CampaignAttributes {
@@ -45,8 +46,8 @@ class Campaign
       {
         id: {
           type: DataTypes.UUID,
-          defaultValue: DataTypes.UUIDV4,
           primaryKey: true,
+          allowNull: false,
         },
         name: {
           type: DataTypes.STRING,
@@ -54,19 +55,15 @@ class Campaign
         },
         description: {
           type: DataTypes.TEXT,
-          allowNull: false,
-        },
-        imageUrl: {
-          type: DataTypes.STRING,
           allowNull: true,
         },
         dmId: {
           type: DataTypes.UUID,
           allowNull: false,
-          references: {
-            model: "Users",
-            key: "id",
-          },
+        },
+        imageUrl: {
+          type: DataTypes.STRING,
+          allowNull: true,
         },
         archived: {
           type: DataTypes.BOOLEAN,
