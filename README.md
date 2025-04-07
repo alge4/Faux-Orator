@@ -32,13 +32,60 @@ Your AI-powered D&D campaign assistant
    dev.bat start
    ```
 
+   Alternatively, you can use the explicit Docker command:
+
+   ```
+   docker-compose -f docker-compose.dev.yml up -d --build
+   ```
+
 4. Access the application:
    - Frontend: http://localhost
    - Backend API: http://localhost:3000
 
 ### Development Commands
 
-We've included helper scripts to make development easier:
+We've included helper scripts to make development easier, but you can also use these explicit Docker commands:
+
+- **Start all services**:
+
+  ```
+  docker-compose -f docker-compose.dev.yml up -d
+  ```
+
+- **Stop all services**:
+
+  ```
+  docker-compose -f docker-compose.dev.yml down
+  ```
+
+- **Rebuild and restart all services**:
+
+  ```
+  docker-compose -f docker-compose.dev.yml up -d --build
+  ```
+
+- **View logs**:
+
+  ```
+  docker-compose -f docker-compose.dev.yml logs -f
+  ```
+
+- **View logs for a specific service**:
+
+  ```
+  docker-compose -f docker-compose.dev.yml logs -f frontend
+  ```
+
+  or
+
+  ```
+  docker-compose -f docker-compose.dev.yml logs -f backend
+  ```
+
+- **Stop and remove containers, networks, and volumes**:
+  ```
+  docker-compose -f docker-compose.dev.yml down -v
+  ```
 
 # Faux Orator Project Plan
 
@@ -1102,10 +1149,57 @@ This project plan provides a comprehensive overview of the Faux Orator project, 
    dev.bat start
    ```
 
+   Alternatively, you can use the explicit Docker command:
+
+   ```
+   docker-compose -f docker-compose.dev.yml up -d --build
+   ```
+
 4. Access the application:
    - Frontend: http://localhost
    - Backend API: http://localhost:3000
 
 ### Development Commands
 
-We've included helper scripts to make development easier:
+We've included helper scripts to make development easier, but you can also use these explicit Docker commands:
+
+- **Start all services**:
+
+  ```
+  docker-compose -f docker-compose.dev.yml up -d
+  ```
+
+- **Stop all services**:
+
+  ```
+  docker-compose -f docker-compose.dev.yml down
+  ```
+
+- **Rebuild and restart all services**:
+
+  ```
+  docker-compose -f docker-compose.dev.yml up -d --build
+  ```
+
+- **View logs**:
+
+  ```
+  docker-compose -f docker-compose.dev.yml logs -f
+  ```
+
+- **View logs for a specific service**:
+
+  ```
+  docker-compose -f docker-compose.dev.yml logs -f frontend
+  ```
+
+  or
+
+  ```
+  docker-compose -f docker-compose.dev.yml logs -f backend
+  ```
+
+- **Stop and remove containers, networks, and volumes**:
+  ```
+  docker-compose -f docker-compose.dev.yml down -v
+  ```
