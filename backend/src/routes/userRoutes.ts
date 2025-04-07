@@ -45,7 +45,10 @@ router.post("/register", async (req: Request, res: Response) => {
     const token = jwt.sign(
       { id: user.id, email: user.email, role: user.role },
       process.env.JWT_SECRET || "your-jwt-secret",
-      { expiresIn: "1h" }
+      {
+        expiresIn: "1h",
+        algorithm: "HS256",
+      }
     );
 
     res.status(201).json({
@@ -87,7 +90,10 @@ router.post("/login", async (req: Request, res: Response) => {
     const token = jwt.sign(
       { id: user.id, email: user.email, role: user.role },
       process.env.JWT_SECRET || "your-jwt-secret",
-      { expiresIn: "1h" }
+      {
+        expiresIn: "1h",
+        algorithm: "HS256",
+      }
     );
 
     res.json({
@@ -109,37 +115,31 @@ router.post("/login", async (req: Request, res: Response) => {
 });
 
 // Get Current User (Protected Route)
-router.get(
-  "/me",
-  (req: Request, res: Response, next: NextFunction) => {
-    authenticateJWT(req as AuthRequest, res, next);
-  },
-  async (req: Request, res: Response) => {
-    try {
-      const authReq = req as AuthRequest;
-      if (!authReq.user) {
-        return res.status(401).json({ message: "Unauthorized" });
-      }
-
-      const user = await User.findByPk(authReq.user.id);
-      if (!user) {
-        return res.status(404).json({ message: "User not found" });
-      }
-
-      res.json({
-        id: user.id,
-        username: user.username,
-        email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        role: user.role,
-      });
-    } catch (error) {
-      console.error("Get user error:", error);
-      res.status(500).json({ message: "Server error" });
+router.get("/me", authenticateJWT, async (req: Request, res: Response) => {
+  try {
+    const authReq = req as AuthRequest;
+    if (!authReq.user) {
+      return res.status(401).json({ message: "Unauthorized" });
     }
+
+    const user = await User.findByPk(authReq.user.id);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    res.json({
+      id: user.id,
+      username: user.username,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      role: user.role,
+    });
+  } catch (error) {
+    console.error("Get user error:", error);
+    res.status(500).json({ message: "Server error" });
   }
-);
+});
 
 // Add other routes here (e.g., router.use('/campaigns', campaignRoutes);)
 

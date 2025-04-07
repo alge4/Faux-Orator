@@ -3,6 +3,7 @@ import CampaignItem from './CampaignItem';
 import CreateCampaign from './CreateCampaign';
 import './CampaignList.css';
 import { CampaignService, Campaign as ApiCampaign } from '../services/api';
+import { useSnackbar } from 'notistack';
 import { useAuth } from '../context/AuthContext';
 
 // Campaign interface for component use - extending the API interface as needed
@@ -20,6 +21,7 @@ const CampaignList: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const { enqueueSnackbar } = useSnackbar();
   const { isAuthenticated } = useAuth();
 
   // Improved fetchCampaigns function using the API service
@@ -50,12 +52,12 @@ const CampaignList: React.FC = () => {
       } else {
         console.error("Failed to fetch campaigns:", response.message);
         setError(response.message || "Failed to load campaigns");
-        console.log(response.message || 'Failed to load campaigns');
+        enqueueSnackbar(response.message || 'Failed to load campaigns', { variant: 'error' });
       }
     } catch (err: any) {
       console.error("Error fetching campaigns:", err);
       setError("Failed to load campaigns");
-      console.log('Unable to fetch campaigns. Please try again later.');
+      enqueueSnackbar('Unable to fetch campaigns. Please try again later.', { variant: 'error' });
     } finally {
       setIsLoading(false);
     }
@@ -103,7 +105,7 @@ const CampaignList: React.FC = () => {
       
       if (!isAuthenticated) {
         setError("You need to be logged in to perform this action");
-        console.log('You need to be logged in to create campaigns');
+        enqueueSnackbar('You need to be logged in to create campaigns', { variant: 'error' });
         return;
       }
       
@@ -127,16 +129,16 @@ const CampaignList: React.FC = () => {
         console.log("CampaignList: Dispatched sidebar_campaign_created event");
         
         // Show success message
-        console.log('Campaign created successfully!');
+        enqueueSnackbar('Campaign created successfully!', { variant: 'success' });
       } else {
         console.error("Failed to create campaign:", response.message);
         setError(response.message || "Failed to create campaign");
-        console.log(response.message || 'Failed to create campaign');
+        enqueueSnackbar(response.message || 'Failed to create campaign', { variant: 'error' });
       }
     } catch (err: any) {
       console.error("Error creating campaign:", err);
       setError("Failed to create campaign");
-      console.log('Error creating campaign');
+      enqueueSnackbar('Error creating campaign', { variant: 'error' });
     } finally {
       setIsLoading(false);
     }
@@ -159,15 +161,15 @@ const CampaignList: React.FC = () => {
         setCampaigns(campaigns.filter(c => c.id !== campaignId));
         
         // Show success message
-        console.log('Campaign deleted successfully');
+        enqueueSnackbar('Campaign deleted successfully', { variant: 'success' });
       } else {
         setError(response.message || "Failed to delete campaign");
-        console.log(response.message || 'Failed to delete campaign');
+        enqueueSnackbar(response.message || 'Failed to delete campaign', { variant: 'error' });
       }
     } catch (err: any) {
       console.error("Error deleting campaign:", err);
       setError("Failed to delete campaign");
-      console.log('Error deleting campaign');
+      enqueueSnackbar('Error deleting campaign', { variant: 'error' });
     } finally {
       setIsLoading(false);
     }
@@ -205,15 +207,15 @@ const CampaignList: React.FC = () => {
         } : c));
         
         // Show success message
-        console.log('Campaign renamed successfully');
+        enqueueSnackbar('Campaign renamed successfully', { variant: 'success' });
       } else {
         setError(response.message || "Failed to rename campaign");
-        console.log(response.message || 'Failed to rename campaign');
+        enqueueSnackbar(response.message || 'Failed to rename campaign', { variant: 'error' });
       }
     } catch (err: any) {
       console.error("Error renaming campaign:", err);
       setError("Failed to rename campaign");
-      console.log('Error renaming campaign');
+      enqueueSnackbar('Error renaming campaign', { variant: 'error' });
     } finally {
       setIsLoading(false);
     }

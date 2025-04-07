@@ -30,14 +30,21 @@ const CreateCampaign: React.FC<CreateCampaignProps> = ({
     // Validate inputs
     if (!name.trim()) {
       setNameError('Campaign name is required');
+      console.log("Campaign creation failed: Name is required");
       return;
     }
     
+    console.log("Create campaign button clicked, submitting with name:", name, "description:", description);
+    
     // Call either onSubmit or onCreate based on which was provided
     if (onSubmit) {
+      console.log("Using onSubmit callback");
       onSubmit(name, description);
     } else if (onCreate) {
+      console.log("Using onCreate callback");
       onCreate(name, description);
+    } else {
+      console.error("No submit handler provided to CreateCampaign component!");
     }
     
     // Reset form

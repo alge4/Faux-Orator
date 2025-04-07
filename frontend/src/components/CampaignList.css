@@ -44,6 +44,17 @@
   color: #ff6b6b;
 }
 
+.campaign-summary {
+  margin-bottom: 10px;
+  font-size: 0.85rem;
+  color: #aaa;
+  padding: 0 4px;
+}
+
+.campaign-summary p {
+  margin: 4px 0;
+}
+
 .empty-state button {
   margin-top: 8px;
   background-color: #4a4a4a;

@@ -151,8 +151,10 @@ export const initializePassport = () => {
         done: (error: Error | null, user?: any, info?: any) => void
       ) => {
         try {
-          // Verify the JWT token
-          const decoded = jwt.verify(token, jwtSecret) as { id: string };
+          // Verify the JWT token with explicit algorithm
+          const decoded = jwt.verify(token, jwtSecret, {
+            algorithms: ["HS256"],
+          }) as { id: string };
 
           // Find the user by ID
           const user = await User.findByPk(decoded.id);

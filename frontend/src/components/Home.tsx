@@ -1,13 +1,18 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import '../styles/Home.css'; // You'll need to create this CSS file
 
 const Home = () => {
-  const { isAuthenticated, login, logout } = useAuth();
+  const { isAuthenticated, logout } = useAuth();
+  const navigate = useNavigate();
 
   const handleLogout = () => {
     logout(); // Let the AuthContext handle logout
+  };
+  
+  const handleLoginClick = () => {
+    navigate('/login');
   };
 
   return (
@@ -18,7 +23,7 @@ const Home = () => {
           {isAuthenticated ? (
             <Link to="/dashboard" className="nav-button">Dashboard</Link>
           ) : (
-            <button onClick={login} className="nav-button">Login</button>
+            <button onClick={handleLoginClick} className="nav-button">Login</button>
           )}
         </nav>
       </header>
@@ -30,7 +35,7 @@ const Home = () => {
           {isAuthenticated ? (
             <Link to="/dashboard" className="cta-button">Go to Dashboard</Link>
           ) : (
-            <button onClick={login} className="cta-button">Get Started</button>
+            <button onClick={handleLoginClick} className="cta-button">Get Started</button>
           )}
         </section>
 

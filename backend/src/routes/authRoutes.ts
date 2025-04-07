@@ -29,7 +29,19 @@ const frontendUrl = process.env.FRONTEND_URL || "http://localhost";
 
 // Generate JWT token
 const generateToken = (user: any) => {
-  return jwt.sign({ id: user.id }, jwtSecret, { expiresIn: "7d" });
+  return jwt.sign(
+    {
+      id: user.id,
+      azureAdUserId: user.azureAdUserId,
+      email: user.email,
+      role: user.role,
+    },
+    jwtSecret,
+    {
+      expiresIn: "7d",
+      algorithm: "HS256", // Explicitly set the algorithm
+    }
+  );
 };
 
 // Microsoft authentication routes
@@ -133,51 +145,242 @@ router.get("/microsoft/callback", async (req: Request, res: Response, next) => {
     hasSession: !!req.session,
     sessionID: req.sessionID || "none",
     hasState: !!req.query.state,
+    clientIP: req.ip || "unknown",
+    userAgent: req.get("User-Agent") || "unknown",
   });
 
-  // If there's an error in the query params, handle it
-  if (req.query.error) {
-    logger.error("OAuth error received", {
-      error: req.query.error,
-      description: req.query.error_description,
-      sessionID: req.sessionID,
+  try {
+    // If there's an error in the query params, handle it
+    if (req.query.error) {
+      logger.error("OAuth error received", {
+        error: req.query.error,
+        description: req.query.error_description,
+        sessionID: req.sessionID,
+      });
+      return res.redirect(
+        `${frontendUrl}/login?error=${
+          req.query.error
+        }&error_description=${encodeURIComponent(
+          req.query.error_description?.toString() || "Unknown error"
+        )}`
+      );
+    }
+
+    // Get the authorization code
+    const code = req.query.code?.toString();
+    if (!code) {
+      logger.error("No authorization code received");
+      return res.redirect(`${frontendUrl}/login?error=no_code`);
+    }
+
+    // Get the redirect_uri from the query params
+    const redirectUri =
+      req.query.redirect_uri?.toString() || process.env.AZURE_REDIRECT_URI;
+    if (!redirectUri) {
+      logger.error("No redirect URI in query or environment");
+      return res.redirect(`${frontendUrl}/login?error=missing_redirect_uri`);
+    }
+
+    logger.info("Using redirect URI from request", {
+      redirectUri,
+      matchesEnv: redirectUri === process.env.AZURE_REDIRECT_URI,
     });
-    return res.redirect(
-      `${frontendUrl}/login?error=${req.query.error}&error_description=${req.query.error_description}`
-    );
-  }
 
-  // Get the authorization code
-  const code = req.query.code?.toString();
-  if (!code) {
-    logger.error("No authorization code received");
-    return res.redirect(`${frontendUrl}/login?error=no_code`);
-  }
+    // Get the PKCE verifier from session
+    if (!req.session) {
+      logger.error("No session available for token exchange");
 
-  // Get the PKCE verifier from session
-  if (!req.session) {
-    logger.error("No session available for token exchange");
-    return res.redirect(`${frontendUrl}/login?error=no_session`);
-  }
+      // Development safety valve - allow callback to work without session
+      if (process.env.NODE_ENV !== "production") {
+        logger.warn("DEV MODE - Attempting token exchange without session");
+        // Try to exchange token without verifier in development
+        try {
+          // Exchange code for token (special dev flow)
+          const tokenData = await exchangeCodeForTokenDev(code, redirectUri);
+          if (!tokenData || !tokenData.access_token) {
+            logger.error("Failed to exchange code for token in dev mode");
+            return res.redirect(
+              `${frontendUrl}/login?error=token_exchange_failed`
+            );
+          }
 
-  const verifier = (req.session as any as CustomSession).pkceVerifier;
-  if (!verifier) {
-    logger.warn("Missing PKCE verifier in session for token exchange", {
-      sessionID: req.sessionID,
-      hasQueryVerifier: !!req.query.code_verifier,
-    });
+          // Extract ID token claims without validation for development
+          let userData: any;
+          try {
+            // Try to get user info from ID token if available
+            if (tokenData.id_token) {
+              const idTokenParts = tokenData.id_token.split(".");
+              if (idTokenParts.length === 3) {
+                const payload = Buffer.from(
+                  idTokenParts[1],
+                  "base64"
+                ).toString();
+                userData = JSON.parse(payload);
+              }
+            }
+          } catch (err) {
+            logger.warn("Could not parse ID token payload");
+          }
 
-    // Emergency fallback - accept code_verifier from query param (only in dev)
-    // This should only be used for debugging and testing
-    if (process.env.NODE_ENV !== "production" && req.query.code_verifier) {
-      logger.warn("Using emergency code_verifier from query param (DEV ONLY)", {
-        usingQueryParam: true,
+          // Create or update user
+          const email =
+            userData?.email ||
+            userData?.preferred_username ||
+            "dev@example.com";
+          const name = userData?.name || "Dev User";
+          const azureId = userData?.oid || userData?.sub || `dev-${Date.now()}`;
+
+          // Find or create user record
+          const [user, created] = await User.findOrCreate({
+            where: { azureAdUserId: azureId },
+            defaults: {
+              email: email,
+              username: name,
+              role: "Player",
+            },
+          });
+
+          // Generate JWT for our application
+          const token = generateToken(user);
+
+          // Redirect to frontend with token
+          logger.info("DEV MODE: Successful authentication without session", {
+            userId: user.id,
+            newUser: created,
+          });
+
+          return res.redirect(`${frontendUrl}/auth/callback?token=${token}`);
+        } catch (devError: any) {
+          logger.error("DEV MODE token exchange error", {
+            error: devError.message,
+          });
+          return res.redirect(
+            `${frontendUrl}/login?error=dev_token_exchange&error_description=${encodeURIComponent(
+              devError.message
+            )}`
+          );
+        }
+      }
+
+      return res.redirect(`${frontendUrl}/login?error=no_session`);
+    }
+
+    const verifier = (req.session as any as CustomSession).pkceVerifier;
+    if (!verifier) {
+      logger.warn("Missing PKCE verifier in session for token exchange", {
+        sessionID: req.sessionID,
+        hasQueryVerifier: !!req.query.code_verifier,
       });
 
-      // Store it in session for the exchange
-      (req.session as any as CustomSession).pkceVerifier = req.query
-        .code_verifier as string;
-    } else {
+      // Try to get verifier from query params (emergency fallback)
+      if (req.query.code_verifier) {
+        logger.warn("Using code_verifier from query params", {
+          usingQueryParam: true,
+        });
+        // Use it for token exchange
+        try {
+          const params = new URLSearchParams();
+          params.append("client_id", process.env.AZURE_CLIENT_ID || "");
+          params.append("grant_type", "authorization_code");
+          params.append("code", code);
+          params.append("redirect_uri", redirectUri);
+          params.append("code_verifier", req.query.code_verifier.toString());
+
+          // Exchange for token
+          const tokenEndpoint = `https://login.microsoftonline.com/${process.env.AZURE_TENANT_ID}/oauth2/v2.0/token`;
+          const response = await fetch(tokenEndpoint, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/x-www-form-urlencoded",
+            },
+            body: params,
+          });
+
+          if (!response.ok) {
+            const errorData = await response.json();
+            logger.error(
+              "Token exchange failed with query verifier",
+              errorData
+            );
+            return res.redirect(
+              `${frontendUrl}/login?error=token_exchange_failed&error_description=${encodeURIComponent(
+                errorData.error_description || "Exchange failed"
+              )}`
+            );
+          }
+
+          const tokenData = await response.json();
+
+          // Process user info and create JWT...
+          // (Same steps as in the main token handling below)
+
+          // Extract user info from ID token
+          let decodedToken;
+          try {
+            decodedToken = jwt.decode(tokenData.id_token);
+          } catch (decodeErr) {
+            logger.error("Failed to decode ID token", decodeErr);
+            return res.redirect(
+              `${frontendUrl}/login?error=token_decode_error`
+            );
+          }
+
+          if (!decodedToken || typeof decodedToken !== "object") {
+            logger.error("Invalid ID token format");
+            return res.redirect(
+              `${frontendUrl}/login?error=invalid_token_format`
+            );
+          }
+
+          // Find or create user
+          const azureUserId = decodedToken.oid || decodedToken.sub;
+          const email = decodedToken.email || decodedToken.preferred_username;
+          const name = decodedToken.name || email;
+
+          if (!azureUserId || !email) {
+            logger.error("Missing required user info in token", {
+              hasId: !!azureUserId,
+              hasEmail: !!email,
+            });
+            return res.redirect(`${frontendUrl}/login?error=missing_user_info`);
+          }
+
+          // Find or create user
+          const [user, created] = await User.findOrCreate({
+            where: { azureAdUserId: azureUserId },
+            defaults: {
+              email,
+              username: name,
+              role: "Player", // Default role
+            },
+          });
+
+          logger.info(
+            `User ${
+              created ? "created" : "found"
+            } from Microsoft authentication`,
+            {
+              userId: user.id,
+              azureId: azureUserId,
+              email,
+            }
+          );
+
+          // Generate JWT for our app
+          const token = generateToken(user);
+
+          // Redirect back to frontend with token
+          return res.redirect(`${frontendUrl}/auth/callback?token=${token}`);
+        } catch (fallbackError: any) {
+          logger.error("Error in fallback token exchange", fallbackError);
+          return res.redirect(
+            `${frontendUrl}/login?error=fallback_exchange_error&error_description=${encodeURIComponent(
+              fallbackError.message
+            )}`
+          );
+        }
+      }
+
       // No fallback available, redirect with error
       logger.error(
         "Missing PKCE verifier for token exchange with no fallback",
@@ -187,43 +390,188 @@ router.get("/microsoft/callback", async (req: Request, res: Response, next) => {
       );
       return res.redirect(`${frontendUrl}/login?error=missing_verifier`);
     }
-  }
 
-  // At this point we should have a verifier, either from session or emergency fallback
-  const finalVerifier = (req.session as any as CustomSession)
-    .pkceVerifier as string;
+    // We have a verifier from the session
+    const finalVerifier = verifier;
 
-  logger.info("PKCE verifier check before token exchange", {
-    hasVerifier: !!finalVerifier,
-    verifierPreview: finalVerifier
-      ? `${finalVerifier.substring(0, 5)}...${finalVerifier.substring(
-          finalVerifier.length - 5
+    logger.info("PKCE verifier check before token exchange", {
+      hasVerifier: !!finalVerifier,
+      verifierPreview: finalVerifier
+        ? `${finalVerifier.substring(0, 5)}...${finalVerifier.substring(
+            finalVerifier.length - 5
+          )}`
+        : "none",
+      sessionID: req.sessionID,
+    });
+
+    try {
+      // Skip passport authentication and implement direct token exchange for public client
+      const params = new URLSearchParams();
+      params.append("client_id", process.env.AZURE_CLIENT_ID || "");
+      params.append("grant_type", "authorization_code");
+      params.append("code", code);
+      params.append("redirect_uri", redirectUri);
+      params.append("code_verifier", finalVerifier);
+
+      // Log the actual redirect URI to help with debugging
+      logger.info("Using redirect URI for token exchange", {
+        redirectUri,
+      });
+
+      logger.info("Starting direct token exchange for public client", {
+        verifierLength: finalVerifier.length,
+        codeLength: code.length,
+        usingClientSecret: false,
+      });
+
+      // Use fetch for direct token exchange
+      const tokenEndpoint = `https://login.microsoftonline.com/${process.env.AZURE_TENANT_ID}/oauth2/v2.0/token`;
+      const response = await fetch(tokenEndpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: params,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        logger.error("Token exchange error response", {
+          status: response.status,
+          error: errorData.error,
+          description: errorData.error_description,
+        });
+        return res.redirect(
+          `${frontendUrl}/login?error=${
+            errorData.error
+          }&error_description=${encodeURIComponent(
+            errorData.error_description
+          )}`
+        );
+      }
+
+      const tokenData = await response.json();
+      logger.info("Received token data from Azure AD", {
+        hasAccessToken: !!tokenData.access_token,
+        hasIdToken: !!tokenData.id_token,
+        tokenType: tokenData.token_type,
+        expiresIn: tokenData.expires_in,
+      });
+
+      // Decode the ID token to get user information
+      if (!tokenData.id_token) {
+        logger.error("No ID token received from Azure AD");
+        return res.redirect(`${frontendUrl}/login?error=no_id_token`);
+      }
+
+      // Extract user claims from the ID token
+      let decodedToken;
+      try {
+        decodedToken = jwt.decode(tokenData.id_token);
+      } catch (err) {
+        logger.error("Error decoding ID token", err);
+        return res.redirect(`${frontendUrl}/login?error=invalid_id_token`);
+      }
+
+      if (!decodedToken || typeof decodedToken !== "object") {
+        logger.error("Invalid ID token format");
+        return res.redirect(`${frontendUrl}/login?error=invalid_token_format`);
+      }
+
+      // Extract user information
+      const azureUserId = decodedToken.oid || decodedToken.sub;
+      const email = decodedToken.email || decodedToken.preferred_username;
+      const name = decodedToken.name || email;
+
+      if (!azureUserId || !email) {
+        logger.error("Missing required user info in ID token", {
+          hasId: !!azureUserId,
+          hasEmail: !!email,
+        });
+        return res.redirect(`${frontendUrl}/login?error=missing_user_info`);
+      }
+
+      // Find or create user
+      const [user, created] = await User.findOrCreate({
+        where: { azureAdUserId: azureUserId },
+        defaults: {
+          email,
+          username: name,
+          role: "Player", // Default role
+        },
+      });
+
+      logger.info(
+        `User ${created ? "created" : "found"} from Microsoft authentication`,
+        {
+          userId: user.id,
+          azureId: azureUserId,
+          email,
+        }
+      );
+
+      // Generate our own JWT for the application
+      const token = generateToken(user);
+
+      // Clean up session data
+      if (req.session && typeof req.session.destroy === "function") {
+        req.session.destroy((err) => {
+          if (err) {
+            logger.warn("Error destroying session after login", {
+              error: err.message,
+            });
+          }
+        });
+      }
+
+      // Redirect to frontend with the JWT token
+      return res.redirect(`${frontendUrl}/auth/callback?token=${token}`);
+    } catch (error: any) {
+      logger.error("Error during token exchange", {
+        error: error.message,
+        stack: error.stack,
+      });
+      return res.redirect(
+        `${frontendUrl}/login?error=token_exchange_error&error_description=${encodeURIComponent(
+          error.message
         )}`
-      : "none",
-    sessionID: req.sessionID,
-  });
+      );
+    }
+  } catch (error: any) {
+    // Global error handler for the entire route
+    logger.error("Unhandled error in Microsoft callback", {
+      error: error.message,
+      stack: error.stack,
+    });
+    return res.redirect(
+      `${frontendUrl}/login?error=server_error&error_description=${encodeURIComponent(
+        error.message
+      )}`
+    );
+  }
+});
+
+// Helper function for development mode token exchange
+async function exchangeCodeForTokenDev(code: string, redirectUri: string) {
+  logger.info("DEV MODE: Exchanging code for token without verifier");
 
   try {
-    // Skip passport authentication and implement direct token exchange for public client
+    // For dev mode, we make a simpler token exchange request
     const params = new URLSearchParams();
     params.append("client_id", process.env.AZURE_CLIENT_ID || "");
     params.append("grant_type", "authorization_code");
     params.append("code", code);
-    params.append("redirect_uri", process.env.AZURE_REDIRECT_URI || "");
-    params.append("code_verifier", finalVerifier);
+    params.append("redirect_uri", redirectUri);
+    // Add client secret if available (confidential client)
+    if (process.env.AZURE_CLIENT_SECRET) {
+      params.append("client_secret", process.env.AZURE_CLIENT_SECRET);
+    } else {
+      // Generate a mock code verifier (this is for development only)
+      const mockVerifier = crypto.randomBytes(43).toString("base64url");
+      params.append("code_verifier", mockVerifier);
+    }
 
-    // Log the actual redirect URI to help with debugging
-    logger.info("Using redirect URI for token exchange", {
-      redirectUri: process.env.AZURE_REDIRECT_URI,
-    });
-
-    logger.info("Starting direct token exchange for public client", {
-      verifierLength: finalVerifier.length,
-      codeLength: code.length,
-      usingClientSecret: false,
-    });
-
-    // Use fetch for direct token exchange
+    // Make the token request
     const tokenEndpoint = `https://login.microsoftonline.com/${process.env.AZURE_TENANT_ID}/oauth2/v2.0/token`;
     const response = await fetch(tokenEndpoint, {
       method: "POST",
@@ -233,70 +581,21 @@ router.get("/microsoft/callback", async (req: Request, res: Response, next) => {
       body: params,
     });
 
-    const tokenData = await response.json();
-
     if (!response.ok) {
-      logger.error("Token exchange failed", {
+      const errorData = await response.json();
+      logger.error("DEV MODE: Token exchange failed", {
         status: response.status,
-        error: tokenData.error,
-        errorDescription: tokenData.error_description,
+        error: errorData,
       });
-      return res.redirect(
-        `${frontendUrl}/login?error=${tokenData.error}&error_description=${tokenData.error_description}`
-      );
+      throw new Error(errorData.error_description || "Token exchange failed");
     }
 
-    // Parse the ID token
-    const idToken = tokenData.id_token;
-    if (!idToken) {
-      logger.error("No ID token received");
-      return res.redirect(`${frontendUrl}/login?error=no_id_token`);
-    }
-
-    // Decode the JWT token (not verifying signature here)
-    const tokenParts = idToken.split(".");
-    const payload = JSON.parse(Buffer.from(tokenParts[1], "base64").toString());
-
-    // Find or create user based on ID token claims
-    let [user, created] = await User.findOrCreate({
-      where: { azureAdUserId: payload.oid } as any,
-      defaults: {
-        email: payload.email || payload.preferred_username,
-        username: payload.name,
-        role: "Player", // Default role
-      } as any,
-    });
-
-    if (created) {
-      logger.info("Created new user from Microsoft login", {
-        userId: user.id,
-        email: user.email,
-      });
-    }
-
-    // Generate JWT token for the client
-    const jwtToken = generateToken({
-      id: user.id,
-      azureAdUserId: user.azureAdUserId,
-      email: user.email,
-      role: user.role,
-    });
-
-    // Redirect to frontend with token
-    const redirectUrl = `${frontendUrl}/auth/callback?token=${jwtToken}`;
-    logger.info("Authentication successful, redirecting with token");
-    return res.redirect(redirectUrl);
+    return await response.json();
   } catch (error) {
-    logger.error("Error during token exchange", {
-      error: error instanceof Error ? error.message : String(error),
-    });
-    return res.redirect(
-      `${frontendUrl}/login?error=token_exchange_failed&error_description=${encodeURIComponent(
-        error instanceof Error ? error.message : "Unknown error"
-      )}`
-    );
+    logger.error("DEV MODE: Error in token exchange", error);
+    throw error;
   }
-});
+}
 
 // Handle POST callback for PKCE flow
 router.post(

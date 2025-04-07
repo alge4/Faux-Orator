@@ -1,384 +1,213 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
-import logger from '../utils/logger';  // Add a logger if you don't have one
-import { 
-  CircularProgress, 
-  Typography, 
-  Box, 
-  Button, 
-  Alert, 
-  Paper 
-} from '@mui/material';
-import { useMsal } from "@azure/msal-react";
+import { useNavigate, useLocation } from 'react-router-dom';
+import { CircularProgress, Typography, Box, Button, Alert, Paper, Divider } from '@mui/material';
+import { useAuth } from '../context/AuthContext';
+import AuthUtils from '../utils/auth';
 
-// Custom logger function
-const logAuth = (level: 'info' | 'warn' | 'error', message: string, data?: any) => {
-  const timestamp = new Date().toISOString();
-  const logMessage = `[${timestamp}] [AUTH] ${message}`;
-  
-  switch (level) {
-    case 'info':
-      console.info(logMessage, data || '');
-      break;
-    case 'warn':
-      console.warn(logMessage, data || '');
-      break;
-    case 'error':
-      console.error(logMessage, data || '');
-      break;
-  }
-};
-
-// Utility to handle PKCE verifier retrieval and cleanup
-const handlePKCE = {
-  // Get verifier from all possible storage locations
-  getVerifier: (urlParams: URLSearchParams): string | null => {
-    let verifier = null;
-    
-    // Try extracting from state parameter first (most reliable)
-    try {
-      const state = urlParams.get('state');
-      if (state) {
-        const stateObj = JSON.parse(atob(state));
-        if (stateObj && stateObj.pkceVerifier) {
-          logAuth('info', 'Found PKCE verifier in state parameter');
-          verifier = stateObj.pkceVerifier;
-          // Save to session storage for backend's benefit
-          sessionStorage.setItem('pkce_verifier', verifier);
-          return verifier;
-        }
-      }
-    } catch (e) {
-      logAuth('warn', 'Failed to parse state parameter', e);
-    }
-    
-    // Try session storage next
-    verifier = sessionStorage.getItem('pkce_verifier');
-    
-    // If not in sessionStorage, try localStorage
-    if (!verifier) {
-      logAuth('info', 'PKCE verifier not found in sessionStorage, checking localStorage');
-      verifier = localStorage.getItem('pkce_verifier');
-      
-      // If found in localStorage, copy to sessionStorage for consistency
-      if (verifier) {
-        sessionStorage.setItem('pkce_verifier', verifier);
-      }
-    }
-    
-    if (verifier) {
-      logAuth('info', `Retrieved PKCE verifier (length: ${verifier.length})`);
-    } else {
-      logAuth('warn', 'No PKCE verifier found in any storage location');
-    }
-    
-    return verifier;
-  },
-  
-  // Clean up verifier from all storage locations
-  cleanupVerifier: (): void => {
-    sessionStorage.removeItem('pkce_verifier');
-    localStorage.removeItem('pkce_verifier');
-    logAuth('info', 'PKCE verifier cleared from all storage locations');
-  }
-};
-
-const AuthCallback = () => {
+const AuthCallback: React.FC = () => {
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [errorDetails, setErrorDetails] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [debugInfo, setDebugInfo] = useState<Record<string, any>>({});
   const navigate = useNavigate();
-  const { instance } = useMsal();
+  const location = useLocation();
+  const { checkAuth, isAuthenticated, isLoading } = useAuth();
   
-  // Helper function for logging auth operations
-  const logAuth = (level: 'info' | 'error' | 'warn', ...messages: any[]) => {
-    if (level === 'error') {
-      console.error('Auth:', ...messages);
-    } else {
-      console.log('Auth:', ...messages);
-    }
-  };
+  console.log('🔍 AuthCallback: Component rendered', { 
+    isAuthenticated,
+    isLoading,
+    currentUrl: window.location.href,
+    hasNavigate: !!navigate,
+    pathname: location.pathname
+  });
 
   useEffect(() => {
     const handleCallback = async () => {
       try {
-        logAuth('info', 'Processing auth callback');
+        console.log('🔍 AuthCallback: Processing auth callback - START', {
+          time: new Date().toISOString(),
+          url: window.location.href
+        });
         
         // Get URL parameters
-        const urlParams = new URLSearchParams(window.location.search);
+        const urlParams = new URLSearchParams(location.search);
         const code = urlParams.get('code');
-        const error = urlParams.get('error');
+        const urlError = urlParams.get('error');
         const errorDescription = urlParams.get('error_description');
+        const token = urlParams.get('token');
+        const state = urlParams.get('state');
+        
+        // Collect debug info
+        const debug = {
+          url: window.location.href,
+          hasCode: !!code,
+          hasToken: !!token,
+          hasState: !!state,
+          hasError: !!urlError,
+          errorDetails: urlError ? `${urlError}: ${errorDescription || 'No description'}` : null,
+          currentTimestamp: new Date().toISOString(),
+          localStorage: {
+            hasToken: !!localStorage.getItem('auth_token'),
+            isLoggedIn: sessionStorage.getItem('isLoggedIn'),
+            timeNow: Date.now()
+          },
+          authContext: {
+            isAuthenticated,
+            isLoading
+          }
+        };
+        
+        console.log('🔍 AuthCallback: Debug info', debug);
+        setDebugInfo(debug);
         
         // Handle errors passed in URL
-        if (error) {
-          logAuth('error', `Authentication error: ${error}`, errorDescription);
-          setError(`Authentication failed: ${error}`);
-          setErrorDetails(errorDescription || '');
-          setTimeout(() => navigate('/login'), 3000);
+        if (urlError) {
+          console.error(`🔍 AuthCallback: Authentication error: ${urlError}`, errorDescription);
+          setError(`Authentication failed: ${urlError}\n${errorDescription || ''}`);
+          setLoading(false);
           return;
         }
 
-        // If we have an authorization code, exchange it for tokens
-        if (code) {
-          logAuth('info', 'Authorization code received, exchanging for token');
-          
-          // Get the PKCE verifier using our utility (passing URL params to extract from state if needed)
-          const verifier = handlePKCE.getVerifier(urlParams);
-          
-          // Log details for debugging
-          logAuth('info', 'PKCE verifier status:', {
-            found: !!verifier,
-            length: verifier ? verifier.length : 0,
-            preview: verifier ? `${verifier.substring(0, 5)}...${verifier.substring(verifier.length - 5)}` : 'none',
-            stateParam: urlParams.get('state') ? 'present' : 'missing',
-            searchParams: window.location.search
+        // If we have a token directly in the URL (our backend redirects here with a token)
+        if (token) {
+          console.log('🔍 AuthCallback: Token received in URL, storing it', {
+            tokenPreview: token.substring(0, 10) + '...',
+            tokenLength: token.length,
+            timestamp: Date.now()
           });
           
-          if (!verifier) {
-            logAuth('warn', 'No PKCE verifier found in any storage location, trying direct token exchange');
-            
-            try {
-              // Try to extract verifier from state as last resort
-              let emergencyVerifier = null;
-              try {
-                const state = urlParams.get('state');
-                if (state) {
-                  const stateObj = JSON.parse(atob(state));
-                  if (stateObj && stateObj.pkceVerifier) {
-                    emergencyVerifier = stateObj.pkceVerifier;
-                    logAuth('info', 'Recovered verifier from state for emergency direct exchange');
-                  }
-                }
-              } catch (e) {
-                logAuth('warn', 'Failed to parse state parameter in emergency mode', e);
-              }
-              
-              if (!emergencyVerifier) {
-                logAuth('error', 'No PKCE verifier available from any source');
-                setError('Authentication failed: Missing PKCE verifier');
-                setTimeout(() => navigate('/login'), 3000);
-                return;
-              }
-              
-              // Direct token exchange with Azure using the emergency verifier
-              logAuth('info', 'Attempting direct token exchange with recovered verifier');
-              
-              const tokenParams = new URLSearchParams();
-              tokenParams.append('client_id', process.env.AZURE_CLIENT_ID || process.env.REACT_APP_AZURE_CLIENT_ID || '');
-              tokenParams.append('grant_type', 'authorization_code');
-              tokenParams.append('code', code);
-              tokenParams.append('redirect_uri', `${window.location.origin}/auth/callback`);
-              tokenParams.append('code_verifier', emergencyVerifier);
-              
-              // Make token request directly to Azure
-              const tokenEndpoint = `https://login.microsoftonline.com/${process.env.AZURE_TENANT_ID || process.env.REACT_APP_AZURE_TENANT_ID}/oauth2/v2.0/token`;
-              
-              const tokenResponse = await fetch(tokenEndpoint, {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/x-www-form-urlencoded',
-                },
-                body: tokenParams,
+          // Store the token
+          AuthUtils.setToken(token);
+          console.log('🔍 AuthCallback: Token stored in localStorage', {
+            hasToken: !!localStorage.getItem('auth_token'),
+            timestamp: Date.now()
+          });
+          
+          // Set session flag to maintain login state
+          sessionStorage.setItem('isLoggedIn', 'true');
+          console.log('🔍 AuthCallback: Session flag set', {
+            isLoggedIn: sessionStorage.getItem('isLoggedIn')
+          });
+          
+          // IMMEDIATE REDIRECT - Don't wait for auth state to update
+          console.log('🔍 AuthCallback: EMERGENCY REDIRECT to dashboard');
+          window.location.replace('/dashboard');
+          return;
+        }
+        
+        // If we have an authorization code, let the backend handle the exchange
+        if (code) {
+          console.log('🔍 AuthCallback: Authorization code received, redirecting to backend', {
+            codePreview: code.substring(0, 5) + '...',
+            hasState: !!state
+          });
+          
+          // Build backend URL with config fallback
+          const backendUrl = process.env.REACT_APP_API_URL || 'http://localhost:3000';
+          
+          // Pass all relevant parameters to the backend callback
+          const redirectParams = new URLSearchParams();
+          redirectParams.append('code', code);
+          redirectParams.append('redirect_uri', `${window.location.origin}/auth/callback`);
+          
+          // Add state if we have it (important for security)
+          if (state) {
+            redirectParams.append('state', state);
+          }
+          
+          // If in development, add the code_verifier directly in the URL for backup
+          // This is a workaround for session issues in development
+          if (process.env.NODE_ENV !== 'production') {
+            const mockVerifier = sessionStorage.getItem('pkce_verifier');
+            if (mockVerifier) {
+              redirectParams.append('code_verifier', mockVerifier);
+              console.log('🔍 AuthCallback: DEV MODE - Added code_verifier to request', {
+                verifierPreview: mockVerifier.substring(0, 5) + '...'
               });
-              
-              const tokenData = await tokenResponse.json();
-              
-              if (!tokenResponse.ok) {
-                logAuth('error', 'Emergency token exchange failed', tokenData.error, tokenData.error_description);
-                setError(`Token exchange failed: ${tokenData.error}`);
-                setErrorDetails(tokenData.error_description || '');
-                setTimeout(() => navigate('/login'), 3000);
-                return;
-              }
-              
-              // Extract the ID token and proceed as normal
-              const idToken = tokenData.id_token;
-              if (!idToken) {
-                logAuth('error', 'No ID token received from emergency exchange');
-                setError('Authentication failed: No ID token received');
-                setTimeout(() => navigate('/login'), 3000);
-                return;
-              }
-              
-              // Send to backend for verification
-              const backendUrl = process.env.REACT_APP_API_URL || 'http://localhost:3000';
-              const authResponse = await fetch(`${backendUrl}/api/auth/verify-token`, {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ 
-                  idToken,
-                  code_verifier: verifier // Include verifier from frontend as fallback
-                }),
-                credentials: 'include', // This is important for session cookies
-                mode: 'cors' // Explicitly set CORS mode
-              });
-              
-              if (!authResponse.ok) {
-                const errorData = await authResponse.json().catch(() => ({}));
-                logAuth('error', 'Backend authentication failed', {
-                  status: authResponse.status,
-                  statusText: authResponse.statusText,
-                  ...errorData
-                });
-                setError('Backend authentication failed');
-                setErrorDetails(errorData.message || authResponse.statusText);
-                setTimeout(() => navigate('/login'), 3000);
-                return;
-              }
-              
-              const { token } = await authResponse.json();
-              
-              // Authentication succeeded with the emergency flow
-              logAuth('info', 'Emergency authentication successful');
-              localStorage.setItem('token', token);
-              navigate('/');
-              return;
-              
-            } catch (fallbackError) {
-              logAuth('error', 'Error during emergency authentication', fallbackError);
-              setError('Authentication failed: Missing PKCE verifier');
-              setTimeout(() => navigate('/login'), 3000);
-              return;
+            } else {
+              console.warn('🔍 AuthCallback: No code_verifier found in sessionStorage');
             }
           }
           
-          try {
-            // For SPA clients, we must exchange the code for tokens directly from the browser
-            const tokenParams = new URLSearchParams();
-            tokenParams.append('client_id', process.env.AZURE_CLIENT_ID || process.env.REACT_APP_AZURE_CLIENT_ID || '');
-            tokenParams.append('grant_type', 'authorization_code');
-            tokenParams.append('code', code);
-            // For SPAs, we must use a frontend URL, not the backend callback
-            tokenParams.append('redirect_uri', `${window.location.origin}/auth/callback`);
-            tokenParams.append('code_verifier', verifier);
-            
-            // Make token request
-            const tokenEndpoint = `https://login.microsoftonline.com/${process.env.AZURE_TENANT_ID || process.env.REACT_APP_AZURE_TENANT_ID}/oauth2/v2.0/token`;
-            
-            logAuth('info', 'Making token request to Azure');
-            const tokenResponse = await fetch(tokenEndpoint, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-              },
-              body: tokenParams,
-            });
-            
-            const tokenData = await tokenResponse.json();
-            
-            if (!tokenResponse.ok) {
-              logAuth('error', 'Token exchange failed', tokenData.error, tokenData.error_description);
-              setError(`Token exchange failed: ${tokenData.error}`);
-              setErrorDetails(tokenData.error_description || '');
-              setTimeout(() => navigate('/login'), 3000);
+          // Build the redirect URL
+          const redirectUrl = `${backendUrl}/api/auth/microsoft/callback?${redirectParams.toString()}`;
+          
+          console.log('🔍 AuthCallback: Redirecting to backend callback:', redirectUrl);
+          
+          // Store in debug info
+          setDebugInfo(prev => ({ ...prev, redirectUrl }));
+          
+          // Redirect to backend
+          window.location.href = redirectUrl;
               return;
             }
             
-            // Extract the ID token from the response
-            const idToken = tokenData.id_token;
-            if (!idToken) {
-              logAuth('error', 'No ID token received');
-              setError('Authentication failed: No ID token received');
-              setTimeout(() => navigate('/login'), 3000);
-              return;
-            }
-            
-            // Send the ID token to your backend to create or retrieve a user and get a session
-            logAuth('info', 'Token received, authenticating with backend');
-            const backendUrl = process.env.REACT_APP_API_URL || 'http://localhost:3000';
-            
-            const authResponse = await fetch(`${backendUrl}/api/auth/verify-token`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({ 
-                idToken,
-                code_verifier: verifier // Include verifier from frontend as fallback
-              }),
-              credentials: 'include', // This is important for session cookies
-              mode: 'cors' // Explicitly set CORS mode
-            });
-            
-            if (!authResponse.ok) {
-              const errorData = await authResponse.json().catch(() => ({}));
-              logAuth('error', 'Backend authentication failed', {
-                status: authResponse.status,
-                statusText: authResponse.statusText,
-                ...errorData
-              });
-              setError('Backend authentication failed');
-              setErrorDetails(errorData.message || authResponse.statusText);
-              setTimeout(() => navigate('/login'), 3000);
-              return;
-            }
-            
-            const { token } = await authResponse.json();
-            
-            // Successfully authenticated
-            logAuth('info', 'Authentication successful, saving token');
-            localStorage.setItem('token', token);
-            
-            // Clean up - remove PKCE verifier from all storage locations
-            handlePKCE.cleanupVerifier();
-            
-            // Redirect to dashboard
-            navigate('/dashboard');
-          } catch (exchangeError: any) {
-            logAuth('error', 'Error during token exchange', exchangeError);
-            setError('Error during token exchange');
-            setErrorDetails(exchangeError.message || '');
-            setTimeout(() => navigate('/login'), 3000);
-          }
-        } else {
-          // No code or token received
-          logAuth('error', 'No authorization code received');
-          setError('Authentication failed: No authorization code received');
-          setTimeout(() => navigate('/login'), 3000);
-        }
-      } catch (error) {
-        logAuth('error', 'Auth callback error:', error);
-        setError('Authentication failed');
-        setErrorDetails(error instanceof Error ? error.message : 'Unknown error');
-        setTimeout(() => navigate('/login'), 3000);
-      } finally {
+        // If we don't have a code or token, something went wrong
+        console.error('🔍 AuthCallback: No code or token found in URL');
+        setError('Authentication failed: No authorization code or token received');
+        setLoading(false);
+      } catch (error: any) {
+        console.error('🔍 AuthCallback: Error during authentication', {
+          error: error.message,
+          stack: error.stack
+        });
+        setError(`Authentication failed: ${error.message || 'Unknown error'}`);
+        setDebugInfo(prev => ({ ...prev, error: error.message || 'Unknown error', stack: error.stack }));
         setLoading(false);
       }
     };
 
     handleCallback();
-  }, [navigate]);
+  }, [location.search, navigate, checkAuth, isAuthenticated, isLoading]);
+  
+  // Add another effect to monitor auth state changes
+  useEffect(() => {
+    console.log('🔍 AuthCallback: Auth state change detected', {
+      isAuthenticated,
+      isLoading,
+      timestamp: Date.now(),
+      url: window.location.href
+    });
+    
+    // If auth is completed and we're authenticated, try navigating again
+    if (isAuthenticated && !isLoading && !loading && !error) {
+      console.log('🔍 AuthCallback: User is authenticated but still on callback page - forcing navigation');
+      navigate('/dashboard', { replace: true });
+    }
+  }, [isAuthenticated, isLoading, navigate, loading, error]);
 
   const handleRetryLogin = () => {
-    logAuth('info', 'User initiated retry login');
-    // Use the backend URL for Microsoft authentication
-    const backendUrl = process.env.REACT_APP_API_URL || 'http://localhost:3000';
-    window.location.href = `${backendUrl}/api/auth/microsoft`;
+    console.log('🔍 AuthCallback: User clicked retry login button');
+    navigate('/login');
+  };
+  
+  const handleGoHome = () => {
+    console.log('🔍 AuthCallback: User clicked go home button');
+    navigate('/');
+  };
+  
+  const handleManualNav = () => {
+    console.log('🔍 AuthCallback: User clicked manual navigation button');
+    window.location.href = '/dashboard';
   };
 
   if (loading) {
     return (
       <Box 
-        display="flex" 
-        flexDirection="column" 
-        justifyContent="center" 
-        alignItems="center" 
-        height="100vh"
-        bgcolor="#f5f5f5"
+        sx={{ 
+          display: 'flex', 
+          flexDirection: 'column', 
+          alignItems: 'center', 
+          justifyContent: 'center', 
+          height: '100vh' 
+        }}
       >
-        <Paper elevation={3} sx={{ p: 4, maxWidth: 400, textAlign: 'center' }}>
-          <CircularProgress size={60} thickness={4} sx={{ mb: 2 }} />
-          <Typography variant="h5" gutterBottom>
-            Completing Authentication
+        <CircularProgress size={60} />
+        <Typography variant="h6" sx={{ mt: 3 }}>
+          Completing authentication...
           </Typography>
-          <Typography variant="body1" color="textSecondary">
-            Please wait while we securely log you in...
+        <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+          Communicating with Microsoft authentication servers
           </Typography>
-        </Paper>
       </Box>
     );
   }
@@ -386,37 +215,62 @@ const AuthCallback = () => {
   if (error) {
     return (
       <Box 
-        display="flex" 
-        flexDirection="column" 
-        justifyContent="center" 
-        alignItems="center" 
-        height="100vh"
-        bgcolor="#f5f5f5"
+        sx={{ 
+          display: 'flex', 
+          justifyContent: 'center', 
+          alignItems: 'center', 
+          height: '100vh', 
+          p: 2 
+        }}
       >
-        <Paper elevation={3} sx={{ p: 4, maxWidth: 500 }}>
-          <Alert severity="error" sx={{ mb: 2 }}>
+        <Paper 
+          elevation={3} 
+          sx={{ 
+            p: 4, 
+            maxWidth: 600, 
+            width: '100%' 
+          }}
+        >
+          <Typography variant="h5" gutterBottom color="error">
+            Authentication Error
+          </Typography>
+          
+          <Alert severity="error" sx={{ my: 2 }}>
             {error}
           </Alert>
           
-          {errorDetails && (
-            <Typography variant="body2" color="textSecondary" sx={{ mb: 3 }}>
-              Details: {errorDetails}
+          <Box sx={{ mt: 4 }}>
+            <Typography variant="h6" gutterBottom>
+              Debug Information
             </Typography>
-          )}
+            <Box sx={{ 
+              bgcolor: 'background.default', 
+              p: 2, 
+              borderRadius: 1,
+              maxHeight: '200px',
+              overflow: 'auto',
+              fontSize: '0.8rem',
+              fontFamily: 'monospace'
+            }}>
+              <pre>{JSON.stringify(debugInfo, null, 2)}</pre>
+            </Box>
+          </Box>
           
-          <Box display="flex" justifyContent="space-between">
+          <Divider sx={{ my: 3 }} />
+          
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 3 }}>
             <Button 
               variant="outlined" 
-              onClick={() => navigate('/')}
+              onClick={handleGoHome}
             >
-              Return Home
+              Go to Homepage
             </Button>
             <Button 
               variant="contained" 
               color="primary" 
               onClick={handleRetryLogin}
             >
-              Try Again
+              Return to Login
             </Button>
           </Box>
         </Paper>
@@ -424,7 +278,57 @@ const AuthCallback = () => {
     );
   }
 
-  return null;
+  // This should not be reached normally, but as a fallback
+  return (
+    <Box 
+      sx={{ 
+        display: 'flex', 
+        flexDirection: 'column',
+        justifyContent: 'center',
+        alignItems: 'center', 
+        height: '100vh' 
+      }}
+    >
+      <Typography variant="h5" gutterBottom>
+        Redirecting to dashboard...
+      </Typography>
+      <CircularProgress size={24} sx={{ mt: 2 }} />
+      
+      {/* Emergency manual navigation button */}
+      <Button 
+        variant="contained"
+        color="primary"
+        onClick={handleManualNav}
+        sx={{ mt: 4 }}
+      >
+        Click here if not redirected automatically
+      </Button>
+      
+      <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+        Authentication complete! If you're still seeing this screen, please click the button above.
+      </Typography>
+      
+      <Box sx={{ 
+        bgcolor: 'background.default', 
+        p: 2, 
+        borderRadius: 1,
+        mt: 4,
+        maxWidth: '80%',
+        maxHeight: '150px',
+        overflow: 'auto',
+        fontSize: '0.8rem',
+        fontFamily: 'monospace'
+      }}>
+        <pre>Auth state: {JSON.stringify({
+          isAuthenticated,
+          isLoading,
+          hasToken: !!localStorage.getItem('auth_token'),
+          sessionFlag: sessionStorage.getItem('isLoggedIn'),
+          currentPath: window.location.pathname
+        }, null, 2)}</pre>
+      </Box>
+    </Box>
+  );
 };
 
 export default AuthCallback; 

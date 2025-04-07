@@ -30,7 +30,10 @@ class TokenService {
           iat: Math.floor(Date.now() / 1000), // Issued at time
         },
         this.jwtSecret,
-        { expiresIn: this.tokenExpiration }
+        {
+          expiresIn: this.tokenExpiration,
+          algorithm: "HS256", // Explicitly use HS256 algorithm
+        }
       );
 
       logger.info("JWT token generated", {
@@ -47,7 +50,9 @@ class TokenService {
 
   verifyToken(token: string): TokenPayload & { iat: number } {
     try {
-      const decoded = jwt.verify(token, this.jwtSecret) as TokenPayload & {
+      const decoded = jwt.verify(token, this.jwtSecret, {
+        algorithms: ["HS256"], // Only accept HS256 algorithm
+      }) as TokenPayload & {
         iat: number;
       };
       return decoded;

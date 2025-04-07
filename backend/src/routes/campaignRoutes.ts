@@ -8,61 +8,55 @@ import logger from "../utils/logger";
 const router = express.Router();
 
 // Get all campaigns for the logged-in user
-router.get(
-  "/",
-  (req: Request, res: Response, next: NextFunction) => {
-    authenticateJWT(req as AuthRequest, res, next);
-  },
-  async (req: Request, res: Response) => {
-    try {
-      const authReq = req as AuthRequest;
-      const userId = authReq.user?.id;
+router.get("/", authenticateJWT, async (req: Request, res: Response) => {
+  try {
+    const authReq = req as AuthRequest;
+    const userId = authReq.user?.id;
 
-      if (!userId) {
-        return res.status(401).json({ message: "User not authenticated" });
-      }
-
-      // Find campaigns where the user is the DM
-      const campaigns = await Campaign.findAll({
-        where: { dmId: userId },
-        order: [["updatedAt", "DESC"]],
-      });
-
-      // TODO: In the future, also include campaigns where the user is a player
-      // This will require implementing the CampaignUser model and relationship
-
-      // Get user preferences for these campaigns
-      const campaignIds = campaigns.map((campaign) => campaign.id);
-      const preferences = await UserCampaignPreference.findAll({
-        where: {
-          userId,
-          campaignId: campaignIds,
-        },
-      });
-
-      // Create a map of preferences by campaign ID
-      const preferencesMap = preferences.reduce((map, pref) => {
-        map[pref.campaignId] = pref;
-        return map;
-      }, {});
-
-      // Merge campaign data with preferences
-      const campaignsWithPreferences = campaigns.map((campaign) => {
-        const pref = preferencesMap[campaign.id];
-        return {
-          ...campaign.toJSON(),
-          isFavorite: pref ? pref.isFavorite : false,
-          lastAccessed: pref ? pref.lastAccessed : null,
-        };
-      });
-
-      return res.status(200).json(campaignsWithPreferences);
-    } catch (error) {
-      logger.error("Error fetching campaigns:", error);
-      return res.status(500).json({ message: "Server error" });
+    if (!userId) {
+      return res.status(401).json({ message: "User not authenticated" });
     }
+
+    // Find campaigns where the user is the DM
+    const campaigns = await Campaign.findAll({
+      where: { dmId: userId },
+      order: [["updatedAt", "DESC"]],
+    });
+
+    // TODO: In the future, also include campaigns where the user is a player
+    // This will require implementing the CampaignUser model and relationship
+
+    // Get user preferences for these campaigns
+    const campaignIds = campaigns.map((campaign) => campaign.id);
+    const preferences = await UserCampaignPreference.findAll({
+      where: {
+        userId,
+        campaignId: campaignIds,
+      },
+    });
+
+    // Create a map of preferences by campaign ID
+    const preferencesMap = preferences.reduce((map, pref) => {
+      map[pref.campaignId] = pref;
+      return map;
+    }, {});
+
+    // Merge campaign data with preferences
+    const campaignsWithPreferences = campaigns.map((campaign) => {
+      const pref = preferencesMap[campaign.id];
+      return {
+        ...campaign.toJSON(),
+        isFavorite: pref ? pref.isFavorite : false,
+        lastAccessed: pref ? pref.lastAccessed : null,
+      };
+    });
+
+    res.json(campaignsWithPreferences);
+  } catch (error) {
+    logger.error("Error fetching campaigns:", error);
+    res.status(500).json({ message: "Server error" });
   }
-);
+});
 
 // Create a new campaign
 router.post("/", authenticateJWT, async (req: Request, res: Response) => {
@@ -110,9 +104,7 @@ router.post("/", authenticateJWT, async (req: Request, res: Response) => {
 // Get a specific campaign by ID
 router.get(
   "/:campaignId",
-  (req: Request, res: Response, next: NextFunction) => {
-    authenticateJWT(req as AuthRequest, res, next);
-  },
+  authenticateJWT,
   async (req: Request, res: Response) => {
     try {
       const authReq = req as AuthRequest;
@@ -155,9 +147,7 @@ router.get(
 // Update an existing campaign
 router.put(
   "/:campaignId",
-  (req: Request, res: Response, next: NextFunction) => {
-    authenticateJWT(req as AuthRequest, res, next);
-  },
+  authenticateJWT,
   async (req: Request, res: Response) => {
     try {
       const authReq = req as AuthRequest;
@@ -208,9 +198,7 @@ router.put(
 // Delete a campaign
 router.delete(
   "/:campaignId",
-  (req: Request, res: Response, next: NextFunction) => {
-    authenticateJWT(req as AuthRequest, res, next);
-  },
+  authenticateJWT,
   async (req: Request, res: Response) => {
     try {
       const authReq = req as AuthRequest;

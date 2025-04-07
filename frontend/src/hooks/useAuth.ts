@@ -29,11 +29,17 @@ export const useMsalAuth = () => {
           });
 
           // Set user data
-          setUser({
+          const userData = {
             name: currentAccount.name,
             username: currentAccount.username,
             token: response.accessToken,
-          });
+          };
+
+          // Store token in localStorage with consistent key
+          localStorage.setItem("authToken", response.accessToken);
+
+          // Set user data
+          setUser(userData);
         } else {
           // No MSAL account found
           setUser(null);
@@ -53,7 +59,8 @@ export const useMsalAuth = () => {
   const login = useCallback(async () => {
     try {
       // Use MSAL for login
-      return instance.loginRedirect(loginRequest);
+      await instance.loginRedirect(loginRequest);
+      return { success: true }; // This won't actually be returned due to redirect
     } catch (error) {
       console.error("Login error:", error);
       throw error;
@@ -62,6 +69,10 @@ export const useMsalAuth = () => {
 
   // Logout method
   const logout = useCallback(() => {
+    // Clear localStorage token first
+    localStorage.removeItem("authToken");
+    localStorage.removeItem("token"); // Also remove legacy token
+
     // Use MSAL for logout
     instance.logout();
   }, [instance]);

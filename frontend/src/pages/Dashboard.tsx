@@ -30,7 +30,12 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  Fab
+  Fab,
+  Table,
+  TableHead,
+  TableBody,
+  TableCell,
+  TableRow
 } from '@mui/material';
 import { 
   ArrowDropDown as ChevronDownIcon, 
@@ -143,6 +148,9 @@ export default function Dashboard() {
   
   // Add sort state for campaigns
   const [sortMethod, setSortMethod] = useState<'name' | 'date'>('name');
+  
+  // Add state for search query
+  const [searchQuery, setSearchQuery] = useState('');
   
   // Log WebSocket connection status
   useEffect(() => {
@@ -612,6 +620,24 @@ export default function Dashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Handle search input changes
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(e.target.value);
+  };
+
+  // Add function to filter campaigns based on search query
+  const getFilteredCampaigns = () => {
+    if (!searchQuery.trim()) {
+      return getSortedCampaigns();
+    }
+    
+    const query = searchQuery.toLowerCase();
+    return getSortedCampaigns().filter(campaign => 
+      campaign.name.toLowerCase().includes(query) || 
+      (campaign.description && campaign.description.toLowerCase().includes(query))
+    );
+  };
+
   return (
     <Box sx={{ display: 'flex', height: '100vh' }}>
       {/* AppBar for top navigation */}
@@ -690,7 +716,9 @@ export default function Dashboard() {
           <TextField
             placeholder="Search campaigns..."
             size="small"
-            fullWidth
+            variant="outlined"
+            value={searchQuery}
+            onChange={handleSearchChange}
             InputProps={{
               startAdornment: (
                 <SearchIcon fontSize="small" sx={{ mr: 1, color: 'text.secondary' }} />
@@ -865,9 +893,9 @@ export default function Dashboard() {
           
           {isLoading ? (
             <CircularProgress size={24} />
-          ) : getSortedCampaigns().length > 0 ? (
+          ) : getFilteredCampaigns().length > 0 ? (
             <Grid container spacing={2}>
-              {getSortedCampaigns().map((campaign) => (
+              {getFilteredCampaigns().map((campaign) => (
                 <Grid item xs={12} sm={6} md={4} key={campaign.id}>
                   <Card 
                     sx={{ 
@@ -952,9 +980,110 @@ export default function Dashboard() {
           Select a campaign from the sidebar or create a new one to get started.
         </Typography>
         
+        {/* Campaign Table */}
+        <Box sx={{ width: '100%', mt: 2, mb: 4 }}>
+          <Typography variant="h5" gutterBottom>
+            Available Campaigns
+          </Typography>
+          <Card>
+            <Box sx={{ overflow: 'auto' }}>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Campaign Name</TableCell>
+                    <TableCell>Role</TableCell>
+                    <TableCell>Last Accessed</TableCell>
+                    <TableCell align="center">Actions</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {isLoading ? (
+                    <TableRow>
+                      <TableCell colSpan={4} align="center">
+                        <CircularProgress size={30} />
+                      </TableCell>
+                    </TableRow>
+                  ) : getFilteredCampaigns().length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={4} align="center">
+                        No campaigns found. Create one to get started!
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    getFilteredCampaigns().map((campaign) => (
+                      <TableRow 
+                        key={campaign.id} 
+                        hover 
+                        onClick={() => handleCampaignClick(campaign.id)}
+                        sx={{ cursor: 'pointer' }}
+                      >
+                        <TableCell>
+                          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                            {campaign.isFavorite ? (
+                              <StarIcon color="warning" fontSize="small" sx={{ mr: 1 }} />
+                            ) : (
+                              <StarBorderIcon fontSize="small" sx={{ mr: 1, color: 'text.secondary' }} />
+                            )}
+                            <Typography variant="body1">{campaign.name}</Typography>
+                          </Box>
+                        </TableCell>
+                        <TableCell>{campaign.role || 'Player'}</TableCell>
+                        <TableCell>
+                          {campaign.lastAccessed 
+                            ? new Date(campaign.lastAccessed).toLocaleDateString() 
+                            : 'Never'}
+                        </TableCell>
+                        <TableCell align="center">
+                          <Box>
+                            <IconButton 
+                              size="small" 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleFavorite(campaign.id);
+                              }}
+                            >
+                              {campaign.isFavorite ? (
+                                <StarIcon color="warning" />
+                              ) : (
+                                <StarBorderIcon />
+                              )}
+                            </IconButton>
+                            {(campaign.role === 'DM' || campaign.role === 'admin') && (
+                              <>
+                                <IconButton 
+                                  size="small"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleRenameClick(campaign);
+                                  }}
+                                >
+                                  <EditIcon fontSize="small" />
+                                </IconButton>
+                                <IconButton 
+                                  size="small"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteClick(campaign.id);
+                                  }}
+                                >
+                                  <TrashIcon fontSize="small" />
+                                </IconButton>
+                              </>
+                            )}
+                          </Box>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </Box>
+          </Card>
+        </Box>
+        
         {/* Campaign cards grid */}
         <Grid container spacing={3} sx={{ mt: 2 }}>
-          {campaigns.map((campaign) => (
+          {getFilteredCampaigns().map((campaign) => (
             <Grid item xs={12} sm={6} md={4} key={campaign.id}>
               <Card 
                 sx={{ 

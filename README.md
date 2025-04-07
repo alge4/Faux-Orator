@@ -1203,3 +1203,6 @@ We've included helper scripts to make development easier, but you can also use t
   ```
   docker-compose -f docker-compose.dev.yml down -v
   ```
+# MCP Setup:
+BrowserTools Console Command
+npx @agentdeskai/browser-tools-server@1.2.0 

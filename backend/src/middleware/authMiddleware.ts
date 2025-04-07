@@ -25,7 +25,11 @@ const authenticateJWT = async (
         logger.error("JWT_SECRET environment variable is not set");
         return res.status(500).json({ message: "Server configuration error" });
       }
-      const decoded = jwt.verify(token, jwtSecret) as { id: string };
+
+      // Explicitly specify the HS256 algorithm
+      const decoded = jwt.verify(token, jwtSecret, {
+        algorithms: ["HS256"],
+      }) as { id: string };
 
       // Find the user by ID
       const user = await User.findByPk(decoded.id);
@@ -83,7 +87,10 @@ export const verifyAzureToken = async (
     }
 
     try {
-      const decoded = jwt.verify(token, jwtSecret) as JwtPayload;
+      // Explicitly specify the algorithm
+      const decoded = jwt.verify(token, jwtSecret, {
+        algorithms: ["HS256"],
+      }) as JwtPayload;
 
       // Check token age
       const tokenAge = Math.floor(Date.now() / 1000) - decoded.iat;
