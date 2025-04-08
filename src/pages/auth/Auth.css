@@ -13,23 +13,31 @@
 }
 
 .auth-error {
-  background-color: rgba(220, 38, 38, 0.1);
-  color: #ef4444;
-  border: 1px solid rgba(220, 38, 38, 0.2);
-  border-radius: 0.25rem;
-  padding: 0.75rem;
-  margin-bottom: 1.5rem;
-  font-size: 0.875rem;
+  margin-bottom: 16px;
+  padding: 12px;
+  border-radius: 4px;
+  background-color: #ffe9e9;
+  color: #c30000;
+  font-size: 0.9rem;
+  text-align: center;
 }
 
 .auth-success {
-  background-color: rgba(16, 185, 129, 0.1);
-  color: #10b981;
-  border: 1px solid rgba(16, 185, 129, 0.2);
-  border-radius: 0.25rem;
-  padding: 0.75rem;
-  margin-bottom: 1.5rem;
-  font-size: 0.875rem;
+  margin-bottom: 16px;
+  padding: 12px;
+  border-radius: 4px;
+  background-color: #e7f5e7;
+  color: #0a7b0a;
+  font-size: 0.9rem;
+  text-align: center;
+}
+
+.auth-description {
+  margin-bottom: 20px;
+  color: #6b7280;
+  text-align: center;
+  font-size: 0.95rem;
+  line-height: 1.5;
 }
 
 .form-group {
