@@ -1,0 +1,144 @@
+.voice-chat-test {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.voice-chat-test-header {
+  margin-bottom: 32px;
+  text-align: center;
+}
+
+.voice-chat-test-header h1 {
+  color: #1f2937;
+  margin-bottom: 16px;
+}
+
+.voice-chat-test-header p {
+  color: #6b7280;
+  margin-bottom: 24px;
+}
+
+.back-link {
+  display: inline-block;
+  color: #7e22ce;
+  text-decoration: none;
+  font-weight: 500;
+  margin-top: 16px;
+}
+
+.back-link:hover {
+  text-decoration: underline;
+}
+
+.voice-chat-test-form {
+  background-color: white;
+  border-radius: 8px;
+  padding: 24px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 500;
+  color: #374151;
+}
+
+.form-group input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  font-size: 1rem;
+  transition: border-color 0.2s ease;
+}
+
+.form-group input:focus {
+  outline: none;
+  border-color: #7e22ce;
+  box-shadow: 0 0 0 3px rgba(126, 34, 206, 0.1);
+}
+
+.help-text {
+  margin-top: 6px;
+  font-size: 0.9rem;
+  color: #6b7280;
+}
+
+.start-chat-btn {
+  background-color: #7e22ce;
+  color: white;
+  padding: 12px 20px;
+  border: none;
+  border-radius: 4px;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  width: 100%;
+  transition: background-color 0.2s ease;
+}
+
+.start-chat-btn:hover {
+  background-color: #6b21a8;
+}
+
+.voice-chat-test-container {
+  background-color: white;
+  border-radius: 8px;
+  padding: 24px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+}
+
+.user-info {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.user-info p {
+  margin: 4px 0;
+}
+
+.reset-btn {
+  align-self: flex-start;
+  background-color: #f3f4f6;
+  color: #4b5563;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  margin-top: 12px;
+  transition: background-color 0.2s ease;
+}
+
+.reset-btn:hover {
+  background-color: #e5e7eb;
+}
+
+.instructions {
+  margin-top: 32px;
+  padding-top: 16px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.instructions h3 {
+  margin-bottom: 12px;
+  color: #1f2937;
+}
+
+.instructions ol {
+  padding-left: 20px;
+}
+
+.instructions li {
+  margin-bottom: 8px;
+  color: #4b5563;
+} 
