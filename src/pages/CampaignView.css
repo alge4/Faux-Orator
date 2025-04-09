@@ -173,10 +173,90 @@ body {
 /* Left Panel */
 .left-panel {
   width: 250px;
-  border-right: 1px solid #e5e7eb;
+  min-width: 250px;
   background-color: #ffffff;
+  border-right: 1px solid #e5e7eb;
   display: flex;
   flex-direction: column;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.left-panel.collapsed {
+  min-width: 40px;
+  width: 40px;
+}
+
+.left-panel.collapsed .campaign-list,
+.left-panel.collapsed h2 {
+  display: none;
+}
+
+.toggle-sidebar {
+  position: absolute;
+  right: -12px;
+  top: 20px;
+  width: 24px;
+  height: 24px;
+  background-color: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 10;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease;
+  padding: 0;
+  color: #6b7280;
+}
+
+.toggle-sidebar:hover {
+  background-color: #f3f4f6;
+  color: #111827;
+}
+
+.toggle-sidebar img {
+  width: 16px;
+  height: 16px;
+  transition: transform 0.3s ease;
+}
+
+/* Initial state - arrow pointing left */
+.toggle-sidebar img {
+  transform: rotate(180deg);
+}
+
+/* Collapsed state - arrow pointing right */
+.left-panel.collapsed .toggle-sidebar img {
+  transform: rotate(0deg);
+}
+
+@keyframes rotateToRight {
+  from {
+    transform: rotate(180deg);
+  }
+  to {
+    transform: rotate(0deg);
+  }
+}
+
+@keyframes rotateToLeft {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(180deg);
+  }
+}
+
+.toggle-sidebar.rotating-right img {
+  animation: rotateToRight 0.3s ease forwards;
+}
+
+.toggle-sidebar.rotating-left img {
+  animation: rotateToLeft 0.3s ease forwards;
 }
 
 .left-panel h2 {
@@ -188,8 +268,9 @@ body {
 }
 
 .campaign-list {
-  padding: 0.5rem;
   overflow-y: auto;
+  flex-grow: 1;
+  padding: 1rem;
 }
 
 .campaign-item {

@@ -2,12 +2,14 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useCampaign, CampaignMode, Entity } from '../hooks/useCampaign';
 import { useAuth } from '../hooks/useAuth';
+import { FaChevronLeft, FaChevronRight } from 'react-icons/fa';
 import ChatInterface from '../components/ChatInterface/ChatInterface';
 import NetworkView from '../components/NetworkView';
 import DataView from '../components/DataView';
 import VoiceChat from '../components/VoiceChat';
 import CampaignMenu from '../components/CampaignMenu';
 import { supabase } from '../services/supabase';
+import chevronIcon from '../assets/icons/chevron.svg';
 import './CampaignView.css';
 
 interface CampaignFormData {
@@ -41,6 +43,8 @@ const CampaignView: React.FC = () => {
     theme: ''
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isRotating, setIsRotating] = useState<'left' | 'right' | null>(null);
 
   // Load current campaign data into form when opened
   useEffect(() => {
@@ -246,6 +250,13 @@ const CampaignView: React.FC = () => {
     }
   };
 
+  const handleToggleSidebar = () => {
+    setIsRotating(isSidebarCollapsed ? 'left' : 'right');
+    setIsSidebarCollapsed(prev => !prev);
+    // Reset animation class after animation completes
+    setTimeout(() => setIsRotating(null), 300);
+  };
+
   if (loading) {
     return <div className="loading">Loading...</div>;
   }
@@ -411,7 +422,14 @@ const CampaignView: React.FC = () => {
       {/* Main three-panel layout */}
       <div className="campaign-content">
         {/* Left panel - Campaign List */}
-        <aside className="left-panel">
+        <aside className={`left-panel ${isSidebarCollapsed ? 'collapsed' : ''}`}>
+          <button 
+            className={`toggle-sidebar ${isRotating ? `rotating-${isRotating}` : ''}`}
+            onClick={handleToggleSidebar}
+            aria-label={isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+          >
+            <img src={chevronIcon} alt="Toggle sidebar" />
+          </button>
           <h2>Campaigns</h2>
           <div className="campaign-list">
             {campaigns.map(campaign => (
