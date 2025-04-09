@@ -89,6 +89,12 @@ const CampaignView: React.FC = () => {
       if (error) throw error;
       if (data) {
         setCurrentCampaign(data);
+        // Update the campaigns list with the new data
+        setCampaigns(prevCampaigns => 
+          prevCampaigns.map(campaign => 
+            campaign.id === data.id ? data : campaign
+          )
+        );
         setShowEditForm(false);
       }
     } catch (error) {
