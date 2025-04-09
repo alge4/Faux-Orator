@@ -49,13 +49,22 @@ const CampaignView: React.FC = () => {
     }
   }, [currentCampaign]);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleTextInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    if (name === 'description' && value.length > 500) return;
     setEditFormData(prev => ({
       ...prev,
       [name]: value
     }));
+  };
+
+  const handleTextAreaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    if (value.length <= 500) {
+      setEditFormData(prev => ({
+        ...prev,
+        [name]: value
+      }));
+    }
   };
 
   const handleEditSubmit = async (e: React.FormEvent) => {
@@ -281,7 +290,7 @@ const CampaignView: React.FC = () => {
                   name="name"
                   className="form-control"
                   value={editFormData.name}
-                  onChange={handleInputChange}
+                  onChange={handleTextInputChange}
                   placeholder="Enter campaign name"
                   required
                 />
@@ -294,7 +303,7 @@ const CampaignView: React.FC = () => {
                   name="description"
                   className="form-control"
                   value={editFormData.description}
-                  onChange={handleInputChange}
+                  onChange={handleTextAreaChange}
                   placeholder="Describe your campaign (max 500 characters)"
                   rows={3}
                   maxLength={500}
@@ -316,7 +325,7 @@ const CampaignView: React.FC = () => {
                   name="setting"
                   className="form-control"
                   value={editFormData.setting}
-                  onChange={handleInputChange}
+                  onChange={handleTextInputChange}
                   placeholder="e.g. Forgotten Realms, Homebrew World"
                 />
               </div>
@@ -329,7 +338,7 @@ const CampaignView: React.FC = () => {
                   name="theme"
                   className="form-control"
                   value={editFormData.theme}
-                  onChange={handleInputChange}
+                  onChange={handleTextInputChange}
                   placeholder="e.g. Dark Fantasy, Epic Adventure"
                 />
               </div>
