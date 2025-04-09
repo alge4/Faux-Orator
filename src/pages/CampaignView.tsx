@@ -21,7 +21,7 @@ const CampaignView: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { currentCampaign, loading, error, setCurrentCampaign } = useCampaign();
+  const { currentCampaign, loading, error, setCurrentCampaign, refreshCampaigns } = useCampaign();
   
   // State
   const [entities, setEntities] = useState<Entity[]>([]);
@@ -38,6 +38,7 @@ const CampaignView: React.FC = () => {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Load current campaign data into form when opened
   useEffect(() => {
     if (currentCampaign) {
       setEditFormData({
@@ -49,22 +50,21 @@ const CampaignView: React.FC = () => {
     }
   }, [currentCampaign]);
 
-  const handleTextInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Combined input handler for both text inputs and textareas
+  const handleFormChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
     const { name, value } = e.target;
+    
+    // Only check length for description field
+    if (name === 'description' && value.length > 500) {
+      return;
+    }
+
     setEditFormData(prev => ({
       ...prev,
       [name]: value
     }));
-  };
-
-  const handleTextAreaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    if (value.length <= 500) {
-      setEditFormData(prev => ({
-        ...prev,
-        [name]: value
-      }));
-    }
   };
 
   const handleEditSubmit = async (e: React.FormEvent) => {
@@ -73,23 +73,26 @@ const CampaignView: React.FC = () => {
 
     setIsSubmitting(true);
     try {
+      const updateData = {
+        name: editFormData.name.trim(),
+        description: editFormData.description.trim(),
+        setting: editFormData.setting.trim(),
+        theme: editFormData.theme.trim(),
+        updated_at: new Date().toISOString()
+      };
+
       const { data, error } = await supabase
         .from('campaigns')
-        .update({
-          name: editFormData.name,
-          description: editFormData.description,
-          setting: editFormData.setting,
-          theme: editFormData.theme,
-          updated_at: new Date().toISOString()
-        })
+        .update(updateData)
         .eq('id', currentCampaign.id)
         .select()
         .single();
 
       if (error) throw error;
+      
       if (data) {
+        // Update both the current campaign and the campaigns list
         setCurrentCampaign(data);
-        // Update the campaigns list with the new data
         setCampaigns(prevCampaigns => 
           prevCampaigns.map(campaign => 
             campaign.id === data.id ? data : campaign
@@ -215,6 +218,11 @@ const CampaignView: React.FC = () => {
     }
   };
 
+  const handleBackToDashboard = async () => {
+    await refreshCampaigns();
+    navigate('/dashboard');
+  };
+
   if (loading) {
     return <div className="loading">Loading...</div>;
   }
@@ -228,7 +236,7 @@ const CampaignView: React.FC = () => {
       <div className="campaign-header">
         <div className="header-left">
           <button 
-            onClick={() => navigate('/dashboard')}
+            onClick={handleBackToDashboard}
             className="back-button"
             aria-label="Back to dashboard"
           >
@@ -296,7 +304,7 @@ const CampaignView: React.FC = () => {
                   name="name"
                   className="form-control"
                   value={editFormData.name}
-                  onChange={handleTextInputChange}
+                  onChange={handleFormChange}
                   placeholder="Enter campaign name"
                   required
                 />
@@ -309,7 +317,7 @@ const CampaignView: React.FC = () => {
                   name="description"
                   className="form-control"
                   value={editFormData.description}
-                  onChange={handleTextAreaChange}
+                  onChange={handleFormChange}
                   placeholder="Describe your campaign (max 500 characters)"
                   rows={3}
                   maxLength={500}
@@ -331,7 +339,7 @@ const CampaignView: React.FC = () => {
                   name="setting"
                   className="form-control"
                   value={editFormData.setting}
-                  onChange={handleTextInputChange}
+                  onChange={handleFormChange}
                   placeholder="e.g. Forgotten Realms, Homebrew World"
                 />
               </div>
@@ -344,7 +352,7 @@ const CampaignView: React.FC = () => {
                   name="theme"
                   className="form-control"
                   value={editFormData.theme}
-                  onChange={handleTextInputChange}
+                  onChange={handleFormChange}
                   placeholder="e.g. Dark Fantasy, Epic Adventure"
                 />
               </div>
