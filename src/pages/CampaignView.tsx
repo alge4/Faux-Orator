@@ -6,8 +6,16 @@ import ChatInterface from '../components/ChatInterface/ChatInterface';
 import NetworkView from '../components/NetworkView';
 import DataView from '../components/DataView';
 import VoiceChat from '../components/VoiceChat';
+import CampaignMenu from '../components/CampaignMenu';
 import { supabase } from '../services/supabase';
 import './CampaignView.css';
+
+interface CampaignFormData {
+  name: string;
+  description: string;
+  setting: string;
+  theme: string;
+}
 
 const CampaignView: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -20,6 +28,66 @@ const CampaignView: React.FC = () => {
   const [activeMode, setActiveMode] = useState<CampaignMode>(CampaignMode.Planning);
   const [campaigns, setCampaigns] = useState<any[]>([]);
   const [messages, setMessages] = useState<any[]>([]);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [showEditForm, setShowEditForm] = useState(false);
+  const [editFormData, setEditFormData] = useState<CampaignFormData>({
+    name: '',
+    description: '',
+    setting: '',
+    theme: ''
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (currentCampaign) {
+      setEditFormData({
+        name: currentCampaign.name || '',
+        description: currentCampaign.description || '',
+        setting: currentCampaign.setting || '',
+        theme: currentCampaign.theme || ''
+      });
+    }
+  }, [currentCampaign]);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    if (name === 'description' && value.length > 500) return;
+    setEditFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleEditSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!currentCampaign?.id || !editFormData.name.trim()) return;
+
+    setIsSubmitting(true);
+    try {
+      const { data, error } = await supabase
+        .from('campaigns')
+        .update({
+          name: editFormData.name,
+          description: editFormData.description,
+          setting: editFormData.setting,
+          theme: editFormData.theme,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', currentCampaign.id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      if (data) {
+        setCurrentCampaign(data);
+        setShowEditForm(false);
+      }
+    } catch (error) {
+      console.error('Error updating campaign:', error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   // Fetch campaigns from Supabase
   useEffect(() => {
@@ -151,7 +219,7 @@ const CampaignView: React.FC = () => {
           >
             ← Back to Dashboard
           </button>
-          <h3>Campaign Assistant</h3>
+          <h3>{currentCampaign?.name || 'Campaign Assistant'}</h3>
         </div>
         <div className="mode-switcher">
           <button 
@@ -173,10 +241,120 @@ const CampaignView: React.FC = () => {
             Review
           </button>
         </div>
-        <button className="menu-button" aria-label="Menu">
+        <button 
+          className="menu-button" 
+          aria-label="Menu"
+          onClick={() => setIsMenuOpen(true)}
+        >
           <span></span>
         </button>
+        <CampaignMenu 
+          isOpen={isMenuOpen}
+          onClose={() => setIsMenuOpen(false)}
+          onEdit={() => {
+            setIsMenuOpen(false);
+            setShowEditForm(true);
+          }}
+        />
       </div>
+
+      {/* Edit Campaign Modal */}
+      {showEditForm && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h2>Edit Campaign</h2>
+              <button 
+                className="modal-close"
+                onClick={() => setShowEditForm(false)}
+                disabled={isSubmitting}
+              >
+                &times;
+              </button>
+            </div>
+            <form onSubmit={handleEditSubmit}>
+              <div className="form-group">
+                <label htmlFor="name" className="form-label">Campaign Name *</label>
+                <input
+                  type="text"
+                  id="name"
+                  name="name"
+                  className="form-control"
+                  value={editFormData.name}
+                  onChange={handleInputChange}
+                  placeholder="Enter campaign name"
+                  required
+                />
+              </div>
+              
+              <div className="form-group">
+                <label htmlFor="description" className="form-label">Description</label>
+                <textarea
+                  id="description"
+                  name="description"
+                  className="form-control"
+                  value={editFormData.description}
+                  onChange={handleInputChange}
+                  placeholder="Describe your campaign (max 500 characters)"
+                  rows={3}
+                  maxLength={500}
+                />
+                <small className={`character-count ${
+                  editFormData.description.length > 450 ? 'near-limit' : ''
+                } ${
+                  editFormData.description.length >= 500 ? 'at-limit' : ''
+                }`}>
+                  {editFormData.description.length}/500 characters
+                </small>
+              </div>
+              
+              <div className="form-group">
+                <label htmlFor="setting" className="form-label">Setting</label>
+                <input
+                  type="text"
+                  id="setting"
+                  name="setting"
+                  className="form-control"
+                  value={editFormData.setting}
+                  onChange={handleInputChange}
+                  placeholder="e.g. Forgotten Realms, Homebrew World"
+                />
+              </div>
+              
+              <div className="form-group">
+                <label htmlFor="theme" className="form-label">Theme</label>
+                <input
+                  type="text"
+                  id="theme"
+                  name="theme"
+                  className="form-control"
+                  value={editFormData.theme}
+                  onChange={handleInputChange}
+                  placeholder="e.g. Dark Fantasy, Epic Adventure"
+                />
+              </div>
+              
+              <div className="modal-footer">
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => setShowEditForm(false)}
+                  disabled={isSubmitting}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                  disabled={isSubmitting || !editFormData.name.trim()}
+                >
+                  {isSubmitting ? 'Saving...' : 'Save Changes'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Main three-panel layout */}
       <div className="campaign-content">
