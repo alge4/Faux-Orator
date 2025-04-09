@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useCampaign, CampaignMode, Entity } from '../hooks/useCampaign';
-import { ChatInterface } from '../components/ChatInterface';
+import { useAuth } from '../hooks/useAuth';
+import ChatInterface from '../components/ChatInterface/ChatInterface';
 import NetworkView from '../components/NetworkView';
 import DataView from '../components/DataView';
 import VoiceChat from '../components/VoiceChat';
@@ -11,12 +12,14 @@ import './CampaignView.css';
 const CampaignView: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { currentCampaign, loading, error, setCurrentCampaign } = useCampaign();
   
   // State
   const [entities, setEntities] = useState<Entity[]>([]);
   const [activeMode, setActiveMode] = useState<CampaignMode>(CampaignMode.Planning);
   const [campaigns, setCampaigns] = useState<any[]>([]);
+  const [messages, setMessages] = useState<any[]>([]);
 
   // Fetch campaigns from Supabase
   useEffect(() => {
@@ -100,6 +103,35 @@ const CampaignView: React.FC = () => {
     fetchEntities();
   }, [currentCampaign?.id]);
 
+  // Handle sending messages
+  const handleSendMessage = async (message: string) => {
+    if (!currentCampaign?.id || !user?.id) return;
+
+    const newMessage = {
+      id: Date.now().toString(),
+      content: message,
+      sender: user.email || 'Anonymous',
+      timestamp: new Date().toISOString(),
+      entities: []
+    };
+
+    setMessages(prev => [...prev, newMessage]);
+
+    // Here you would typically also save the message to your database
+    try {
+      await supabase
+        .from('messages')
+        .insert([{
+          campaign_id: currentCampaign.id,
+          user_id: user.id,
+          content: message,
+          mode: activeMode
+        }]);
+    } catch (error) {
+      console.error('Error saving message:', error);
+    }
+  };
+
   if (loading) {
     return <div className="loading">Loading...</div>;
   }
@@ -169,14 +201,32 @@ const CampaignView: React.FC = () => {
           )}
           {activeMode === CampaignMode.Running && (
             <div className="chat-section">
-              <h2>Chat</h2>
+              <h2>Session Chat</h2>
               <ChatInterface 
+                mode="running"
+                messages={messages}
+                onSendMessage={handleSendMessage}
                 availableEntities={entities}
+                isTyping={false}
+                campaignId={currentCampaign?.id}
+                userId={user?.id}
               />
             </div>
           )}
           {activeMode === CampaignMode.Review && (
-            <DataView entities={entities} />
+            <div className="chat-section">
+              <h2>Session Review</h2>
+              <ChatInterface 
+                mode="review"
+                messages={messages}
+                onSendMessage={handleSendMessage}
+                availableEntities={entities}
+                isTyping={false}
+                campaignId={currentCampaign?.id}
+                userId={user?.id}
+              />
+              <DataView entities={entities} />
+            </div>
           )}
         </main>
 
@@ -188,7 +238,7 @@ const CampaignView: React.FC = () => {
               <h3>Main</h3>
               <VoiceChat 
                 campaignId={currentCampaign?.id || ''} 
-                userId="current-user"
+                userId={user?.id || ''}
                 channelName="main"
               />
             </div>
@@ -196,7 +246,7 @@ const CampaignView: React.FC = () => {
               <h3>Whisper</h3>
               <VoiceChat 
                 campaignId={currentCampaign?.id || ''} 
-                userId="current-user"
+                userId={user?.id || ''}
                 channelName="whisper"
               />
             </div>

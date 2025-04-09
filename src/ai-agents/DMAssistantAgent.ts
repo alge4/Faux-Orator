@@ -1,5 +1,5 @@
 import { BaseAgent, AgentContext, AgentResponse } from "./BaseAgent";
-import { getChatCompletion } from "../services/openai";
+import { openAIService } from "../services/openai";
 import { supabase } from "../services/supabase";
 
 interface DMAssistantInput {
@@ -86,18 +86,22 @@ export class DMAssistantAgent extends BaseAgent {
 
     const messages = [
       { role: "system", content: systemPrompt },
-      ...(input.context?.sessionHistory || []),
+      ...(input.context?.sessionHistory || []).map((msg) => ({
+        role: msg.role as "system" | "user" | "assistant",
+        content: msg.content,
+      })),
       { role: "user", content: input.message },
     ];
 
-    const completion = await getChatCompletion({
+    const response = await openAIService.getChatCompletion(
       messages,
-      temperature: 0.7,
-      campaignId: this.context.campaignId,
-    });
+      undefined,
+      this.context.sessionId,
+      this.context.campaignId
+    );
 
     return (
-      completion.choices[0].message.content ||
+      response.content ||
       "I apologize, but I'm unable to generate a response at the moment."
     );
   }
