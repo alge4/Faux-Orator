@@ -31,6 +31,9 @@ const Dashboard: React.FC = () => {
   // Handle input changes
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
+    if (name === 'description' && value.length > 500) {
+      return; // Don't update if description exceeds 500 characters
+    }
     setNewCampaignData(prev => ({
       ...prev,
       [name]: value
@@ -210,10 +213,14 @@ const Dashboard: React.FC = () => {
                   className="form-control"
                   value={newCampaignData.description}
                   onChange={handleInputChange}
-                  placeholder="Describe your campaign"
+                  placeholder="Describe your campaign (max 500 characters)"
                   disabled={isSubmitting}
                   rows={3}
+                  maxLength={500}
                 />
+                <small className="character-count">
+                  {newCampaignData.description.length}/500 characters
+                </small>
               </div>
               
               <div className="form-group">
