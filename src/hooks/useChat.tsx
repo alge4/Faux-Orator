@@ -7,27 +7,24 @@ export type ChatMessage = {
   sender: 'user' | 'ai' | 'system';
   timestamp: string;
   contextRefs?: string[]; // References to entity IDs this message mentions
-  referencedContent?: boolean; // Flag for UI highlighting
+  entities?: Entity[]; // Full entity objects for references
 };
 
-type ChatStore = {
+interface ChatStore {
   messages: ChatMessage[];
   contextRefs: Entity[];
   isLoading: boolean;
-  
-  // Actions
   sendMessage: (text: string, contextRefs?: string[]) => void;
   addContextRef: (entity: Entity) => void;
   removeContextRef: (entityId: string) => void;
-  clearContextRefs: () => void;
   clearMessages: () => void;
-};
+}
 
 export const useChatStore = create<ChatStore>((set, get) => ({
   messages: [
     {
       id: 'system-1',
-      text: 'Welcome to your campaign. You can chat with the AI assistant here.',
+      text: 'Welcome! I am your D&D campaign assistant. I can help you plan sessions, manage NPCs, create encounters, and more. What would you like to work on?',
       sender: 'system',
       timestamp: new Date().toISOString(),
     }
@@ -35,79 +32,47 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   contextRefs: [],
   isLoading: false,
   
-  sendMessage: (text, contextRefs = []) => {
+  sendMessage: (text: string, contextRefs: string[] = []) => {
     if (!text.trim()) return;
     
-    const userMessage: ChatMessage = {
-      id: `user-${Date.now()}`,
+    const message: ChatMessage = {
+      id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       text,
-      sender: 'user',
+      sender: get().messages.length % 2 === 0 ? 'user' : 'ai',
       timestamp: new Date().toISOString(),
       contextRefs,
     };
     
     set(state => ({ 
-      messages: [...state.messages, userMessage],
-      isLoading: true
+      messages: [...state.messages, message],
+      isLoading: message.sender === 'user' // Only set loading when user sends message
     }));
-    
-    // Simulate AI response
-    setTimeout(() => {
-      const aiMessage: ChatMessage = {
-        id: `ai-${Date.now()}`,
-        text: generateAIResponse(text, get().contextRefs),
-        sender: 'ai',
-        timestamp: new Date().toISOString(),
-        contextRefs: get().contextRefs.map(e => e.id),
-        referencedContent: get().contextRefs.length > 0,
-      };
-      
-      set(state => ({ 
-        messages: [...state.messages, aiMessage],
-        isLoading: false
-      }));
-    }, 1000);
-    
-    // In production, this would call the OpenAI API:
-    // const response = await fetch('/api/ai', {
-    //   method: 'POST',
-    //   headers: { 'Content-Type': 'application/json' },
-    //   body: JSON.stringify({
-    //     message: text,
-    //     pinnedEntities: get().contextRefs,
-    //     mode: campaignMode, // You would get this from the campaign store
-    //   }),
-    // });
-    // const data = await response.json();
-    // set(state => ({ 
-    //   messages: [...state.messages, data.message],
-    //   isLoading: false
-    // }));
   },
   
-  addContextRef: (entity) => {
-    if (get().contextRefs.some(e => e.id === entity.id)) return;
-    set(state => ({ contextRefs: [...state.contextRefs, entity] }));
+  addContextRef: (entity: Entity) => {
+    set(state => {
+      if (state.contextRefs.some(e => e.id === entity.id)) return state;
+      return { contextRefs: [...state.contextRefs, entity] };
+    });
   },
   
-  removeContextRef: (entityId) => {
+  removeContextRef: (entityId: string) => {
     set(state => ({
       contextRefs: state.contextRefs.filter(e => e.id !== entityId)
     }));
   },
   
-  clearContextRefs: () => {
-    set({ contextRefs: [] });
-  },
-  
   clearMessages: () => {
-    set({ 
-      messages: [{
-        id: 'system-1',
-        text: 'Chat history cleared.',
-        sender: 'system',
-        timestamp: new Date().toISOString()
-      }]
+    set({
+      messages: [
+        {
+          id: 'system-1',
+          text: 'Chat cleared. How can I help you with your campaign?',
+          sender: 'system',
+          timestamp: new Date().toISOString(),
+        }
+      ],
+      contextRefs: []
     });
   }
 }));
@@ -165,7 +130,6 @@ export const useChat = () => {
     sendMessage,
     addContextRef,
     removeContextRef,
-    clearContextRefs,
     clearMessages
   } = useChatStore();
   
@@ -176,7 +140,6 @@ export const useChat = () => {
     sendMessage,
     addContextRef,
     removeContextRef,
-    clearContextRefs,
     clearMessages
   };
 }; 

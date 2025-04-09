@@ -1,41 +1,147 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { useChat, ChatMessage } from '../hooks/useChat';
+import React, { useRef, useEffect } from 'react';
+import { useChatStore } from '../hooks/useChat';
 import { Entity } from '../hooks/useCampaign';
+import { DMAssistantAgent } from '../ai-agents/DMAssistantAgent';
 import './ChatInterface.css';
 
-type ChatInterfaceProps = {
+interface ChatInterfaceProps {
   availableEntities?: Entity[];
-  onEntityClick?: (entityId: string) => void;
+  onEntityClick?: (entity: Entity) => void;
+  mode?: 'planning' | 'running' | 'review';
+}
+
+// MessageBubble subcomponent
+const MessageBubble: React.FC<{
+  message: any;
+  onEntityClick?: (entity: Entity) => void;
+}> = ({ message, onEntityClick }) => {
+  const className = `message ${message.sender}-message`;
+  
+  // Function to render message content with entity references
+  const renderContent = (content: string) => {
+    if (!message.contextRefs?.length) {
+      return <p>{content}</p>;
+    }
+
+    // Split content and highlight entity references
+    const parts = content.split(/(\[\[.*?\]\])/g);
+    return (
+      <p>
+        {parts.map((part, i) => {
+          if (part.startsWith('[[') && part.endsWith(']]')) {
+            const entityName = part.slice(2, -2);
+            return (
+              <span 
+                key={i}
+                className="entity-reference"
+                onClick={() => {
+                  const entity = message.entities?.find((e: Entity) => e.name === entityName);
+                  if (entity && onEntityClick) {
+                    onEntityClick(entity);
+                  }
+                }}
+              >
+                {entityName}
+              </span>
+            );
+          }
+          return <span key={i}>{part}</span>;
+        })}
+      </p>
+    );
+  };
+
+  return (
+    <div className={className}>
+      {renderContent(message.text)}
+      {message.timestamp && (
+        <span className="message-time">
+          {new Date(message.timestamp).toLocaleTimeString()}
+        </span>
+      )}
+    </div>
+  );
 };
 
 export const ChatInterface: React.FC<ChatInterfaceProps> = ({ 
-  availableEntities = [],
-  onEntityClick
+  availableEntities = [], 
+  onEntityClick,
+  mode = 'running'
 }) => {
-  const { messages, contextRefs, isLoading, sendMessage, addContextRef, removeContextRef } = useChat();
-  const [input, setInput] = useState('');
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const { 
+    messages, 
+    sendMessage, 
+    isLoading,
+    contextRefs,
+    addContextRef,
+    removeContextRef 
+  } = useChatStore();
   
-  // Auto-scroll to bottom of messages
+  const [input, setInput] = React.useState('');
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const dmAssistant = useRef<DMAssistantAgent | null>(null);
+
+  // Initialize DM Assistant
+  useEffect(() => {
+    dmAssistant.current = new DMAssistantAgent({
+      sessionId: Date.now().toString(), // You might want to pass this from props
+      campaignId: 'current-campaign-id', // You might want to pass this from props
+      userId: 'current-user-id', // You might want to pass this from props
+      timestamp: new Date().toISOString()
+    });
+  }, []);
+  
+  // Auto-scroll to bottom when messages change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
-  
-  const handleSubmit = (e: React.FormEvent) => {
+
+  // Handle message submission
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (input.trim()) {
-      sendMessage(input);
-      setInput('');
+    if (!input.trim() || !dmAssistant.current) return;
+
+    const userMessage = input;
+    setInput('');
+
+    // Send message through chat store
+    sendMessage(userMessage, contextRefs.map(ref => ref.id));
+
+    try {
+      // Get response from DM Assistant
+      const response = await dmAssistant.current.process({
+        type: mode,
+        message: userMessage,
+        context: {
+          pinnedEntities: contextRefs,
+          currentMode: mode,
+          sessionHistory: messages.map(msg => ({
+            role: msg.sender === 'user' ? 'user' : 'assistant',
+            content: msg.text
+          }))
+        }
+      });
+
+      if (response.success) {
+        // Send AI response through chat store
+        sendMessage(response.message, response.data?.context?.recentEntities?.map((e: any) => e.id) || []);
+      } else {
+        sendMessage("I apologize, but I encountered an error processing your request. Please try again.", []);
+      }
+    } catch (error) {
+      console.error('Error processing message:', error);
+      sendMessage("I apologize, but something went wrong. Please try again.", []);
     }
   };
-  
+
+  // Handle keyboard shortcuts
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSubmit(e);
     }
   };
-  
+
   return (
     <div className="chat-interface">
       <div className="chat-header">
@@ -82,85 +188,23 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
         <div ref={messagesEndRef} />
       </div>
       
-      <form className="chat-input-form" onSubmit={handleSubmit}>
+      <form onSubmit={handleSubmit} className="chat-input">
         <textarea
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="Ask your AI assistant..."
+          placeholder="Ask your DM Assistant..."
           rows={1}
-          className="chat-input"
+          aria-label="Chat input"
         />
         <button 
           type="submit" 
-          className="send-button"
-          disabled={!input.trim() || isLoading}
+          disabled={isLoading || !input.trim()}
           aria-label="Send message"
         >
-          <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="22" y1="2" x2="11" y2="13"></line>
-            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-          </svg>
+          Send
         </button>
       </form>
-      
-      {availableEntities.length > 0 && (
-        <div className="entities-drawer">
-          <div className="entities-drawer-header">
-            <h4>Available References</h4>
-          </div>
-          <div className="entities-list">
-            {availableEntities.map(entity => (
-              <div 
-                key={entity.id}
-                className="entity-item"
-                onClick={() => addContextRef(entity)}
-              >
-                <span className={`entity-type ${entity.type.toLowerCase()}`}>
-                  {entity.type}
-                </span>
-                <span className="entity-name">{entity.name}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
-
-// MessageBubble component to display a single message
-const MessageBubble: React.FC<{ 
-  message: ChatMessage; 
-  onEntityClick?: (entityId: string) => void;
-}> = ({ message, onEntityClick }) => {
-  // Format markdown-style entity references as links
-  const formatMessage = (text: string) => {
-    // This is a simplified version - in a real app you'd use a markdown library
-    // and properly parse entity references
-    
-    // Replace **Entity Name** with styled spans
-    const formatted = text.replace(
-      /\*\*(.*?)\*\*/g, 
-      '<span class="entity-reference">$1</span>'
-    );
-    
-    return (
-      <div 
-        dangerouslySetInnerHTML={{ __html: formatted }} 
-        className="message-text"
-      />
-    );
-  };
-  
-  return (
-    <div className={`message ${message.sender}-message ${message.referencedContent ? 'has-refs' : ''}`}>
-      {formatMessage(message.text)}
-      {message.sender === 'ai' && message.timestamp && (
-        <div className="message-timestamp">
-          {new Date(message.timestamp).toLocaleTimeString()}
-        </div>
-      )}
     </div>
   );
 }; 
