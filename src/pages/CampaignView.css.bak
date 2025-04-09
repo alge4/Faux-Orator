@@ -1,0 +1,256 @@
+/* Override default root styles for campaign view */
+.campaign-view #root,
+#root .campaign-view,
+body #root .campaign-view,
+body .campaign-view {
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
+  text-align: left;
+  box-sizing: border-box;
+  width: 100%;
+  height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Force campaign view to take full width */
+.campaign-view {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100%;
+  background-color: #f8fafc;
+  color: #1e293b;
+  overflow-x: hidden;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* Apply border-box to all elements */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+/* Reset body margins */
+body {
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+}
+
+/* Workspace Header with Campaign Title and Mode Switcher */
+.workspace-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 2rem;
+  background-color: #ffffff;
+  border-bottom: 1px solid #e2e8f0;
+  width: 100%;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  z-index: 10;
+}
+
+.campaign-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin: 0;
+  color: #334155;
+}
+
+/* Mode Switcher Toggle */
+.mode-switcher {
+  display: flex;
+  border-radius: 0.5rem;
+  overflow: hidden;
+  background-color: #f1f5f9;
+  border: 1px solid #e2e8f0;
+}
+
+.mode-button {
+  padding: 0.5rem 1.5rem;
+  border: none;
+  background-color: transparent;
+  cursor: pointer;
+  font-weight: 500;
+  color: #64748b;
+  transition: all 0.2s ease;
+}
+
+.mode-button.active {
+  background-color: #3b82f6;
+  color: #ffffff;
+}
+
+.mode-button:hover:not(.active) {
+  background-color: #e2e8f0;
+}
+
+/* Workspace Content Layout */
+.workspace-content {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  width: 100%;
+  height: calc(100vh - 70px); /* Adjust based on header height */
+}
+
+/* Main Workspace Area */
+.main-workspace {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 1rem;
+  min-width: 0;
+  height: 100%;
+}
+
+/* Voice Chat Sidebar */
+.voice-sidebar {
+  width: 280px;
+  min-width: 250px;
+  max-width: 320px;
+  border-left: 1px solid #e2e8f0;
+  background-color: #ffffff;
+  height: 100%;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  box-shadow: -2px 0 5px rgba(0, 0, 0, 0.03);
+}
+
+.voice-sidebar-header {
+  padding: 1rem;
+  border-bottom: 1px solid #e2e8f0;
+  background-color: #f8fafc;
+}
+
+.voice-sidebar-header h3 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #334155;
+}
+
+.voice-channels {
+  flex: 1;
+  padding: 1rem;
+  overflow-y: auto;
+}
+
+/* Mode-specific Styles */
+.no-mode-selected {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #64748b;
+  font-size: 1.1rem;
+}
+
+/* Loading and Error States */
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  width: 100%;
+  background-color: rgba(255, 255, 255, 0.8);
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #e2e8f0;
+  border-top: 4px solid #3b82f6;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 1rem;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.error-container, 
+.campaign-not-found {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  width: 100%;
+  padding: 2rem;
+  text-align: center;
+}
+
+.error-container h2,
+.campaign-not-found h2 {
+  color: #ef4444;
+  margin-bottom: 1rem;
+  font-size: 1.5rem;
+}
+
+.error-container p,
+.campaign-not-found p {
+  color: #64748b;
+  margin-bottom: 2rem;
+  max-width: 500px;
+}
+
+.primary-button {
+  padding: 0.75rem 1.5rem;
+  background-color: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 0.375rem;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background-color 0.2s;
+}
+
+.primary-button:hover {
+  background-color: #2563eb;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 1024px) {
+  .workspace-content {
+    flex-direction: column;
+  }
+  
+  .voice-sidebar {
+    width: 100%;
+    max-width: 100%;
+    height: 250px;
+    min-height: 200px;
+    border-left: none;
+    border-top: 1px solid #e2e8f0;
+  }
+  
+  .main-workspace {
+    height: calc(100% - 250px);
+  }
+}
+
+@media (max-width: 768px) {
+  .workspace-header {
+    flex-direction: column;
+    gap: 1rem;
+    padding: 1rem;
+  }
+  
+  .mode-switcher {
+    width: 100%;
+  }
+  
+  .mode-button {
+    flex: 1;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+  }
+} 

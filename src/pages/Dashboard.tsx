@@ -81,7 +81,7 @@ const Dashboard: React.FC = () => {
     const selected = campaigns.find(c => c.id === campaignId);
     if (selected) {
       setCurrentCampaign(selected);
-      navigate(`/campaign/${selected.id}`);
+      navigate(`/campaign/${selected.id}/view`);
     }
   };
   

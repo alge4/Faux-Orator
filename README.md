@@ -133,3 +133,7 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 ## Contact
 
 For questions or support, please open an issue on GitHub.
+# MCP Startup commands
+## Browser Tools
+npx @agentdeskai/browser-tools-server@1.2.0
+## Supabase

@@ -17,16 +17,20 @@
     "@reduxjs/toolkit": "^2.6.1",
     "@supabase/supabase-js": "^2.39.0",
     "agora-rtc-sdk-ng": "^4.20.0",
+    "cytoscape": "^3.31.2",
     "d3": "^7.9.0",
     "openai": "^4.0.0",
     "react": "^18.2.0",
+    "react-cytoscapejs": "^2.0.0",
     "react-dom": "^18.2.0",
     "react-redux": "^9.2.0",
     "react-router-dom": "^6.20.1",
-    "uuid": "^9.0.1"
+    "uuid": "^9.0.1",
+    "zustand": "^4.5.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.21.0",
+    "@types/cytoscape": "^3.21.9",
     "@types/react": "^18.2.37",
     "@types/react-dom": "^18.2.15",
     "@types/uuid": "^9.0.7",

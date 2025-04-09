@@ -1,0 +1,78 @@
+.mode-switcher {
+  display: flex;
+  background-color: #f3f4f6;
+  border-radius: 12px;
+  padding: 4px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  width: fit-content;
+  margin: 0 auto;
+}
+
+.mode-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 16px;
+  border: none;
+  background: none;
+  border-radius: 8px;
+  color: #6b7280;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+  white-space: nowrap;
+}
+
+.mode-button:hover {
+  color: #374151;
+  background-color: rgba(255, 255, 255, 0.5);
+}
+
+.mode-button.active {
+  background-color: white;
+  color: #6d28d9;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  font-weight: 600;
+}
+
+.mode-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 8px;
+}
+
+.mode-icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+.planning-icon {
+  color: #6d28d9;
+}
+
+.running-icon {
+  color: #dc2626;
+}
+
+.review-icon {
+  color: #2563eb;
+}
+
+/* Responsive styles */
+@media (max-width: 640px) {
+  .mode-switcher {
+    width: 100%;
+    justify-content: space-between;
+  }
+  
+  .mode-button {
+    flex: 1;
+    padding: 8px 12px;
+  }
+  
+  .mode-label {
+    font-size: 14px;
+  }
+} 

@@ -44,46 +44,12 @@ function App() {
           <Route path="/reset-password" element={<ResetPassword />} />
           
           {/* Protected Routes */}
-          <Route 
-            path="/" 
-            element={
-              <ProtectedRoute>
-                <Dashboard />
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/dashboard" 
-            element={
-              <ProtectedRoute>
-                <Dashboard />
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/campaign/:id" 
-            element={
-              <ProtectedRoute>
-                <CampaignView />
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/campaign/:id/details" 
-            element={
-              <ProtectedRoute>
-                <Campaign />
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/voice-chat-test" 
-            element={
-              <ProtectedRoute>
-                <VoiceChatTest />
-              </ProtectedRoute>
-            } 
-          />
+          <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+          <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+          <Route path="/campaign/:id" element={<ProtectedRoute><Campaign /></ProtectedRoute>} />
+          <Route path="/campaign/:id/view" element={<ProtectedRoute><CampaignView /></ProtectedRoute>} />
+          <Route path="/campaign/:id/details" element={<ProtectedRoute><Campaign /></ProtectedRoute>} />
+          <Route path="/voice-chat-test" element={<ProtectedRoute><VoiceChatTest /></ProtectedRoute>} />
           
           {/* 404 Route */}
           <Route path="*" element={<NotFound />} />

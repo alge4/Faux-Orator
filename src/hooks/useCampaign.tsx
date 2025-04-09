@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '../services/supabase';
 import { useAuth } from './useAuth';
+import { create } from 'zustand';
 
 // Types
 interface Campaign {
@@ -263,4 +264,319 @@ export function CampaignProvider({ children }: { children: React.ReactNode }) {
 }
 
 // Hook for components to use the campaign context
-export const useCampaign = () => useContext(CampaignContext); 
+export const useCampaign = () => useContext(CampaignContext);
+
+export enum CampaignMode {
+  Planning = 'Planning',
+  Running = 'Running',
+  Review = 'Review'
+}
+
+export type Entity = {
+  id: string;
+  campaign_id: string;
+  type: 'npc' | 'location' | 'faction' | 'item' | 'event' | 'quest' | 'player' | 'story-point' | 'rule' | 'monster' | 'encounter' | 'character' | 'lore';
+  name: string;
+  content: any;
+  locked: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+// Renamed Campaign type for Zustand store to avoid conflict
+export type CampaignData = {
+  id: string;
+  title: string;
+  description?: string;
+  owner_id: string;
+  created_at: string;
+  is_favorite: boolean;
+  last_accessed: string;
+  image_url?: string;
+  tags?: string[];
+};
+
+type CampaignStore = {
+  campaigns: CampaignData[];
+  currentCampaign: CampaignData | null;
+  campaignMode: CampaignMode;
+  isLoading: boolean;
+  error: string | null;
+  entities: Entity[];
+  visibleEntities: Entity[];
+  pinnedEntities: Entity[];
+  lockedEntities: Entity[];
+  activeTabIndex: number;
+  
+  // Actions
+  fetchCampaigns: () => Promise<void>;
+  setCurrentCampaign: (campaign: CampaignData) => void;
+  setCampaignMode: (mode: CampaignMode) => void;
+  fetchEntities: (campaignId: string) => Promise<void>;
+  toggleFavorite: (campaignId: string) => Promise<void>;
+  updateLastAccessed: (campaignId: string) => Promise<void>;
+  pinEntity: (entityId: string) => void;
+  unpinEntity: (entityId: string) => void;
+  lockEntity: (entityId: string) => void;
+  unlockEntity: (entityId: string) => void;
+  setActiveTabIndex: (index: number) => void;
+  filterEntities: (type?: string, searchTerm?: string) => void;
+};
+
+// Mock data for development
+const mockCampaigns: CampaignData[] = [
+  { 
+    id: '18cc8060-aa5b-45a5-b462-5423c3959350', 
+    title: 'The Frozen Citadel', 
+    owner_id: 'user-1', 
+    created_at: '2024-04-01T12:00:00Z', 
+    is_favorite: true, 
+    last_accessed: '2024-04-05T14:30:00Z',
+    description: 'A campaign set in the frozen north where an ancient evil awakens',
+    tags: ['Fantasy', 'Horror', 'Active']
+  },
+  { 
+    id: '28dc9170-bb6b-56a6-c573-6534d4969451', 
+    title: 'Shadows of New Eden', 
+    owner_id: 'user-1', 
+    created_at: '2024-03-15T10:00:00Z', 
+    is_favorite: false, 
+    last_accessed: '2024-04-03T09:15:00Z',
+    description: 'Cyberpunk adventure in the sprawling metropolis of New Eden',
+    tags: ['Cyberpunk', 'Sci-Fi', 'Active']
+  },
+  { 
+    id: '39ed0280-cc7c-67b7-d684-7645e5070562', 
+    title: 'Lost Kingdom of Zaria', 
+    owner_id: 'user-1', 
+    created_at: '2024-02-10T15:30:00Z', 
+    is_favorite: true, 
+    last_accessed: '2024-03-28T16:45:00Z',
+    description: 'An adventure to uncover the mysteries of a lost desert kingdom',
+    tags: ['Fantasy', 'Exploration', 'Archived']
+  }
+];
+
+// Create the Zustand store
+export const useCampaignStore = create<CampaignStore>((set, get) => ({
+  campaigns: mockCampaigns,
+  currentCampaign: null,
+  campaignMode: CampaignMode.Planning,
+  isLoading: false,
+  error: null,
+  entities: [],
+  visibleEntities: [],
+  pinnedEntities: [],
+  lockedEntities: [],
+  activeTabIndex: 0,
+  
+  fetchCampaigns: async () => {
+    set({ isLoading: true, error: null });
+    try {
+      // For development, we're using mock data
+      // In production, this would be:
+      // const { data, error } = await supabase
+      //   .from('campaigns')
+      //   .select('*')
+      //   .order('is_favorite', { ascending: false })
+      //   .order('last_accessed', { ascending: false });
+      
+      // if (error) throw error;
+      
+      set({ campaigns: mockCampaigns, isLoading: false });
+    } catch (error) {
+      set({ error: (error as Error).message, isLoading: false });
+    }
+  },
+  
+  setCurrentCampaign: (campaign) => {
+    set({ currentCampaign: campaign });
+    get().updateLastAccessed(campaign.id);
+  },
+  
+  setCampaignMode: (mode) => {
+    set({ campaignMode: mode });
+  },
+  
+  fetchEntities: async (campaignId) => {
+    set({ isLoading: true, error: null });
+    try {
+      // For development, use mock data
+      // In production:
+      // const { data, error } = await supabase
+      //   .from('entities')
+      //   .select('*')
+      //   .eq('campaign_id', campaignId);
+      
+      // if (error) throw error;
+      
+      // Mock entities
+      const mockEntities = [
+        // NPCs
+        { id: 'npc-1', campaign_id: campaignId, type: 'npc', name: 'Elric the Wise', content: { description: 'An elderly sage with vast knowledge of arcane lore.' }, locked: false, created_at: '2024-04-01', updated_at: '2024-04-01' },
+        { id: 'npc-2', campaign_id: campaignId, type: 'npc', name: 'Captain Vasmir', content: { description: 'A gruff ship captain who knows the northern waters better than anyone.' }, locked: false, created_at: '2024-04-01', updated_at: '2024-04-02' },
+        
+        // Locations
+        { id: 'loc-1', campaign_id: campaignId, type: 'location', name: 'Frosthold', content: { description: 'A fortified city nestled in the mountains, last bastion of civilization in the north.' }, locked: false, created_at: '2024-04-01', updated_at: '2024-04-01' },
+        { id: 'loc-2', campaign_id: campaignId, type: 'location', name: 'The Frozen Citadel', content: { description: 'An ancient structure of ice and stone, home to a slumbering evil.' }, locked: true, created_at: '2024-04-01', updated_at: '2024-04-03' },
+        
+        // Factions
+        { id: 'fact-1', campaign_id: campaignId, type: 'faction', name: 'The Winter Guard', content: { description: 'Elite soldiers tasked with defending Frosthold and the northern reaches.' }, locked: false, created_at: '2024-04-01', updated_at: '2024-04-02' },
+        
+        // Items
+        { id: 'item-1', campaign_id: campaignId, type: 'item', name: 'Frostbane', content: { description: 'A legendary sword said to have been forged to combat the ancient evil.' }, locked: false, created_at: '2024-04-01', updated_at: '2024-04-01' },
+        
+        // Quests
+        { id: 'quest-1', campaign_id: campaignId, type: 'quest', name: 'The Awakening', content: { description: 'Investigate reports of strange occurrences near the Frozen Citadel.' }, locked: false, created_at: '2024-04-01', updated_at: '2024-04-02' },
+      ] as Entity[];
+      
+      set({ 
+        entities: mockEntities, 
+        visibleEntities: mockEntities,
+        lockedEntities: mockEntities.filter(e => e.locked),
+        isLoading: false 
+      });
+    } catch (error) {
+      set({ error: (error as Error).message, isLoading: false });
+    }
+  },
+  
+  toggleFavorite: async (campaignId) => {
+    const campaign = get().campaigns.find(c => c.id === campaignId);
+    if (!campaign) return;
+    
+    const updatedCampaign = { ...campaign, is_favorite: !campaign.is_favorite };
+    
+    // Update local state immediately for responsiveness
+    set({
+      campaigns: get().campaigns.map(c => 
+        c.id === campaignId ? updatedCampaign : c
+      )
+    });
+    
+    // In production, this would update the database:
+    // await supabase
+    //   .from('campaigns')
+    //   .update({ is_favorite: updatedCampaign.is_favorite })
+    //   .eq('id', campaignId);
+  },
+  
+  updateLastAccessed: async (campaignId) => {
+    const now = new Date().toISOString();
+    
+    // Update local state
+    set({
+      campaigns: get().campaigns.map(c => 
+        c.id === campaignId ? { ...c, last_accessed: now } : c
+      )
+    });
+    
+    // In production:
+    // await supabase
+    //   .from('campaigns')
+    //   .update({ last_accessed: now })
+    //   .eq('id', campaignId);
+  },
+  
+  pinEntity: (entityId) => {
+    const entity = get().entities.find(e => e.id === entityId);
+    if (!entity || get().pinnedEntities.some(e => e.id === entityId)) return;
+    
+    set({ pinnedEntities: [...get().pinnedEntities, entity] });
+  },
+  
+  unpinEntity: (entityId) => {
+    set({
+      pinnedEntities: get().pinnedEntities.filter(e => e.id !== entityId)
+    });
+  },
+  
+  lockEntity: (entityId) => {
+    const entity = get().entities.find(e => e.id === entityId);
+    if (!entity) return;
+    
+    const updatedEntity = { ...entity, locked: true };
+    
+    // Update entities and lockedEntities
+    set({
+      entities: get().entities.map(e => e.id === entityId ? updatedEntity : e),
+      visibleEntities: get().visibleEntities.map(e => e.id === entityId ? updatedEntity : e),
+      lockedEntities: [...get().lockedEntities, updatedEntity]
+    });
+    
+    // In production:
+    // await supabase
+    //   .from('entities')
+    //   .update({ locked: true })
+    //   .eq('id', entityId);
+  },
+  
+  unlockEntity: (entityId) => {
+    const entity = get().entities.find(e => e.id === entityId);
+    if (!entity) return;
+    
+    const updatedEntity = { ...entity, locked: false };
+    
+    // Update entities and lockedEntities
+    set({
+      entities: get().entities.map(e => e.id === entityId ? updatedEntity : e),
+      visibleEntities: get().visibleEntities.map(e => e.id === entityId ? updatedEntity : e),
+      lockedEntities: get().lockedEntities.filter(e => e.id !== entityId)
+    });
+    
+    // In production:
+    // await supabase
+    //   .from('entities')
+    //   .update({ locked: false })
+    //   .eq('id', entityId);
+  },
+  
+  setActiveTabIndex: (index) => {
+    set({ activeTabIndex: index });
+  },
+  
+  filterEntities: (type, searchTerm) => {
+    const { entities } = get();
+    let filtered = [...entities];
+    
+    if (type) {
+      filtered = filtered.filter(e => e.type === type);
+    }
+    
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      filtered = filtered.filter(e => 
+        e.name.toLowerCase().includes(term) || 
+        (typeof e.content.description === 'string' && e.content.description.toLowerCase().includes(term))
+      );
+    }
+    
+    set({ visibleEntities: filtered });
+  }
+}));
+
+// Hook for easier access to the store
+export const useCampaignStore2 = () => {
+  const {
+    campaigns,
+    currentCampaign,
+    campaignMode,
+    fetchCampaigns,
+    setCurrentCampaign,
+    setCampaignMode,
+    fetchEntities,
+    toggleFavorite,
+    // Include other actions you want to expose
+  } = useCampaignStore();
+  
+  return {
+    campaigns,
+    currentCampaign,
+    campaignMode,
+    fetchCampaigns,
+    setCurrentCampaign,
+    setCampaignMode,
+    fetchEntities,
+    toggleFavorite,
+  };
+}; 
