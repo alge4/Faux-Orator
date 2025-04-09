@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useCampaign, CampaignMode, Entity } from '../hooks/useCampaign';
 import { useAuth } from '../hooks/useAuth';
 import ChatInterface from '../components/ChatInterface/ChatInterface';
@@ -20,12 +20,16 @@ interface CampaignFormData {
 const CampaignView: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   const { currentCampaign, loading, error, setCurrentCampaign, refreshCampaigns } = useCampaign();
   
   // State
   const [entities, setEntities] = useState<Entity[]>([]);
-  const [activeMode, setActiveMode] = useState<CampaignMode>(CampaignMode.Planning);
+  const [activeMode, setActiveMode] = useState<CampaignMode>(() => {
+    // Initialize mode from navigation state if available, otherwise default to Planning
+    return location.state?.mode || CampaignMode.Planning;
+  });
   const [campaigns, setCampaigns] = useState<any[]>([]);
   const [messages, setMessages] = useState<any[]>([]);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -233,6 +237,15 @@ const CampaignView: React.FC = () => {
     }
   };
 
+  const handleCampaignSelect = (campaignId: string) => {
+    const selected = campaigns.find(c => c.id === campaignId);
+    if (selected) {
+      setCurrentCampaign(selected);
+      // Navigate to the campaign view while maintaining the current mode
+      navigate(`/campaign/${campaignId}/view`, { state: { mode: activeMode } });
+    }
+  };
+
   if (loading) {
     return <div className="loading">Loading...</div>;
   }
@@ -405,7 +418,7 @@ const CampaignView: React.FC = () => {
               <button
                 key={campaign.id}
                 className={`campaign-item ${currentCampaign?.id === campaign.id ? 'active' : ''}`}
-                onClick={() => navigate(`/campaign/${campaign.id}`)}
+                onClick={() => handleCampaignSelect(campaign.id)}
               >
                 {campaign.name}
               </button>
