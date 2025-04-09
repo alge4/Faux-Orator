@@ -52,7 +52,8 @@ const CampaignView: React.FC = () => {
     messages: assistantMessages,
     isLoading: isChatLoading,
     error: chatError,
-    sendMessage
+    sendMessage,
+    isTyping
   } = useAssistantChat(currentCampaign?.id || '', activeMode);
 
   // Load current campaign data into form when opened
@@ -468,10 +469,10 @@ const CampaignView: React.FC = () => {
                 <h2>DM Assistant</h2>
                 <ChatInterface 
                   mode="planning"
-                  messages={messages}
+                  messages={assistantMessages}
                   onSendMessage={handleSendMessage}
                   availableEntities={entities}
-                  isTyping={false}
+                  isTyping={isTyping}
                   campaignId={currentCampaign?.id}
                   userId={user?.id}
                   isAIAssistant={true}
@@ -485,12 +486,14 @@ const CampaignView: React.FC = () => {
               <h2>Session Chat</h2>
               <ChatInterface 
                 mode="running"
-                messages={messages}
+                messages={assistantMessages}
                 onSendMessage={handleSendMessage}
                 availableEntities={entities}
-                isTyping={false}
+                isTyping={isTyping}
                 campaignId={currentCampaign?.id}
                 userId={user?.id}
+                isAIAssistant={true}
+                assistantChat={assistantChat}
               />
             </div>
           )}
@@ -499,12 +502,14 @@ const CampaignView: React.FC = () => {
               <h2>Session Review</h2>
               <ChatInterface 
                 mode="review"
-                messages={messages}
+                messages={assistantMessages}
                 onSendMessage={handleSendMessage}
                 availableEntities={entities}
-                isTyping={false}
+                isTyping={isTyping}
                 campaignId={currentCampaign?.id}
                 userId={user?.id}
+                isAIAssistant={true}
+                assistantChat={assistantChat}
               />
               <DataView entities={entities} />
             </div>
