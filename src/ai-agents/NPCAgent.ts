@@ -1,6 +1,6 @@
 import { BaseAgent, AgentContext, AgentResponse } from "./BaseAgent";
 import { supabase } from "../services/supabase";
-import { getChatCompletion } from "../services/openai";
+import { openAIService } from "../services/openai";
 import { Database } from "../types/database.types";
 
 // Type for NPC data
@@ -121,15 +121,16 @@ export class NPCAgent extends BaseAgent {
     ];
 
     // Get completion from OpenAI
-    const completion = await getChatCompletion({
+    const response = await openAIService.getChatCompletion(
       messages,
-      temperature: 0.7,
-      campaignId: this.context.campaignId,
-    });
+      undefined,
+      this.context.sessionId,
+      this.context.campaignId
+    );
 
     return (
-      completion.choices[0].message.content ||
-      "I... (The NPC seems unable to respond)"
+      response.content ||
+      "I apologize, but I'm unable to generate a response at the moment."
     );
   }
 

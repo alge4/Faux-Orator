@@ -9,6 +9,78 @@
   --color-border: #e5e7eb;
   --color-error: #ef4444;
   --color-success: #10b981;
+  
+  /* Base colors */
+  --surface-background: #ffffff;
+  --surface-background-alt: #f8fafc;
+  --border-color: #e5e7eb;
+  --input-background: #ffffff;
+  
+  /* Text colors */
+  --text-primary: #1f2937;
+  --text-secondary: #6b7280;
+  --text-on-accent: #ffffff;
+  
+  /* Accent colors */
+  --accent-color: #4f46e5;
+  --accent-color-light: rgba(79, 70, 229, 0.1);
+  --accent-color-dark: #4338ca;
+  
+  /* Mode-specific colors */
+  --planning-color: #3b82f6;
+  --planning-color-light: rgba(59, 130, 246, 0.1);
+  --running-color: #10b981;
+  --running-color-light: rgba(16, 185, 129, 0.1);
+  --review-color: #8b5cf6;
+  --review-color-light: rgba(139, 92, 246, 0.1);
+  
+  /* Chat Interface Colors */
+  --surface-background: #ffffff;
+  --surface-background-dark: #1a1a1a;
+  --header-background: #f5f5f5;
+  --message-background: #f0f0f0;
+  --message-background-dark: #2a2a2a;
+  --input-background: #ffffff;
+  --badge-background: #f0f0f0;
+  --entity-background: #e0e0e0;
+  --entity-background-hover: #d0d0d0;
+  --disabled-background: #cccccc;
+  
+  /* Mode-specific headers */
+  --planning-header: #e3f2fd;
+  --running-header: #e8f5e9;
+  --review-header: #fff3e0;
+  
+  /* Accent colors */
+  --accent-color: #2196f3;
+  --accent-color-hover: #1976d2;
+  
+  /* Border colors */
+  --border-color: #e0e0e0;
+  --border-color-dark: #404040;
+  
+  /* Text colors */
+  --text-primary: #212121;
+  --text-secondary: #757575;
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --surface-background: #1a1b1e;
+    --surface-background-alt: #2a2b2e;
+    --border-color: #383a3f;
+    --input-background: #2a2b2e;
+    
+    --text-primary: #f3f4f6;
+    --text-secondary: #9ca3af;
+    
+    --accent-color-light: rgba(79, 70, 229, 0.2);
+    
+    --planning-color-light: rgba(59, 130, 246, 0.2);
+    --running-color-light: rgba(16, 185, 129, 0.2);
+    --review-color-light: rgba(139, 92, 246, 0.2);
+  }
 }
 
 * {
