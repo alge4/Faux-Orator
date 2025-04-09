@@ -5,6 +5,24 @@
   text-align: center;
 }
 
+/* Exception for campaign view */
+#root .campaign-view,
+.campaign-view {
+  max-width: 100%;
+  width: 100%;
+  padding: 0;
+  margin: 0;
+  text-align: left;
+}
+
+/* When campaign view is active, override root container styles */
+body:has(.campaign-view) #root {
+  max-width: 100%;
+  width: 100%;
+  padding: 0;
+  margin: 0;
+}
+
 .logo {
   height: 6em;
   padding: 1.5em;

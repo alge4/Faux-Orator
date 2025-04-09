@@ -6,8 +6,11 @@ import './App.css';
 // Lazy loaded components
 const Login = lazy(() => import('./pages/auth/Login'));
 const Register = lazy(() => import('./pages/auth/Register'));
+const ForgotPassword = lazy(() => import('./pages/auth/ForgotPassword'));
+const ResetPassword = lazy(() => import('./pages/auth/ResetPassword'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const Campaign = lazy(() => import('./pages/Campaign'));
+const CampaignView = lazy(() => import('./pages/CampaignView'));
 const NotFound = lazy(() => import('./pages/NotFound'));
 const VoiceChatTest = lazy(() => import('./pages/VoiceChatTest'));
 
@@ -37,6 +40,8 @@ function App() {
           {/* Auth Routes */}
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
           
           {/* Protected Routes */}
           <Route 
@@ -57,6 +62,14 @@ function App() {
           />
           <Route 
             path="/campaign/:id" 
+            element={
+              <ProtectedRoute>
+                <CampaignView />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/campaign/:id/details" 
             element={
               <ProtectedRoute>
                 <Campaign />
