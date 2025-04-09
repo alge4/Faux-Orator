@@ -1,0 +1,263 @@
+/* Reset styles for campaign view */
+.campaign-view {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  background-color: #ffffff;
+  z-index: 1000;
+}
+
+/* Apply border-box to all elements */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+/* Reset body margins */
+body {
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+}
+
+/* Header */
+.campaign-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem;
+  border-bottom: 1px solid #e5e7eb;
+  background-color: #ffffff;
+}
+
+.campaign-header h1 {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 500;
+}
+
+/* Mode Switcher */
+.mode-switcher {
+  display: flex;
+  background-color: #f3f4f6;
+  border-radius: 2rem;
+  padding: 0.25rem;
+}
+
+.mode-button {
+  padding: 0.5rem 1.5rem;
+  border: none;
+  background: none;
+  border-radius: 1.5rem;
+  cursor: pointer;
+  font-size: 0.875rem;
+  color: #6b7280;
+  transition: all 0.2s ease;
+}
+
+.mode-button:hover {
+  color: #111827;
+}
+
+.mode-button.active {
+  background-color: #ffffff;
+  color: #111827;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.menu-button {
+  width: 2rem;
+  height: 2rem;
+  border: none;
+  background: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.menu-button span,
+.menu-button span::before,
+.menu-button span::after {
+  content: '';
+  display: block;
+  width: 1.25rem;
+  height: 2px;
+  background-color: #374151;
+  position: relative;
+  transition: all 0.2s ease;
+}
+
+.menu-button span::before {
+  top: -6px;
+  position: absolute;
+}
+
+.menu-button span::after {
+  bottom: -6px;
+  position: absolute;
+}
+
+/* Main Content */
+.campaign-content {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* Left Panel */
+.left-panel {
+  width: 250px;
+  border-right: 1px solid #e5e7eb;
+  background-color: #ffffff;
+  display: flex;
+  flex-direction: column;
+}
+
+.left-panel h2 {
+  padding: 1rem;
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 500;
+  color: #374151;
+}
+
+.campaign-list {
+  padding: 0.5rem;
+  overflow-y: auto;
+}
+
+.campaign-item {
+  display: block;
+  width: 100%;
+  padding: 0.75rem 1rem;
+  text-align: left;
+  border: none;
+  background: none;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  color: #6b7280;
+  transition: all 0.2s ease;
+}
+
+.campaign-item:hover {
+  background-color: #f3f4f6;
+  color: #111827;
+}
+
+.campaign-item.active {
+  background-color: #f3f4f6;
+  color: #111827;
+  font-weight: 500;
+}
+
+/* Main Panel */
+.main-panel {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.main-panel h2 {
+  padding: 1rem;
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 500;
+  color: #374151;
+}
+
+.campaign-network,
+.chat-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Right Panel */
+.right-panel {
+  width: 250px;
+  border-left: 1px solid #e5e7eb;
+  background-color: #ffffff;
+  display: flex;
+  flex-direction: column;
+}
+
+.right-panel h2 {
+  padding: 1rem;
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 500;
+  color: #374151;
+}
+
+.voice-channels {
+  padding: 0.5rem;
+}
+
+.channel {
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  background-color: #f3f4f6;
+  margin-bottom: 0.5rem;
+}
+
+.channel h3 {
+  margin: 0 0 0.5rem 0;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #374151;
+}
+
+/* Loading and Error States */
+.loading,
+.error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  width: 100%;
+  font-size: 1rem;
+  color: #6b7280;
+}
+
+.error {
+  color: #ef4444;
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .left-panel,
+  .right-panel {
+    width: 200px;
+  }
+}
+
+@media (max-width: 768px) {
+  .campaign-content {
+    flex-direction: column;
+  }
+  
+  .left-panel,
+  .right-panel {
+    width: 100%;
+    height: auto;
+    border: none;
+  }
+  
+  .left-panel {
+    border-bottom: 1px solid #e5e7eb;
+  }
+  
+  .right-panel {
+    border-top: 1px solid #e5e7eb;
+  }
+  
+  .main-panel {
+    min-height: 50vh;
+  }
+} 

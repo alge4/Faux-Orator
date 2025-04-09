@@ -1,0 +1,134 @@
+.campaign-page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.campaign-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 32px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.campaign-header-left {
+  flex: 1;
+}
+
+.back-link {
+  display: inline-block;
+  margin-bottom: 16px;
+  color: #6b7280;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.back-link:hover {
+  color: #7e22ce;
+}
+
+.campaign-header h1 {
+  margin: 0 0 8px 0;
+  font-size: 2.5rem;
+  color: #1f2937;
+}
+
+.campaign-setting {
+  color: #6b7280;
+  font-size: 1.1rem;
+  margin: 0;
+}
+
+.campaign-header-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  color: #6b7280;
+}
+
+.campaign-theme {
+  background-color: #f3e8ff;
+  color: #7e22ce;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.9rem;
+}
+
+.campaign-date {
+  font-size: 0.9rem;
+}
+
+.campaign-description {
+  margin-bottom: 32px;
+}
+
+.campaign-description h2 {
+  font-size: 1.5rem;
+  color: #1f2937;
+  margin-bottom: 12px;
+}
+
+.campaign-description p {
+  color: #4b5563;
+  line-height: 1.6;
+}
+
+.campaign-sections {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: 24px;
+}
+
+.campaign-section {
+  background-color: white;
+  border-radius: 8px;
+  padding: 24px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.campaign-section h2 {
+  font-size: 1.25rem;
+  color: #1f2937;
+  margin-top: 0;
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.campaign-section-content {
+  min-height: 120px;
+}
+
+.empty-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: #6b7280;
+  padding: 16px;
+}
+
+.empty-content p {
+  margin-bottom: 16px;
+}
+
+@media (max-width: 768px) {
+  .campaign-header {
+    flex-direction: column;
+  }
+  
+  .campaign-header-right {
+    margin-top: 16px;
+    flex-direction: row;
+    align-items: center;
+    gap: 12px;
+  }
+  
+  .campaign-sections {
+    grid-template-columns: 1fr;
+  }
+} 

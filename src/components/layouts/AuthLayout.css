@@ -1,0 +1,80 @@
+.auth-layout {
+  display: flex;
+  min-height: 100vh;
+}
+
+.auth-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 2rem;
+  max-width: 480px;
+  background-color: #1e1e2f;
+  color: #f3f4f6;
+}
+
+.auth-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+}
+
+.auth-logo {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.auth-logo h1 {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: #a855f7; /* Purple-500 */
+  margin-bottom: 0.5rem;
+}
+
+.auth-tagline {
+  font-size: 1rem;
+  color: #d1d5db;
+}
+
+.auth-form-container {
+  width: 100%;
+  max-width: 400px;
+}
+
+.auth-footer {
+  text-align: center;
+  font-size: 0.875rem;
+  color: #9ca3af;
+  margin-top: 2rem;
+}
+
+.auth-background {
+  flex: 2;
+  display: none;
+  position: relative;
+  overflow: hidden;
+  background-color: #0f172a; /* Dark slate blue */
+}
+
+.auth-image {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: url('/assets/images/auth-background.jpg');
+  background-size: cover;
+  background-position: center;
+  opacity: 0.6;
+}
+
+/* Media query for larger screens */
+@media (min-width: 768px) {
+  .auth-background {
+    display: block;
+  }
+} 

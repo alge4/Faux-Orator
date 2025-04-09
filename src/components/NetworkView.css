@@ -1,0 +1,193 @@
+.network-view {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background-color: #f5f5f5;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.network-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  background-color: #fff;
+  border-bottom: 1px solid #e0e0e0;
+  z-index: 10;
+}
+
+.network-header h2 {
+  margin: 0;
+  font-size: 1.25rem;
+  color: #333;
+}
+
+.network-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.network-controls button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  width: 32px;
+  height: 32px;
+  cursor: pointer;
+  transition: background-color 0.2s, box-shadow 0.2s;
+}
+
+.network-controls button:hover {
+  background-color: #f0f0f0;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.network-controls button:active {
+  background-color: #e8e8e8;
+}
+
+.zoom-level {
+  font-size: 0.9rem;
+  color: #666;
+  min-width: 48px;
+  text-align: center;
+}
+
+.no-campaign-message,
+.no-entities-message {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 32px;
+  text-align: center;
+  color: #666;
+}
+
+.network-graph-container {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  background-color: #fafafa;
+}
+
+/* Cytoscape-specific styling */
+.network-graph-container > div {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* Make sure Cytoscape canvas responds to container size */
+.network-graph-container > div canvas {
+  outline: none;
+}
+
+/* Add tooltip styles for node hover */
+.cy-tooltip {
+  position: absolute;
+  z-index: 1000;
+  background-color: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 5px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  pointer-events: none;
+  max-width: 200px;
+}
+
+.network-legend {
+  position: absolute;
+  bottom: 16px;
+  right: 16px;
+  background-color: rgba(255, 255, 255, 0.9);
+  border-radius: 8px;
+  padding: 12px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  font-size: 0.85rem;
+  z-index: 5;
+}
+
+.legend-title {
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: #333;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.legend-color {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  margin-right: 8px;
+}
+
+.legend-label {
+  color: #555;
+}
+
+/* Node styles for hover state */
+.cy-node-hovered,
+node.hover {
+  border-width: 2px !important;
+  border-color: #ff0000 !important;
+  border-opacity: 1 !important;
+}
+
+/* Edge styles for hover state */
+.cy-edge-hovered,
+edge.hover {
+  width: 4px !important;
+  line-color: #666 !important;
+  opacity: 1 !important;
+}
+
+/* Selection styles */
+node.selected {
+  border-width: 3px !important;
+  border-color: #ffd700 !important; /* Gold */
+  border-opacity: 1 !important;
+  background-color: #ffecb3 !important;
+  color: #000 !important;
+  text-outline-width: 0 !important;
+  font-weight: bold !important;
+  z-index: 9999 !important;
+}
+
+/* Animation for selection */
+@keyframes pulse {
+  0% { border-width: 3px; }
+  50% { border-width: 5px; }
+  100% { border-width: 3px; }
+}
+
+node.selected {
+  animation: pulse 1.5s infinite ease-in-out;
+}
+
+/* Responsive styles */
+@media (max-width: 768px) {
+  .network-legend {
+    bottom: 8px;
+    right: 8px;
+    padding: 8px;
+    font-size: 0.75rem;
+  }
+  
+  .legend-color {
+    width: 12px;
+    height: 12px;
+    margin-right: 6px;
+  }
+} 
