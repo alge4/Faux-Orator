@@ -4,36 +4,24 @@ import './ChatInterface.css';
 
 interface ChatInterfaceProps {
   mode: 'planning' | 'running' | 'review';
+  messages: any[];
   onSendMessage: (message: string) => void;
-  messages: Array<{
-    id: string;
-    content: string;
-    sender: string;
-    timestamp: string;
-    entities?: Array<{
-      id: string;
-      name: string;
-      type: string;
-    }>;
-  }>;
-  availableEntities?: Array<{
-    id: string;
-    name: string;
-    type: string;
-  }>;
-  isTyping?: boolean;
+  availableEntities: Entity[];
+  isTyping: boolean;
   campaignId?: string;
   userId?: string;
+  isAIAssistant?: boolean;
 }
 
 const ChatInterface: React.FC<ChatInterfaceProps> = ({
   mode,
-  onSendMessage,
   messages,
+  onSendMessage,
   availableEntities,
-  isTyping = false,
+  isTyping,
   campaignId,
-  userId
+  userId,
+  isAIAssistant = false
 }) => {
   const [input, setInput] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -76,7 +64,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   };
 
   return (
-    <div className={`chat-interface ${mode}-mode`}>
+    <div className={`chat-interface ${isAIAssistant ? 'ai-assistant' : ''} ${mode}-mode`}>
       <div className="chat-header">
         <h2>{getModeTitle()}</h2>
         {availableEntities && (
