@@ -361,7 +361,8 @@ body {
 .modal-header h2 {
   margin: 0;
   font-size: 1.5rem;
-  color: var(--text-primary);
+  color: #111827;
+  font-weight: 600;
 }
 
 .modal-close {
@@ -425,10 +426,11 @@ body {
 
 textarea.form-control {
   resize: vertical;
-  min-height: 100px;
+  min-height: 200px;
+  line-height: 1.5;
 }
 
-.modal-actions {
+.modal-footer {
   display: flex;
   justify-content: flex-end;
   gap: 1rem;
@@ -445,6 +447,7 @@ textarea.form-control {
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s ease;
+  min-width: 100px;
 }
 
 .btn:disabled {
