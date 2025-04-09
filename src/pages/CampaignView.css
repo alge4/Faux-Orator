@@ -605,4 +605,60 @@ textarea.form-control {
 .menu-icon {
   margin-right: 0.5rem;
   font-size: 1rem;
+}
+
+.planning-view {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  gap: 1rem;
+  padding: 1rem;
+}
+
+.world-graph {
+  flex: 2;
+  display: flex;
+  flex-direction: column;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.world-graph h2 {
+  padding: 1rem;
+  margin: 0;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.dm-assistant-chat {
+  flex: 1;
+  min-width: 300px;
+  max-width: 400px;
+  display: flex;
+  flex-direction: column;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.dm-assistant-chat h2 {
+  padding: 1rem;
+  margin: 0;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+/* Ensure the NetworkView fills its container */
+.world-graph .network-view {
+  flex: 1;
+  overflow: hidden;
+}
+
+/* Ensure the ChatInterface fills its container */
+.dm-assistant-chat .chat-interface {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 } 

@@ -447,12 +447,27 @@ const CampaignView: React.FC = () => {
         {/* Center panel - Main Content */}
         <main className="main-panel">
           {activeMode === CampaignMode.Planning && (
-            <div className="campaign-network">
-              <h2>Campaign Network</h2>
-              <NetworkView 
-                currentCampaign={currentCampaign}
-                entities={entities}
-              />
+            <div className="planning-view">
+              <div className="world-graph">
+                <h2>World Graph</h2>
+                <NetworkView 
+                  currentCampaign={currentCampaign}
+                  entities={entities}
+                />
+              </div>
+              <div className="dm-assistant-chat">
+                <h2>DM Assistant</h2>
+                <ChatInterface 
+                  mode="planning"
+                  messages={messages}
+                  onSendMessage={handleSendMessage}
+                  availableEntities={entities}
+                  isTyping={false}
+                  campaignId={currentCampaign?.id}
+                  userId={user?.id}
+                  isAIAssistant={true}
+                />
+              </div>
             </div>
           )}
           {activeMode === CampaignMode.Running && (
