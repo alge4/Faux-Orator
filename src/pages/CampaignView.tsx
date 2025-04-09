@@ -223,6 +223,16 @@ const CampaignView: React.FC = () => {
     navigate('/dashboard');
   };
 
+  const handleOverlayClick = (e: React.MouseEvent) => {
+    // Only close if clicking directly on the overlay, not its children
+    if (e.target === e.currentTarget) {
+      e.preventDefault();
+      e.stopPropagation();
+      // Uncomment the line below if you want to allow closing by clicking the overlay
+      // setIsEditing(false);
+    }
+  };
+
   if (loading) {
     return <div className="loading">Loading...</div>;
   }
@@ -283,13 +293,16 @@ const CampaignView: React.FC = () => {
 
       {/* Edit Campaign Modal */}
       {showEditForm && (
-        <div className="modal-overlay">
+        <div className="modal-overlay" onClick={handleOverlayClick}>
           <div className="modal-content">
             <div className="modal-header">
               <h2>Edit Campaign</h2>
               <button 
                 className="modal-close"
-                onClick={() => setShowEditForm(false)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowEditForm(false);
+                }}
                 disabled={isSubmitting}
               >
                 &times;
@@ -361,7 +374,10 @@ const CampaignView: React.FC = () => {
                 <button
                   type="button"
                   className="btn btn-secondary"
-                  onClick={() => setShowEditForm(false)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowEditForm(false);
+                  }}
                   disabled={isSubmitting}
                 >
                   Cancel
