@@ -2,15 +2,36 @@ import React, { useState, useRef, useEffect } from 'react';
 import MessageBubble from '../MessageBubble';
 import './ChatInterface.css';
 
+interface AssistantChat {
+  id: string;
+  campaign_id: string;
+  mode: 'planning' | 'running' | 'review';
+  context: Record<string, any>;
+  last_interaction: string;
+}
+
+interface Message {
+  id: string;
+  campaign_id: string;
+  user_id: string;
+  content: string;
+  mode: 'planning' | 'running' | 'review';
+  entities: Entity[];
+  is_ai_response: boolean;
+  assistant_chat_id?: string;
+  created_at: string;
+}
+
 interface ChatInterfaceProps {
   mode: 'planning' | 'running' | 'review';
-  messages: any[];
-  onSendMessage: (message: string) => void;
+  messages: Message[];
+  onSendMessage: (message: string, assistantChatId?: string) => void;
   availableEntities: Entity[];
   isTyping: boolean;
-  campaignId?: string;
-  userId?: string;
+  campaignId: string;
+  userId: string;
   isAIAssistant?: boolean;
+  assistantChat?: AssistantChat;
 }
 
 const ChatInterface: React.FC<ChatInterfaceProps> = ({
@@ -21,7 +42,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   isTyping,
   campaignId,
   userId,
-  isAIAssistant = false
+  isAIAssistant = false,
+  assistantChat
 }) => {
   const [input, setInput] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -38,7 +60,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (input.trim()) {
-      onSendMessage(input);
+      onSendMessage(input, assistantChat?.id);
       setInput('');
     }
   };
@@ -63,6 +85,12 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     }
   };
 
+  // Filter messages to only show those relevant to the current assistant chat
+  const filteredMessages = messages.filter(msg => 
+    !isAIAssistant || 
+    (isAIAssistant && msg.assistant_chat_id === assistantChat?.id)
+  );
+
   return (
     <div className={`chat-interface ${isAIAssistant ? 'ai-assistant' : ''} ${mode}-mode`}>
       <div className="chat-header">
@@ -79,8 +107,12 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
       </div>
       
       <div className="messages-container">
-        {messages.map((message) => (
-          <MessageBubble key={message.id} message={message} />
+        {filteredMessages.map((message) => (
+          <MessageBubble 
+            key={message.id} 
+            message={message}
+            isCurrentUser={message.user_id === userId}
+          />
         ))}
         {isTyping && (
           <div className="typing-indicator">
