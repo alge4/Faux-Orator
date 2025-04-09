@@ -10,6 +10,7 @@ import VoiceChat from '../components/VoiceChat';
 import CampaignMenu from '../components/CampaignMenu';
 import { supabase } from '../services/supabase';
 import chevronIcon from '../assets/icons/chevron.svg';
+import { useAssistantChat } from '../hooks/useAssistantChat';
 import './CampaignView.css';
 
 interface CampaignFormData {
@@ -45,6 +46,14 @@ const CampaignView: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isRotating, setIsRotating] = useState<'left' | 'right' | null>(null);
+
+  const {
+    assistantChat,
+    messages: assistantMessages,
+    isLoading: isChatLoading,
+    error: chatError,
+    sendMessage
+  } = useAssistantChat(currentCampaign?.id || '', activeMode);
 
   // Load current campaign data into form when opened
   useEffect(() => {
@@ -198,12 +207,12 @@ const CampaignView: React.FC = () => {
   }, [currentCampaign?.id]);
 
   // Handle sending messages
-  const handleSendMessage = async (message: string) => {
+  const handleSendMessage = async (content: string, files?: File[]) => {
     if (!currentCampaign?.id || !user?.id) return;
 
     const newMessage = {
       id: Date.now().toString(),
-      content: message,
+      content: content,
       sender: user.email || 'Anonymous',
       timestamp: new Date().toISOString(),
       entities: []
@@ -218,7 +227,7 @@ const CampaignView: React.FC = () => {
         .insert([{
           campaign_id: currentCampaign.id,
           user_id: user.id,
-          content: message,
+          content: content,
           mode: activeMode
         }]);
     } catch (error) {
@@ -466,6 +475,7 @@ const CampaignView: React.FC = () => {
                   campaignId={currentCampaign?.id}
                   userId={user?.id}
                   isAIAssistant={true}
+                  assistantChat={assistantChat}
                 />
               </div>
             </div>
