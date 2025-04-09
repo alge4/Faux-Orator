@@ -1,6 +1,6 @@
 import { BaseAgent, AgentContext, AgentResponse } from "./BaseAgent";
 import { supabase } from "../services/supabase";
-import { getChatCompletion } from "../services/openai";
+import { openAIService } from "../services/openai";
 import { Database } from "../types/database.types";
 import { v4 as uuidv4 } from "uuid";
 
@@ -201,14 +201,16 @@ export class SessionPlanningAgent extends BaseAgent {
     }
 
     // Get completion from OpenAI
-    const completion = await getChatCompletion({
+    const response = await openAIService.getChatCompletion(
       messages,
-      temperature: 0.7,
-      maxTokens: 2000,
-      campaignId: this.context.campaignId,
-    });
+      undefined,
+      this.context.sessionId,
+      this.context.campaignId
+    );
 
-    const responseContent = completion.choices[0].message.content;
+    const responseContent =
+      response.content ||
+      "I apologize, but I'm unable to generate a response at the moment.";
 
     // Parse the response into a session plan
     return this.parseSessionPlanResponse(responseContent, input);
