@@ -10,6 +10,18 @@ interface AssistantChat {
   last_interaction: string;
 }
 
+interface Attachment {
+  id: string;
+  message_id: string;
+  campaign_id: string;
+  file_name: string;
+  file_type: string;
+  file_size: number;
+  storage_path: string;
+  content_preview?: string;
+  created_at: string;
+}
+
 interface Message {
   id: string;
   campaign_id: string;
@@ -19,13 +31,15 @@ interface Message {
   entities: Entity[];
   is_ai_response: boolean;
   assistant_chat_id?: string;
+  has_attachments: boolean;
+  attachments?: Attachment[];
   created_at: string;
 }
 
 interface ChatInterfaceProps {
   mode: 'planning' | 'running' | 'review';
   messages: Message[];
-  onSendMessage: (message: string, assistantChatId?: string) => void;
+  onSendMessage: (message: string, files?: File[], assistantChatId?: string) => void;
   availableEntities: Entity[];
   isTyping: boolean;
   campaignId: string;
@@ -46,8 +60,11 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   assistantChat
 }) => {
   const [input, setInput] = useState('');
+  const [attachments, setAttachments] = useState<File[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [showEntityList, setShowEntityList] = useState(false);
+  const [dragActive, setDragActive] = useState(false);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -59,9 +76,13 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (input.trim()) {
-      onSendMessage(input, assistantChat?.id);
+    if (input.trim() || attachments.length > 0) {
+      onSendMessage(input, attachments.length > 0 ? attachments : undefined, assistantChat?.id);
       setInput('');
+      setAttachments([]);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     }
   };
 
@@ -70,6 +91,48 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
       e.preventDefault();
       handleSubmit(e);
     }
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    handleFiles(files);
+  };
+
+  const handleFiles = (files: File[]) => {
+    const validFiles = files.filter(file => {
+      const isValidType = file.type === 'application/pdf' || 
+                         file.type === 'text/markdown' ||
+                         file.name.endsWith('.md');
+      const isValidSize = file.size <= 10 * 1024 * 1024; // 10MB limit
+      return isValidType && isValidSize;
+    });
+
+    if (validFiles.length > 0) {
+      setAttachments(prev => [...prev, ...validFiles]);
+    }
+  };
+
+  const handleDrag = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === 'dragenter' || e.type === 'dragover') {
+      setDragActive(true);
+    } else if (e.type === 'dragleave') {
+      setDragActive(false);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+
+    const files = Array.from(e.dataTransfer.files);
+    handleFiles(files);
+  };
+
+  const removeAttachment = (index: number) => {
+    setAttachments(prev => prev.filter((_, i) => i !== index));
   };
 
   const getModeTitle = () => {
@@ -92,7 +155,10 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   );
 
   return (
-    <div className={`chat-interface ${isAIAssistant ? 'ai-assistant' : ''} ${mode}-mode`}>
+    <div 
+      className={`chat-interface ${isAIAssistant ? 'ai-assistant' : ''} ${mode}-mode`}
+      onDragEnter={handleDrag}
+    >
       <div className="chat-header">
         <h2>{getModeTitle()}</h2>
         {availableEntities && (
@@ -144,22 +210,66 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
       )}
 
       <form onSubmit={handleSubmit} className="chat-input-form">
-        <textarea
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyPress={handleKeyPress}
-          placeholder="Type your message..."
-          rows={1}
-          className="chat-input"
-        />
-        <button
-          type="submit"
-          disabled={!input.trim()}
-          className="send-button"
-          aria-label="Send message"
-        >
-          Send
-        </button>
+        {dragActive && (
+          <div 
+            className="drag-overlay"
+            onDragEnter={handleDrag}
+            onDragLeave={handleDrag}
+            onDragOver={handleDrag}
+            onDrop={handleDrop}
+          >
+            Drop files here
+          </div>
+        )}
+        
+        {attachments.length > 0 && (
+          <div className="attachment-preview">
+            {attachments.map((file, index) => (
+              <div key={index} className="attachment-item">
+                <span>{file.name}</span>
+                <button
+                  type="button"
+                  onClick={() => removeAttachment(index)}
+                  className="remove-attachment"
+                  aria-label="Remove attachment"
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="input-container">
+          <textarea
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyPress={handleKeyPress}
+            placeholder="Type your message..."
+            rows={1}
+            className="chat-input"
+          />
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileSelect}
+            accept=".pdf,.md,text/markdown,application/pdf"
+            multiple
+            className="file-input"
+            id="file-input"
+          />
+          <label htmlFor="file-input" className="file-input-label">
+            📎
+          </label>
+          <button
+            type="submit"
+            disabled={!input.trim() && attachments.length === 0}
+            className="send-button"
+            aria-label="Send message"
+          >
+            Send
+          </button>
+        </div>
       </form>
     </div>
   );

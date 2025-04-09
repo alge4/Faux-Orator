@@ -2,10 +2,11 @@
   display: flex;
   flex-direction: column;
   height: 100%;
-  background-color: var(--surface-background);
-  border: 1px solid var(--border-color);
+  background-color: #ffffff;
+  border: 2px solid #2c2c2c;
   border-radius: 8px;
   overflow: hidden;
+  position: relative;
 }
 
 .chat-header {
@@ -13,15 +14,15 @@
   justify-content: space-between;
   align-items: center;
   padding: 1rem;
-  background-color: var(--header-background);
-  border-bottom: 1px solid var(--border-color);
+  background-color: #ffffff;
+  border-bottom: 2px solid #2c2c2c;
 }
 
 .chat-header h2 {
   margin: 0;
-  color: var(--text-primary);
+  color: #2c2c2c;
   font-size: 1.25rem;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .messages-container {
@@ -31,40 +32,43 @@
   display: flex;
   flex-direction: column;
   gap: 1rem;
-  background-color: var(--surface-background);
+  background-color: #ffffff;
 }
 
 .message-bubble {
   max-width: 80%;
   padding: 1rem;
   border-radius: 8px;
-  background-color: var(--message-background);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  background-color: #ffffff;
+  border: 1px solid #2c2c2c;
+  box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.1);
 }
 
 .message-bubble:nth-child(even) {
   align-self: flex-end;
-  background-color: var(--message-background-dark);
+  background-color: #f5f5f5;
 }
 
 .message-header {
   display: flex;
   justify-content: space-between;
   margin-bottom: 0.5rem;
+  border-bottom: 1px solid #e0e0e0;
+  padding-bottom: 0.5rem;
 }
 
 .sender {
   font-weight: 600;
-  color: var(--text-primary);
+  color: #2c2c2c;
 }
 
 .timestamp {
-  color: var(--text-secondary);
+  color: #666666;
   font-size: 0.875rem;
 }
 
 .message-content {
-  color: var(--text-primary);
+  color: #2c2c2c;
   line-height: 1.5;
   white-space: pre-wrap;
   word-break: break-word;
@@ -74,7 +78,8 @@
   display: inline-block;
   padding: 0.125rem 0.375rem;
   margin: 0 0.25rem;
-  background-color: var(--entity-background);
+  background-color: #f0f0f0;
+  border: 1px solid #2c2c2c;
   border-radius: 4px;
   font-weight: 500;
   cursor: pointer;
@@ -82,19 +87,20 @@
 }
 
 .entity-reference:hover {
-  background-color: var(--entity-background-hover);
+  background-color: #e0e0e0;
 }
 
 .entity-list {
   padding: 1rem;
-  background-color: var(--surface-background-dark);
-  border-top: 1px solid var(--border-color);
+  background-color: #ffffff;
+  border-top: 2px solid #2c2c2c;
 }
 
 .entity-list h3 {
   margin: 0 0 0.5rem;
-  color: var(--text-primary);
+  color: #2c2c2c;
   font-size: 1rem;
+  font-weight: 600;
 }
 
 .entity-grid {
@@ -105,13 +111,13 @@
 
 .entity-chip {
   padding: 0.5rem;
-  background-color: var(--entity-background);
-  border: none;
+  background-color: #ffffff;
+  border: 1px solid #2c2c2c;
   border-radius: 4px;
-  color: var(--text-primary);
+  color: #2c2c2c;
   font-size: 0.875rem;
   cursor: pointer;
-  transition: background-color 0.2s ease;
+  transition: all 0.2s ease;
   text-align: center;
   white-space: nowrap;
   overflow: hidden;
@@ -119,25 +125,35 @@
 }
 
 .entity-chip:hover {
-  background-color: var(--entity-background-hover);
+  background-color: #f0f0f0;
+  transform: translateY(-1px);
+  box-shadow: 1px 1px 0 rgba(0, 0, 0, 0.1);
 }
 
 .chat-input-form {
   padding: 1rem;
-  background-color: var(--surface-background-dark);
-  border-top: 1px solid var(--border-color);
+  background-color: #ffffff;
+  border-top: 2px solid #2c2c2c;
   display: flex;
   gap: 0.5rem;
+}
+
+.input-container {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  width: 100%;
+  position: relative;
 }
 
 .chat-input {
   flex: 1;
   padding: 0.75rem;
-  background-color: var(--input-background);
-  border: 1px solid var(--border-color);
+  background-color: #ffffff;
+  border: 1px solid #2c2c2c;
   border-radius: 4px;
   resize: none;
-  color: var(--text-primary);
+  color: #2c2c2c;
   font-size: 1rem;
   line-height: 1.5;
   transition: border-color 0.2s ease;
@@ -145,26 +161,28 @@
 
 .chat-input:focus {
   outline: none;
-  border-color: var(--accent-color);
+  border-color: #000000;
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.1);
 }
 
 .send-button {
   padding: 0.75rem 1.5rem;
-  background-color: var(--accent-color);
-  color: white;
+  background-color: #2c2c2c;
+  color: #ffffff;
   border: none;
   border-radius: 4px;
   font-weight: 500;
   cursor: pointer;
-  transition: background-color 0.2s ease;
+  transition: all 0.2s ease;
 }
 
 .send-button:hover:not(:disabled) {
-  background-color: var(--accent-color-hover);
+  background-color: #000000;
+  transform: translateY(-1px);
 }
 
 .send-button:disabled {
-  background-color: var(--disabled-background);
+  background-color: #cccccc;
   cursor: not-allowed;
 }
 
@@ -217,41 +235,173 @@
   }
 }
 
-/* Entity type-specific colors */
+/* Entity type-specific styles with borders */
 .entity-reference.character,
 .entity-chip.character {
-  background-color: var(--entity-character-bg, #e3f2fd);
+  background-color: #ffffff;
+  border: 1px solid #2196f3;
 }
 
 .entity-reference.location,
 .entity-chip.location {
-  background-color: var(--entity-location-bg, #f3e5f5);
+  background-color: #ffffff;
+  border: 1px solid #9c27b0;
 }
 
 .entity-reference.item,
 .entity-chip.item {
-  background-color: var(--entity-item-bg, #e8f5e9);
+  background-color: #ffffff;
+  border: 1px solid #4caf50;
 }
 
 .entity-reference.quest,
 .entity-chip.quest {
-  background-color: var(--entity-quest-bg, #fff3e0);
+  background-color: #ffffff;
+  border: 1px solid #ff9800;
 }
 
 .entity-reference.note,
 .entity-chip.note {
-  background-color: var(--entity-note-bg, #fce4ec);
+  background-color: #ffffff;
+  border: 1px solid #e91e63;
 }
 
 /* Mode-specific styles */
 .planning-mode .chat-header {
-  background-color: var(--planning-header);
+  border-bottom: 2px solid #2c2c2c;
 }
 
 .running-mode .chat-header {
-  background-color: var(--running-header);
+  border-bottom: 2px solid #2c2c2c;
 }
 
 .review-mode .chat-header {
-  background-color: var(--review-header);
+  border-bottom: 2px solid #2c2c2c;
+}
+
+.file-input {
+  display: none;
+}
+
+.file-input-label {
+  cursor: pointer;
+  padding: 8px;
+  font-size: 1.2em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.file-input-label:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.attachment-preview {
+  padding: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  background-color: #ffffff;
+  border: 1px solid #2c2c2c;
+  border-radius: 4px;
+  margin-bottom: 8px;
+}
+
+.attachment-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  background-color: #f5f5f5;
+  border: 1px solid #2c2c2c;
+  border-radius: 4px;
+  font-size: 0.9em;
+}
+
+.remove-attachment {
+  border: none;
+  background: none;
+  cursor: pointer;
+  padding: 0 4px;
+  font-size: 1.2em;
+  color: #2c2c2c;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.remove-attachment:hover {
+  color: #ff0000;
+}
+
+.drag-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(255, 255, 255, 0.95);
+  border: 2px dashed #2c2c2c;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2em;
+  color: #2c2c2c;
+  pointer-events: none;
+  z-index: 10;
+}
+
+/* Message attachment styles */
+.message-attachments {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.message-attachment {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  background-color: #f5f5f5;
+  border: 1px solid #2c2c2c;
+  border-radius: 4px;
+  font-size: 0.9em;
+}
+
+.message-attachment-icon {
+  font-size: 1.2em;
+  color: #2c2c2c;
+}
+
+.message-attachment-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.message-attachment-name {
+  font-weight: 600;
+  color: #2c2c2c;
+}
+
+.message-attachment-meta {
+  font-size: 0.8em;
+  color: #666666;
+}
+
+.message-attachment-preview {
+  padding: 8px;
+  background-color: #ffffff;
+  border: 1px solid #2c2c2c;
+  border-radius: 4px;
+  margin-top: 4px;
+  white-space: pre-wrap;
+  font-family: monospace;
+  max-height: 200px;
+  overflow-y: auto;
 } 
