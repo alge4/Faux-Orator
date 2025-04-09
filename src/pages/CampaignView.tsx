@@ -1,13 +1,15 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useCampaign, CampaignMode, Entity } from '../hooks/useCampaign';
 import { useAuth } from '../hooks/useAuth';
+import { FaChevronLeft, FaChevronRight } from 'react-icons/fa';
 import ChatInterface from '../components/ChatInterface/ChatInterface';
 import NetworkView from '../components/NetworkView';
 import DataView from '../components/DataView';
 import VoiceChat from '../components/VoiceChat';
 import CampaignMenu from '../components/CampaignMenu';
 import { supabase } from '../services/supabase';
+import chevronIcon from '../assets/icons/chevron.svg';
 import './CampaignView.css';
 
 interface CampaignFormData {
@@ -20,12 +22,16 @@ interface CampaignFormData {
 const CampaignView: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   const { currentCampaign, loading, error, setCurrentCampaign, refreshCampaigns } = useCampaign();
   
   // State
   const [entities, setEntities] = useState<Entity[]>([]);
-  const [activeMode, setActiveMode] = useState<CampaignMode>(CampaignMode.Planning);
+  const [activeMode, setActiveMode] = useState<CampaignMode>(() => {
+    // Initialize mode from navigation state if available, otherwise default to Planning
+    return location.state?.mode || CampaignMode.Planning;
+  });
   const [campaigns, setCampaigns] = useState<any[]>([]);
   const [messages, setMessages] = useState<any[]>([]);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -37,6 +43,8 @@ const CampaignView: React.FC = () => {
     theme: ''
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isRotating, setIsRotating] = useState<'left' | 'right' | null>(null);
 
   // Load current campaign data into form when opened
   useEffect(() => {
@@ -233,6 +241,22 @@ const CampaignView: React.FC = () => {
     }
   };
 
+  const handleCampaignSelect = (campaignId: string) => {
+    const selected = campaigns.find(c => c.id === campaignId);
+    if (selected) {
+      setCurrentCampaign(selected);
+      // Navigate to the campaign view while maintaining the current mode
+      navigate(`/campaign/${campaignId}/view`, { state: { mode: activeMode } });
+    }
+  };
+
+  const handleToggleSidebar = () => {
+    setIsRotating(isSidebarCollapsed ? 'left' : 'right');
+    setIsSidebarCollapsed(prev => !prev);
+    // Reset animation class after animation completes
+    setTimeout(() => setIsRotating(null), 300);
+  };
+
   if (loading) {
     return <div className="loading">Loading...</div>;
   }
@@ -398,14 +422,21 @@ const CampaignView: React.FC = () => {
       {/* Main three-panel layout */}
       <div className="campaign-content">
         {/* Left panel - Campaign List */}
-        <aside className="left-panel">
+        <aside className={`left-panel ${isSidebarCollapsed ? 'collapsed' : ''}`}>
+          <button 
+            className={`toggle-sidebar ${isRotating ? `rotating-${isRotating}` : ''}`}
+            onClick={handleToggleSidebar}
+            aria-label={isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+          >
+            <img src={chevronIcon} alt="Toggle sidebar" />
+          </button>
           <h2>Campaigns</h2>
           <div className="campaign-list">
             {campaigns.map(campaign => (
               <button
                 key={campaign.id}
                 className={`campaign-item ${currentCampaign?.id === campaign.id ? 'active' : ''}`}
-                onClick={() => navigate(`/campaign/${campaign.id}`)}
+                onClick={() => handleCampaignSelect(campaign.id)}
               >
                 {campaign.name}
               </button>
