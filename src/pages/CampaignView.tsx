@@ -110,9 +110,17 @@ const CampaignView: React.FC = () => {
 
   return (
     <div className="campaign-view">
-      {/* Header with Campaign name and mode switcher */}
-      <header className="campaign-header">
-        <h1>Campaign</h1>
+      <div className="campaign-header">
+        <div className="header-left">
+          <button 
+            onClick={() => navigate('/dashboard')}
+            className="back-button"
+            aria-label="Back to dashboard"
+          >
+            ← Back to Dashboard
+          </button>
+          <h3>Campaign Assistant</h3>
+        </div>
         <div className="mode-switcher">
           <button 
             className={`mode-button ${activeMode === CampaignMode.Planning ? 'active' : ''}`}
@@ -136,7 +144,7 @@ const CampaignView: React.FC = () => {
         <button className="menu-button" aria-label="Menu">
           <span></span>
         </button>
-      </header>
+      </div>
 
       {/* Main three-panel layout */}
       <div className="campaign-content">
