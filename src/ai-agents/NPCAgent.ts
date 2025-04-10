@@ -21,65 +21,190 @@ export interface NPCChatMessage {
   timestamp: string;
 }
 
+interface NPCData {
+  id: string;
+  name: string;
+  description: string;
+  personality: string;
+  goals: string[];
+  relationships: Record<string, string>;
+  location: string;
+  faction?: string;
+  stats?: Record<string, number>;
+  inventory?: string[];
+}
+
 // NPC Agent class
 export class NPCAgent extends BaseAgent {
+  private npcs: Map<string, NPCData>;
   private npc: NPC | null = null;
   private messageHistory: NPCChatMessage[] = [];
 
   constructor(context: AgentContext) {
     super(context);
+    this.npcs = new Map();
   }
 
   // Process the input to generate a response
-  async process(input: NPCAgentInput): Promise<AgentResponse> {
+  async process(input: any): Promise<AgentResponse> {
     try {
-      // Validate input
-      this.validateInput(input);
+      switch (input.type) {
+        case "create":
+          return await this.createNPC(input.data);
+        case "update":
+          return await this.updateNPC(input.id, input.data);
+        case "query":
+          return await this.queryNPC(input.query);
+        case "interact":
+          return await this.simulateInteraction(
+            input.npcId,
+            input.playerAction
+          );
+        case "brainstorm":
+          return await this.brainstormNPCs(input.topic);
+        default:
+          throw new Error(`Unknown input type: ${input.type}`);
+      }
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
 
-      // Load NPC data
-      await this.loadNPC(input.npcId);
+  private async createNPC(data: Partial<NPCData>): Promise<AgentResponse> {
+    try {
+      const { data: npc, error } = await supabase
+        .from("npcs")
+        .insert([
+          {
+            ...data,
+            campaign_id: this.context.campaignId,
+            created_by: this.context.userId,
+          },
+        ])
+        .select()
+        .single();
 
-      // Set message history
-      this.messageHistory = input.messageHistory || [];
+      if (error) throw error;
 
-      // Generate response from NPC
-      const npcResponse = await this.generateNPCResponse(
-        input.playerMessage,
-        input.currentContext
-      );
+      this.npcs.set(npc.id, npc);
 
-      // Log the interaction
-      await this.logAction("npc_conversation", {
-        npcId: input.npcId,
-        npcName: this.npc?.name,
-        playerMessage: input.playerMessage,
-        npcResponse,
-      });
-
-      // Return successful response
       return {
         success: true,
-        message: npcResponse,
-        data: {
-          npc: this.npc,
-          messageHistory: [
-            ...this.messageHistory,
-            {
-              role: "player",
-              content: input.playerMessage,
-              timestamp: new Date().toISOString(),
-            },
-            {
-              role: "npc",
-              content: npcResponse,
-              timestamp: new Date().toISOString(),
-            },
-          ],
-        },
+        message: `Created NPC: ${npc.name}`,
+        data: npc,
       };
     } catch (error) {
-      return this.handleError("Error in NPC Agent", error);
+      return this.handleError(error);
     }
+  }
+
+  private async updateNPC(
+    id: string,
+    updates: Partial<NPCData>
+  ): Promise<AgentResponse> {
+    try {
+      const { data: npc, error } = await supabase
+        .from("npcs")
+        .update(updates)
+        .eq("id", id)
+        .eq("campaign_id", this.context.campaignId)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      this.npcs.set(id, { ...this.npcs.get(id), ...updates });
+
+      return {
+        success: true,
+        message: `Updated NPC: ${npc.name}`,
+        data: npc,
+      };
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  private async queryNPC(query: string): Promise<AgentResponse> {
+    try {
+      const { data: npcs, error } = await supabase
+        .from("npcs")
+        .select("*")
+        .eq("campaign_id", this.context.campaignId)
+        .textSearch("description", query);
+
+      if (error) throw error;
+
+      return {
+        success: true,
+        message: `Found ${npcs.length} NPCs matching query: ${query}`,
+        data: npcs,
+      };
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  private async simulateInteraction(
+    npcId: string,
+    playerAction: string
+  ): Promise<AgentResponse> {
+    try {
+      const npc = this.npcs.get(npcId);
+      if (!npc) {
+        throw new Error(`NPC with ID ${npcId} not found`);
+      }
+
+      // Here we would integrate with the AI model to generate appropriate responses
+      // based on the NPC's personality, goals, and the player's action
+      const response = await this.generateNPCResponse(npc, playerAction);
+
+      return {
+        success: true,
+        message: response,
+        data: { npcId, response },
+      };
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  private async brainstormNPCs(topic: string): Promise<AgentResponse> {
+    try {
+      // Here we would integrate with the AI model to generate NPC ideas
+      // based on the campaign context and topic
+      const ideas = await this.generateNPCIdeas(topic);
+
+      return {
+        success: true,
+        message: `Generated NPC ideas for topic: ${topic}`,
+        data: ideas,
+      };
+    } catch (error) {
+      return this.handleError(error);
+    }
+  }
+
+  private async generateNPCResponse(
+    npc: NPCData,
+    playerAction: string
+  ): Promise<string> {
+    // This would be implemented with the chosen AI model (OpenAI or Claude)
+    // For now, return a placeholder
+    return `${npc.name} responds to ${playerAction} based on their personality: ${npc.personality}`;
+  }
+
+  private async generateNPCIdeas(topic: string): Promise<Partial<NPCData>[]> {
+    // This would be implemented with the chosen AI model (OpenAI or Claude)
+    // For now, return a placeholder
+    return [
+      {
+        name: "Example NPC",
+        description: `An NPC related to ${topic}`,
+        personality: "Generated personality traits",
+        goals: ["Generated goal 1", "Generated goal 2"],
+      },
+    ];
   }
 
   // Load NPC data from the database
