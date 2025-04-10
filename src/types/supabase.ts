@@ -9,6 +9,102 @@ export type Json =
 export interface Database {
   public: {
     Tables: {
+      campaigns: {
+        Row: {
+          id: string;
+          created_at: string;
+          name: string;
+          description: string | null;
+          owner_id: string;
+          setting: string | null;
+          theme: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          created_at?: string;
+          name: string;
+          description?: string | null;
+          owner_id: string;
+          setting?: string | null;
+          theme?: string | null;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          created_at?: string;
+          name?: string;
+          description?: string | null;
+          owner_id?: string;
+          setting?: string | null;
+          theme?: string | null;
+          updated_at?: string;
+        };
+      };
+      campaign_members: {
+        Row: {
+          id: string;
+          campaign_id: string;
+          user_id: string;
+          role: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          campaign_id: string;
+          user_id: string;
+          role: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          campaign_id?: string;
+          user_id?: string;
+          role?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      dialogues: {
+        Row: {
+          id: string;
+          conversation_id: string;
+          campaign_id: string;
+          speaker_id: string;
+          content: string;
+          emotion: string | null;
+          context: Json;
+          referenced_topics: string[] | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          conversation_id: string;
+          campaign_id: string;
+          speaker_id: string;
+          content: string;
+          emotion?: string | null;
+          context: Json;
+          referenced_topics?: string[] | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          conversation_id?: string;
+          campaign_id?: string;
+          speaker_id?: string;
+          content?: string;
+          emotion?: string | null;
+          context?: Json;
+          referenced_topics?: string[] | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
       npcs: {
         Row: {
           id: string;
@@ -204,6 +300,15 @@ export interface Database {
           openai_voice_id?: string;
         };
       };
+    };
+    Views: {
+      [_ in never]: never;
+    };
+    Functions: {
+      [_ in never]: never;
+    };
+    Enums: {
+      [_ in never]: never;
     };
   };
 }
