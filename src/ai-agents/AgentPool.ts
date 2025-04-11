@@ -3,11 +3,14 @@ import { DMAssistantAgent } from "./DMAssistantAgent";
 import { DialogueAgent } from "./DialogueAgent";
 import { NPCAgent } from "./NPCAgent";
 import { SessionPlanningAgent } from "./SessionPlanningAgent";
+import { ClaudeAgent } from "./ClaudeAgent";
+import env from "../config/env";
 
 export interface AgentPoolConfig {
   maxConcurrentAgents?: number;
   enabledAgents?: string[];
   rulesVersion?: string;
+  preferredProvider?: "openai" | "claude" | "auto";
 }
 
 export class AgentPool {
@@ -20,8 +23,9 @@ export class AgentPool {
     this.context = context;
     this.config = {
       maxConcurrentAgents: 3,
-      enabledAgents: ["dm", "dialogue", "npc", "session"],
+      enabledAgents: ["dm", "dialogue", "npc", "session", "claude"],
       rulesVersion: "5.5E",
+      preferredProvider: "auto", // Default to auto-select based on available API keys
       ...config,
     };
 
@@ -41,6 +45,9 @@ export class AgentPool {
     if (this.config.enabledAgents?.includes("session")) {
       this.agents.set("session", new SessionPlanningAgent(this.context));
     }
+    if (this.config.enabledAgents?.includes("claude") && env.claude.apiKey) {
+      this.agents.set("claude", new ClaudeAgent(this.context));
+    }
   }
 
   async processWithAgent(
@@ -52,6 +59,37 @@ export class AgentPool {
       throw new Error(`Agent type ${agentType} not found or not enabled`);
     }
     return agent.process(input);
+  }
+
+  // Get the best available agent based on preferences and available API keys
+  getBestAgent(type: string): BaseAgent {
+    // If the specific agent type exists, return that
+    if (this.agents.has(type)) {
+      return this.agents.get(type)!;
+    }
+
+    // Otherwise use preferred provider config
+    if (
+      this.config.preferredProvider === "claude" &&
+      this.agents.has("claude")
+    ) {
+      return this.agents.get("claude")!;
+    } else if (
+      this.config.preferredProvider === "openai" &&
+      (this.agents.has("dm") || this.agents.has("dialogue"))
+    ) {
+      return this.agents.get("dm") || this.agents.get("dialogue")!;
+    }
+
+    // Auto selection or fallback
+    if (this.agents.has("claude") && env.claude.apiKey) {
+      return this.agents.get("claude")!;
+    } else if (this.agents.has("dm") || this.agents.has("dialogue")) {
+      return this.agents.get("dm") || this.agents.get("dialogue")!;
+    }
+
+    // Last resort fallback
+    throw new Error("No suitable agent found for processing the request");
   }
 
   async brainstorm(topic: string, agents: string[]): Promise<AgentResponse[]> {
@@ -99,5 +137,13 @@ export class AgentPool {
 
   isAgentEnabled(agentType: string): boolean {
     return this.agents.has(agentType);
+  }
+
+  setPreferredProvider(provider: "openai" | "claude" | "auto") {
+    this.config.preferredProvider = provider;
+  }
+
+  getPreferredProvider(): string {
+    return this.config.preferredProvider || "auto";
   }
 }

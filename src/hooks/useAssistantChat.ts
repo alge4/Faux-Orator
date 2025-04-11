@@ -1,5 +1,9 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabaseClient";
+import {
+  extractDocumentContent,
+  generateContentPreview,
+} from "../lib/documentProcessor";
 
 export interface AssistantChat {
   id: string;
@@ -225,11 +229,22 @@ export function useAssistantChat(
 
               if (uploadError) throw uploadError;
 
+              // Extract content from document for AI processing
+              let contentPreview = "";
+              try {
+                const extractedContent = await extractDocumentContent(file);
+                contentPreview = generateContentPreview(extractedContent, 500);
+              } catch (error) {
+                console.error("Failed to extract content:", error);
+                contentPreview = `[Failed to extract content from ${file.name}]`;
+              }
+
               return {
                 file_name: file.name,
                 file_type: file.type,
                 file_size: file.size,
                 storage_path: filePath,
+                content_preview: contentPreview,
               };
             })
           )
@@ -270,7 +285,18 @@ export function useAssistantChat(
       await fetchMessages(assistantChat.id);
 
       // Generate and save AI response
-      await generateAIResponse(content, assistantChat, messages);
+      // Create a combined message with document content for the AI to process
+      const messageWithAttachments =
+        attachments.length > 0
+          ? `${content}\n\n${attachments
+              .map(
+                (att) =>
+                  `DOCUMENT: ${att.file_name}\nCONTENT: ${att.content_preview}`
+              )
+              .join("\n\n")}`
+          : content;
+
+      await generateAIResponse(messageWithAttachments, assistantChat, messages);
 
       // Refresh messages to include both user message and AI response
       await fetchMessages(assistantChat.id);

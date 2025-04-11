@@ -1,4 +1,5 @@
 import { supabase, logAgentAction } from "../services/supabase";
+import { AIProvider } from "../services/aiService";
 
 export interface AgentContext {
   sessionId: string;
@@ -14,15 +15,40 @@ export interface AgentResponse {
   error?: string;
 }
 
+export interface AgentOptions {
+  aiProvider?: AIProvider;
+  temperature?: number;
+  maxTokens?: number;
+  model?: string;
+}
+
 export abstract class BaseAgent {
   protected context: AgentContext;
+  protected options: AgentOptions;
 
-  constructor(context: AgentContext) {
+  constructor(context: AgentContext, options: AgentOptions = {}) {
     this.context = context;
+    this.options = {
+      aiProvider: "auto",
+      temperature: 0.7,
+      maxTokens: undefined,
+      model: undefined,
+      ...options,
+    };
   }
 
   // Method to be implemented by specific agents
   abstract process(input: any): Promise<AgentResponse>;
+
+  // Method to update AI provider preference
+  setAIProvider(provider: AIProvider): void {
+    this.options.aiProvider = provider;
+  }
+
+  // Get current AI provider setting
+  getAIProvider(): AIProvider {
+    return this.options.aiProvider || "auto";
+  }
 
   // Common method to update state in Supabase
   protected async updateStateInDatabase(params: {

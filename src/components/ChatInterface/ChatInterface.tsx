@@ -99,10 +99,22 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   };
 
   const handleFiles = (files: File[]) => {
+    // Check for PDF files and warn the user
+    const pdfFiles = files.filter(file => 
+      file.type === 'application/pdf' || file.name.endsWith('.pdf')
+    );
+    
+    if (pdfFiles.length > 0) {
+      alert('PDF support is temporarily disabled. Please use Word (.docx) or Markdown (.md) files instead.');
+    }
+    
     const validFiles = files.filter(file => {
-      const isValidType = file.type === 'application/pdf' || 
+      // Remove PDF from valid file types
+      const isValidType = 
                          file.type === 'text/markdown' ||
-                         file.name.endsWith('.md');
+                         file.name.endsWith('.md') ||
+                         file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+                         file.name.endsWith('.docx');
       const isValidSize = file.size <= 10 * 1024 * 1024; // 10MB limit
       return isValidType && isValidSize;
     });
@@ -253,7 +265,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
             type="file"
             ref={fileInputRef}
             onChange={handleFileSelect}
-            accept=".pdf,.md,text/markdown,application/pdf"
+            accept=".md,.docx,text/markdown,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
             multiple
             className="file-input"
             id="file-input"
