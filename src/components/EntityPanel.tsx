@@ -1,9 +1,18 @@
 import React, { useEffect, useState } from 'react';
-import { supabase, withRetry, pingSupabase } from '../services/supabase';
+import { 
+  supabase, 
+  withRetry, 
+  pingSupabase, 
+  shouldUseOfflineMode, 
+  retryOnlineMode,
+  fetchAllEntitiesForCampaign,
+  updateEntityAndCache,
+  clearCache
+} from '../services/supabase';
 import './EntityPanel.css';
 import EntityForm from './EntityForm';
 import DeleteConfirmation from './DeleteConfirmation';
-import { FaPlus, FaPencilAlt, FaTrash, FaSync } from 'react-icons/fa';
+import { FaPlus, FaPencilAlt, FaTrash, FaSync, FaWifi, FaExclamationTriangle } from 'react-icons/fa';
 import { getMockEntities, createMockEntity, updateMockEntity, deleteMockEntity } from '../data/mockEntities';
 
 interface EntityData {
@@ -23,6 +32,9 @@ interface EntityPanelProps {
   onSelect?: (entity: EntityData) => void;
 }
 
+// Track loading states globally to prevent duplicate requests
+const loadingStates: {[key: string]: boolean} = {};
+
 const EntityPanel: React.FC<EntityPanelProps> = ({ 
   entityType, 
   campaignId,
@@ -36,13 +48,23 @@ const EntityPanel: React.FC<EntityPanelProps> = ({
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
   const [selectedEntity, setSelectedEntity] = useState<EntityData | null>(null);
   const [selectedAction, setSelectedAction] = useState<'edit' | 'delete' | null>(null);
+  const [isOfflineMode, setIsOfflineMode] = useState(false);
   
   const tableName = getTableName(entityType);
+  const loadingKey = `${entityType}_${campaignId}`;
   
   // Fetch entities when entity type or campaign ID changes
   useEffect(() => {
+    // If already loading this entity type for this campaign, don't duplicate the request
+    if (loadingStates[loadingKey]) return;
+    
     fetchEntities();
-  }, [entityType, campaignId]);
+    
+    // Cleanup function
+    return () => {
+      loadingStates[loadingKey] = false;
+    };
+  }, [entityType, campaignId, loadingKey]);
   
   // Get the appropriate table name based on entity type
   function getTableName(type: string): string {
@@ -68,51 +90,64 @@ const EntityPanel: React.FC<EntityPanelProps> = ({
   async function fetchEntities() {
     setLoading(true);
     setError(null);
+    loadingStates[loadingKey] = true;
     
     try {
-      // First check connectivity
-      const pingResult = await pingSupabase();
-      if (!pingResult.success) {
-        throw new Error(`Connection issue: ${pingResult.error}`);
+      // Check if we're in offline mode
+      const isOffline = shouldUseOfflineMode();
+      setIsOfflineMode(isOffline);
+      
+      // Use the batch loading function to get all entities at once
+      const allEntities = await fetchAllEntitiesForCampaign(campaignId);
+      
+      // Extract the correct entity type from the result
+      switch(entityType) {
+        case 'npc':
+          setEntities(allEntities.npcs);
+          break;
+        case 'location':
+          setEntities(allEntities.locations);
+          break;
+        case 'faction':
+          setEntities(allEntities.factions);
+          break;
+        case 'item':
+          setEntities(allEntities.items);
+          break;
+        case 'quest':
+        case 'event':
+          // For these entity types, we'll need to add specific handling
+          // or use mock data for now
+          setEntities(getMockEntities(entityType));
+          break;
+        default:
+          setEntities([]);
       }
-      
-      // Use withRetry for better error handling
-      const { data, error } = await withRetry(() => 
-        supabase
-          .from(tableName)
-          .select('*')
-          .eq('campaign_id', campaignId)
-      );
-        
-      if (error) throw error;
-      
-      setEntities(data || []);
     } catch (err) {
       console.error(`Error fetching ${entityType}:`, err);
       setError(`Unable to load ${entityType}s. Please check your connection and try again.`);
       
-      // Use mock data if we have too many fetch failures
-      if (err instanceof Error && (
-        err.message.includes('Failed to fetch') || 
-        err.message.includes('Connection issue') ||
-        err.message.includes('timed out')
-      )) {
-        const mockData = getMockEntities(entityType);
-        if (mockData && mockData.length > 0) {
-          console.log(`Using mock data for ${entityType}s due to connection issues.`);
-          setEntities(mockData);
-          setError(null);
-        } else {
-          setTimeout(() => {
-            console.log(`Retrying ${entityType} fetch...`);
-            fetchEntities();
-          }, 5000);
-        }
+      // Use mock data as fallback
+      const mockData = getMockEntities(entityType);
+      if (mockData && mockData.length > 0) {
+        console.log(`Using mock data for ${entityType}s as fallback.`);
+        setEntities(mockData);
+        setError(null);
+        setIsOfflineMode(true);
       }
     } finally {
       setLoading(false);
+      loadingStates[loadingKey] = false;
     }
   }
+
+  // Force reconnect to Supabase
+  const handleReconnect = async () => {
+    setLoading(true);
+    retryOnlineMode(); // Reset the offline mode flag
+    clearCache(); // Clear all cache to force fresh data
+    await fetchEntities(); // Try to fetch again
+  };
   
   // Filter entities based on search term
   const filteredEntities = entities.filter(entity => 
@@ -170,6 +205,16 @@ const EntityPanel: React.FC<EntityPanelProps> = ({
   // Handle entity creation
   const handleCreateEntitySubmit = async (entityData: any) => {
     try {
+      if (isOfflineMode) {
+        // If offline, use mock creation directly
+        const mockEntity = createMockEntity(entityType, {
+          ...entityData,
+          campaign_id: campaignId
+        });
+        setEntities(prev => [...prev, mockEntity]);
+        return true;
+      }
+      
       const { error } = await withRetry(() => 
         supabase
           .from(tableName)
@@ -191,6 +236,10 @@ const EntityPanel: React.FC<EntityPanelProps> = ({
         return true;
       }
       
+      // Clear cache for this entity type and campaign
+      clearCache(tableName, campaignId);
+      clearCache('all_entities', campaignId);
+      
       // Refresh the entities list
       fetchEntities();
       return true;
@@ -203,15 +252,19 @@ const EntityPanel: React.FC<EntityPanelProps> = ({
   // Handle entity update
   const handleUpdateEntitySubmit = async (id: string, entityData: any) => {
     try {
-      const { error } = await withRetry(() => 
-        supabase
-          .from(tableName)
-          .update({
-            ...entityData,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', id)
-      );
+      if (isOfflineMode) {
+        // If offline, use mock update directly
+        const updatedEntity = updateMockEntity(entityType, id, entityData);
+        if (updatedEntity) {
+          setEntities(prev => prev.map(entity => 
+            entity.id === id ? updatedEntity : entity
+          ));
+        }
+        return true;
+      }
+      
+      // Use the cache-aware update helper
+      const { error } = await updateEntityAndCache(tableName, id, entityData, campaignId);
       
       if (error) {
         // If Supabase fails, use mock functionality
@@ -236,6 +289,13 @@ const EntityPanel: React.FC<EntityPanelProps> = ({
   // Handle entity deletion
   const handleDeleteEntitySubmit = async (id: string) => {
     try {
+      if (isOfflineMode) {
+        // If offline, use mock deletion directly
+        deleteMockEntity(entityType, id);
+        setEntities(prev => prev.filter(entity => entity.id !== id));
+        return true;
+      }
+      
       const { error } = await withRetry(() => 
         supabase
           .from(tableName)
@@ -249,6 +309,10 @@ const EntityPanel: React.FC<EntityPanelProps> = ({
         setEntities(prev => prev.filter(entity => entity.id !== id));
         return true;
       }
+      
+      // Clear cache for this entity type and campaign
+      clearCache(tableName, campaignId);
+      clearCache('all_entities', campaignId);
       
       // Refresh the entities list
       fetchEntities();
@@ -277,6 +341,22 @@ const EntityPanel: React.FC<EntityPanelProps> = ({
         <h3>{getPanelTitle()}</h3>
         
         <div className="entity-panel-actions">
+          <div className="connection-status">
+            {isOfflineMode ? (
+              <button 
+                onClick={handleReconnect}
+                className="offline-indicator"
+                title="You are working offline. Click to try reconnecting."
+              >
+                <FaExclamationTriangle /> Offline
+              </button>
+            ) : (
+              <span className="online-indicator" title="Connected to database">
+                <FaWifi /> Online
+              </span>
+            )}
+          </div>
+          
           <div className="search-container">
             <input
               type="text"
@@ -313,7 +393,7 @@ const EntityPanel: React.FC<EntityPanelProps> = ({
         <div className="error-state">
           <p>{error}</p>
           <button onClick={fetchEntities} className="retry-button">
-            Retry
+            <FaSync /> Retry
           </button>
         </div>
       ) : filteredEntities.length === 0 ? (
@@ -373,6 +453,7 @@ const EntityPanel: React.FC<EntityPanelProps> = ({
           onSave={handleFormSave}
           handleCreateEntitySubmit={handleCreateEntitySubmit}
           handleUpdateEntitySubmit={handleUpdateEntitySubmit}
+          isOfflineMode={isOfflineMode}
         />
       )}
       
@@ -385,6 +466,7 @@ const EntityPanel: React.FC<EntityPanelProps> = ({
           onClose={() => setShowDeleteConfirmation(false)}
           onDelete={handleDeleteConfirm}
           handleDeleteEntitySubmit={handleDeleteEntitySubmit}
+          isOfflineMode={isOfflineMode}
         />
       )}
     </div>

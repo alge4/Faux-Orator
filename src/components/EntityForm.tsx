@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase, withRetry } from '../services/supabase';
 import './EntityForm.css';
+import { FaExclamationTriangle } from 'react-icons/fa';
 
 interface EntityFormProps {
   entityType: string;
@@ -10,6 +11,7 @@ interface EntityFormProps {
   onSave: (data?: any) => void;
   handleCreateEntitySubmit?: (data: any) => Promise<boolean>;
   handleUpdateEntitySubmit?: (id: string, data: any) => Promise<boolean>;
+  isOfflineMode?: boolean;
 }
 
 const EntityForm: React.FC<EntityFormProps> = ({
@@ -19,7 +21,8 @@ const EntityForm: React.FC<EntityFormProps> = ({
   onClose,
   onSave,
   handleCreateEntitySubmit,
-  handleUpdateEntitySubmit
+  handleUpdateEntitySubmit,
+  isOfflineMode = false
 }) => {
   const isEditing = !!entity;
   const [formData, setFormData] = useState({
@@ -157,36 +160,42 @@ const EntityForm: React.FC<EntityFormProps> = ({
         }
       }
       
-      // Default implementation using Supabase directly
-      const tableName = getTableName(entityType);
-      const dataToSave = {
-        ...formData,
-        campaign_id: campaignId,
-        updated_at: new Date().toISOString()
-      };
-      
-      if (isEditing) {
-        // Update existing entity
-        const { error } = await withRetry(() => 
-          supabase
-            .from(tableName)
-            .update(dataToSave)
-            .eq('id', entity.id)
-        );
-          
-        if (error) throw error;
+      // Only use Supabase directly if we're not in offline mode
+      if (!isOfflineMode) {
+        // Default implementation using Supabase directly
+        const tableName = getTableName(entityType);
+        const dataToSave = {
+          ...formData,
+          campaign_id: campaignId,
+          updated_at: new Date().toISOString()
+        };
+        
+        if (isEditing) {
+          // Update existing entity
+          const { error } = await withRetry(() => 
+            supabase
+              .from(tableName)
+              .update(dataToSave)
+              .eq('id', entity.id)
+          );
+            
+          if (error) throw error;
+        } else {
+          // Create new entity
+          const { error } = await withRetry(() => 
+            supabase
+              .from(tableName)
+              .insert({
+                ...dataToSave,
+                created_at: new Date().toISOString()
+              })
+          );
+            
+          if (error) throw error;
+        }
       } else {
-        // Create new entity
-        const { error } = await withRetry(() => 
-          supabase
-            .from(tableName)
-            .insert({
-              ...dataToSave,
-              created_at: new Date().toISOString()
-            })
-        );
-          
-        if (error) throw error;
+        // We're in offline mode but don't have custom handlers
+        throw new Error('Unable to save in offline mode');
       }
       
       onSave(formData);
@@ -356,6 +365,11 @@ const EntityForm: React.FC<EntityFormProps> = ({
       <div className="entity-form-container">
         <div className="entity-form-header">
           <h2>{getFormTitle()}</h2>
+          {isOfflineMode && (
+            <div className="offline-badge" title="Changes will be stored locally until connection is restored">
+              <FaExclamationTriangle /> Offline Mode
+            </div>
+          )}
           <button className="close-button" onClick={onClose}>&times;</button>
         </div>
         

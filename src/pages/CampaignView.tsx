@@ -9,7 +9,7 @@ import DataView from '../components/DataView';
 import VoiceChat from '../components/VoiceChat';
 import CampaignMenu from '../components/CampaignMenu';
 import EntityTabsBar from '../components/EntityTabsBar';
-import { supabase } from '../services/supabase';
+import { supabase, fetchAllEntitiesForCampaign } from '../services/supabase';
 import chevronIcon from '../assets/icons/chevron.svg';
 import { useAssistantChat } from '../hooks/useAssistantChat';
 import './CampaignView.css';
@@ -100,17 +100,12 @@ const CampaignView: React.FC = () => {
     if (!currentCampaign?.id) return;
 
     try {
-      // Fetch all entity types in parallel
-      const [npcs, locations, factions, items] = await Promise.all([
-        supabase.from('npcs').select('*').eq('campaign_id', currentCampaign.id),
-        supabase.from('locations').select('*').eq('campaign_id', currentCampaign.id),
-        supabase.from('factions').select('*').eq('campaign_id', currentCampaign.id),
-        supabase.from('items').select('*').eq('campaign_id', currentCampaign.id)
-      ]);
+      // Use the batch function instead of multiple parallel requests
+      const allEntities = await fetchAllEntitiesForCampaign(currentCampaign.id);
 
       // Convert to Entity type
-      const allEntities: Entity[] = [
-        ...(npcs.data || []).map(npc => ({
+      const convertedEntities: Entity[] = [
+        ...(allEntities.npcs || []).map(npc => ({
           id: npc.id,
           name: npc.name,
           type: 'npc' as const,
@@ -120,7 +115,7 @@ const CampaignView: React.FC = () => {
           created_at: npc.created_at,
           updated_at: npc.updated_at
         })),
-        ...(locations.data || []).map(loc => ({
+        ...(allEntities.locations || []).map(loc => ({
           id: loc.id,
           name: loc.name,
           type: 'location' as const,
@@ -130,7 +125,7 @@ const CampaignView: React.FC = () => {
           created_at: loc.created_at,
           updated_at: loc.updated_at
         })),
-        ...(factions.data || []).map(faction => ({
+        ...(allEntities.factions || []).map(faction => ({
           id: faction.id,
           name: faction.name,
           type: 'faction' as const,
@@ -140,7 +135,7 @@ const CampaignView: React.FC = () => {
           created_at: faction.created_at,
           updated_at: faction.updated_at
         })),
-        ...(items.data || []).map(item => ({
+        ...(allEntities.items || []).map(item => ({
           id: item.id,
           name: item.name,
           type: 'item' as const,
@@ -152,17 +147,9 @@ const CampaignView: React.FC = () => {
         }))
       ];
 
-      setEntities(allEntities);
+      setEntities(convertedEntities);
     } catch (error) {
       console.error('Error fetching entities:', error);
-      
-      // Retry after 2 seconds if it's a network error
-      if (error instanceof Error && error.message.includes('Failed to fetch')) {
-        setTimeout(() => {
-          console.log('Retrying entity fetch...');
-          fetchEntities();
-        }, 2000);
-      }
     }
   };
 

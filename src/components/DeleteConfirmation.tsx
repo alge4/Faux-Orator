@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { supabase, withRetry } from '../services/supabase';
 import './DeleteConfirmation.css';
+import { FaExclamationTriangle } from 'react-icons/fa';
 
 interface DeleteConfirmationProps {
   entityType: string;
@@ -9,6 +10,7 @@ interface DeleteConfirmationProps {
   onClose: () => void;
   onDelete: () => void;
   handleDeleteEntitySubmit?: (id: string) => Promise<boolean>;
+  isOfflineMode?: boolean;
 }
 
 const DeleteConfirmation: React.FC<DeleteConfirmationProps> = ({
@@ -17,7 +19,8 @@ const DeleteConfirmation: React.FC<DeleteConfirmationProps> = ({
   entityId,
   onClose,
   onDelete,
-  handleDeleteEntitySubmit
+  handleDeleteEntitySubmit,
+  isOfflineMode = false
 }) => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -55,16 +58,22 @@ const DeleteConfirmation: React.FC<DeleteConfirmationProps> = ({
         }
       }
       
-      // Default implementation using Supabase directly
-      const tableName = getTableName(entityType);
-      const { error } = await withRetry(() => 
-        supabase
-          .from(tableName)
-          .delete()
-          .eq('id', entityId)
-      );
-        
-      if (error) throw error;
+      // Only use Supabase directly if we're not in offline mode
+      if (!isOfflineMode) {
+        // Default implementation using Supabase directly
+        const tableName = getTableName(entityType);
+        const { error } = await withRetry(() => 
+          supabase
+            .from(tableName)
+            .delete()
+            .eq('id', entityId)
+        );
+          
+        if (error) throw error;
+      } else {
+        // We're in offline mode but don't have custom handlers
+        throw new Error('Unable to delete in offline mode');
+      }
       
       onDelete();
     } catch (err) {
@@ -81,6 +90,11 @@ const DeleteConfirmation: React.FC<DeleteConfirmationProps> = ({
       <div className="delete-confirmation-container">
         <div className="delete-confirmation-header">
           <h2>Delete {entityType === 'npc' ? 'NPC' : entityType}</h2>
+          {isOfflineMode && (
+            <div className="offline-badge" title="This will be deleted from your local data only until connection is restored">
+              <FaExclamationTriangle /> Offline Mode
+            </div>
+          )}
           <button className="close-button" onClick={onClose}>&times;</button>
         </div>
         

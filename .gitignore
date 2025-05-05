@@ -26,3 +26,4 @@ dist-ssr
 .env.development
 .env.production
 .cursor/
+/browser-tools-mcp/

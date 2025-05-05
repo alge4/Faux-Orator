@@ -2,6 +2,7 @@ import React, { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './hooks/useAuth';
 import { ProtectedRoute } from './components/auth/ProtectedRoute';
+import ConnectionStatus from './components/common/ConnectionStatus';
 import './App.css';
 
 // Lazy loaded components
@@ -46,6 +47,7 @@ function App() {
       <BrowserRouter>
         <Suspense fallback={<div className="loading">Loading...</div>}>
           <AppRoutes />
+          <ConnectionStatus />
         </Suspense>
       </BrowserRouter>
     </AuthProvider>
