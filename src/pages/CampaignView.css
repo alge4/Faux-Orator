@@ -661,4 +661,49 @@ textarea.form-control {
   overflow: hidden;
   display: flex;
   flex-direction: column;
+}
+
+/* Styling for the review section */
+.review-section {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.review-content {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  gap: 16px;
+  overflow-y: auto;
+}
+
+.selected-entity-details {
+  background-color: white;
+  border-radius: 8px;
+  padding: 16px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  border: 1px solid #e5e7eb;
+}
+
+.selected-entity-details h3 {
+  margin-top: 0;
+  color: #111827;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.selected-entity-details p {
+  color: #4b5563;
+  margin-bottom: 0;
+}
+
+/* Support for EntityTabsBar padding */
+.campaign-view.expanded-padding .campaign-content {
+  padding-bottom: 350px; /* Match the height of the expanded EntityTabsBar */
+}
+
+/* Make sure the entity tabs bar stays on top */
+.entity-tabs-bar {
+  z-index: 1050; /* Higher than other elements in the view */
 } 

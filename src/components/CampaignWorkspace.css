@@ -85,4 +85,39 @@
     border-left: none;
     border-top: 1px solid #e5e7eb;
   }
+}
+
+.workspace-content.expanded-padding {
+  padding-bottom: 350px; /* Match the height of the expanded tab bar */
+}
+
+/* Review mode specific styles */
+.review-content {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.selected-entity-details {
+  background-color: white;
+  border-radius: 8px;
+  padding: 16px;
+  margin-top: 16px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  border: 1px solid #e5e7eb;
+}
+
+.selected-entity-details h2 {
+  margin-top: 0;
+  margin-bottom: 8px;
+  font-size: 1.25rem;
+  color: #111827;
+}
+
+.selected-entity-details p {
+  margin: 0;
+  color: #6b7280;
+  font-size: 0.875rem;
+  line-height: 1.5;
 } 

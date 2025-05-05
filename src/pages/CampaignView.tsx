@@ -8,6 +8,7 @@ import NetworkView from '../components/NetworkView';
 import DataView from '../components/DataView';
 import VoiceChat from '../components/VoiceChat';
 import CampaignMenu from '../components/CampaignMenu';
+import EntityTabsBar from '../components/EntityTabsBar';
 import { supabase } from '../services/supabase';
 import chevronIcon from '../assets/icons/chevron.svg';
 import { useAssistantChat } from '../hooks/useAssistantChat';
@@ -18,6 +19,15 @@ interface CampaignFormData {
   description: string;
   setting: string;
   theme: string;
+}
+
+// Interface for entity data
+interface EntityData {
+  id: string;
+  name: string;
+  description?: string;
+  content?: Record<string, unknown>;
+  [key: string]: unknown;
 }
 
 const CampaignView: React.FC = () => {
@@ -46,6 +56,8 @@ const CampaignView: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isRotating, setIsRotating] = useState<'left' | 'right' | null>(null);
+  const [mainContentPadding, setMainContentPadding] = useState(false);
+  const [selectedEntityForView, setSelectedEntityForView] = useState<EntityData | null>(null);
 
   const {
     assistantChat,
@@ -55,6 +67,104 @@ const CampaignView: React.FC = () => {
     sendMessage,
     isTyping
   } = useAssistantChat(currentCampaign?.id || '', activeMode);
+
+  // Define fetchCampaigns function
+  const fetchCampaigns = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('campaigns')
+        .select('*')
+        .order('updated_at', { ascending: false });
+      
+      if (error) {
+        console.error('Error fetching campaigns:', error);
+        return;
+      }
+      
+      setCampaigns(data || []);
+    } catch (err) {
+      console.error('Failed to fetch campaigns:', err);
+      
+      // Retry after 2 seconds if it's a network error
+      if (err instanceof Error && err.message.includes('Failed to fetch')) {
+        setTimeout(() => {
+          console.log('Retrying campaign fetch...');
+          fetchCampaigns();
+        }, 2000);
+      }
+    }
+  };
+
+  // Define fetchEntities function
+  const fetchEntities = async () => {
+    if (!currentCampaign?.id) return;
+
+    try {
+      // Fetch all entity types in parallel
+      const [npcs, locations, factions, items] = await Promise.all([
+        supabase.from('npcs').select('*').eq('campaign_id', currentCampaign.id),
+        supabase.from('locations').select('*').eq('campaign_id', currentCampaign.id),
+        supabase.from('factions').select('*').eq('campaign_id', currentCampaign.id),
+        supabase.from('items').select('*').eq('campaign_id', currentCampaign.id)
+      ]);
+
+      // Convert to Entity type
+      const allEntities: Entity[] = [
+        ...(npcs.data || []).map(npc => ({
+          id: npc.id,
+          name: npc.name,
+          type: 'npc' as const,
+          campaign_id: npc.campaign_id,
+          content: { description: npc.description },
+          locked: false,
+          created_at: npc.created_at,
+          updated_at: npc.updated_at
+        })),
+        ...(locations.data || []).map(loc => ({
+          id: loc.id,
+          name: loc.name,
+          type: 'location' as const,
+          campaign_id: loc.campaign_id,
+          content: { description: loc.description },
+          locked: false,
+          created_at: loc.created_at,
+          updated_at: loc.updated_at
+        })),
+        ...(factions.data || []).map(faction => ({
+          id: faction.id,
+          name: faction.name,
+          type: 'faction' as const,
+          campaign_id: faction.campaign_id,
+          content: { description: faction.description },
+          locked: false,
+          created_at: faction.created_at,
+          updated_at: faction.updated_at
+        })),
+        ...(items.data || []).map(item => ({
+          id: item.id,
+          name: item.name,
+          type: 'item' as const,
+          campaign_id: item.campaign_id,
+          content: { description: item.description },
+          locked: false,
+          created_at: item.created_at,
+          updated_at: item.updated_at
+        }))
+      ];
+
+      setEntities(allEntities);
+    } catch (error) {
+      console.error('Error fetching entities:', error);
+      
+      // Retry after 2 seconds if it's a network error
+      if (error instanceof Error && error.message.includes('Failed to fetch')) {
+        setTimeout(() => {
+          console.log('Retrying entity fetch...');
+          fetchEntities();
+        }, 2000);
+      }
+    }
+  };
 
   // Load current campaign data into form when opened
   useEffect(() => {
@@ -67,6 +177,23 @@ const CampaignView: React.FC = () => {
       });
     }
   }, [currentCampaign]);
+
+  // Load campaigns
+  useEffect(() => {
+    if (user) {
+      fetchCampaigns();
+      if (id) {
+        fetchEntities();
+      }
+    }
+  }, [user, id, fetchCampaigns, fetchEntities]);
+
+  // Handle entity selection
+  const handleEntitySelect = (entity: EntityData) => {
+    console.log('Selected entity:', entity);
+    setSelectedEntityForView(entity);
+    // You can add more handling here like adding the entity to the chat
+  };
 
   // Combined input handler for both text inputs and textareas
   const handleFormChange = (
@@ -125,88 +252,6 @@ const CampaignView: React.FC = () => {
     }
   };
 
-  // Fetch campaigns from Supabase
-  useEffect(() => {
-    const fetchCampaigns = async () => {
-      const { data, error } = await supabase
-        .from('campaigns')
-        .select('*')
-        .order('name');
-      
-      if (error) {
-        console.error('Error fetching campaigns:', error);
-        return;
-      }
-      
-      setCampaigns(data || []);
-    };
-
-    fetchCampaigns();
-  }, []);
-
-  // Fetch entities for current campaign
-  useEffect(() => {
-    const fetchEntities = async () => {
-      if (!currentCampaign?.id) return;
-
-      // Fetch all entity types in parallel
-      const [npcs, locations, factions, items] = await Promise.all([
-        supabase.from('npcs').select('*').eq('campaign_id', currentCampaign.id),
-        supabase.from('locations').select('*').eq('campaign_id', currentCampaign.id),
-        supabase.from('factions').select('*').eq('campaign_id', currentCampaign.id),
-        supabase.from('items').select('*').eq('campaign_id', currentCampaign.id)
-      ]);
-
-      // Convert to Entity type
-      const allEntities: Entity[] = [
-        ...(npcs.data || []).map(npc => ({
-          id: npc.id,
-          name: npc.name,
-          type: 'npc' as const,
-          campaign_id: npc.campaign_id,
-          content: { description: npc.description },
-          locked: false,
-          created_at: npc.created_at,
-          updated_at: npc.updated_at
-        })),
-        ...(locations.data || []).map(loc => ({
-          id: loc.id,
-          name: loc.name,
-          type: 'location' as const,
-          campaign_id: loc.campaign_id,
-          content: { description: loc.description },
-          locked: false,
-          created_at: loc.created_at,
-          updated_at: loc.updated_at
-        })),
-        ...(factions.data || []).map(faction => ({
-          id: faction.id,
-          name: faction.name,
-          type: 'faction' as const,
-          campaign_id: faction.campaign_id,
-          content: { description: faction.description },
-          locked: false,
-          created_at: faction.created_at,
-          updated_at: faction.updated_at
-        })),
-        ...(items.data || []).map(item => ({
-          id: item.id,
-          name: item.name,
-          type: 'item' as const,
-          campaign_id: item.campaign_id,
-          content: { description: item.description },
-          locked: false,
-          created_at: item.created_at,
-          updated_at: item.updated_at
-        }))
-      ];
-
-      setEntities(allEntities);
-    };
-
-    fetchEntities();
-  }, [currentCampaign?.id]);
-
   // Handle sending messages
   const handleSendMessage = async (content: string, files?: File[]) => {
     if (!currentCampaign?.id || !user?.id) return;
@@ -235,6 +280,13 @@ const CampaignView: React.FC = () => {
       console.error('Error saving message:', error);
     }
   };
+
+  // Fetch entities when the campaign ID changes
+  useEffect(() => {
+    if (currentCampaign?.id) {
+      fetchEntities();
+    }
+  }, [currentCampaign?.id]);
 
   const handleBackToDashboard = async () => {
     await refreshCampaigns();
@@ -276,7 +328,7 @@ const CampaignView: React.FC = () => {
   }
 
   return (
-    <div className="campaign-view">
+    <div className={`campaign-view ${mainContentPadding ? 'expanded-padding' : ''}`}>
       <div className="campaign-header">
         <div className="header-left">
           <button 
@@ -498,20 +550,20 @@ const CampaignView: React.FC = () => {
             </div>
           )}
           {activeMode === CampaignMode.Review && (
-            <div className="chat-section">
-              <h2>Session Review</h2>
-              <ChatInterface 
-                mode="review"
-                messages={assistantMessages}
-                onSendMessage={handleSendMessage}
-                availableEntities={entities}
-                isTyping={isTyping}
-                campaignId={currentCampaign?.id}
-                userId={user?.id}
-                isAIAssistant={true}
-                assistantChat={assistantChat}
-              />
-              <DataView entities={entities} />
+            <div className="review-section">
+              <h2>Campaign Review</h2>
+              <div className="review-content">
+                <NetworkView 
+                  currentCampaign={currentCampaign}
+                  entities={entities}
+                />
+                {selectedEntityForView && (
+                  <div className="selected-entity-details">
+                    <h3>{selectedEntityForView.name}</h3>
+                    <p>{selectedEntityForView.description || 'No description available'}</p>
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </main>
@@ -539,6 +591,15 @@ const CampaignView: React.FC = () => {
           </div>
         </aside>
       </div>
+      
+      {/* Add the EntityTabsBar */}
+      {currentCampaign && (
+        <EntityTabsBar 
+          campaignId={currentCampaign.id}
+          onEntitySelect={handleEntitySelect}
+          onExpand={() => setMainContentPadding(true)}
+        />
+      )}
     </div>
   );
 };
