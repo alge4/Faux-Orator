@@ -25,7 +25,6 @@
   left: 0;
   right: 0;
   height: var(--panel-height);
-  transform: var(--panel-transform);
   padding: 0;
   margin: 0;
   display: flex;
@@ -41,25 +40,29 @@
 }
 
 .resize-handle {
-  width: 80px;
-  height: 6px;
-  background-color: #cbd5e0;
-  border-radius: 3px;
-  margin: 0 auto;
-  cursor: ns-resize !important; /* Force cursor */
+  width: 40%;
+  max-width: 200px;
+  height: 8px;
+  background-color: #b9c3cd;
+  border-radius: 4px;
+  margin: 4px auto;
+  cursor: ns-resize !important;
   position: absolute;
-  top: 0; /* Changed from top: 4px to be at the very top */
+  top: 4px;
   left: 50%;
   transform: translateX(-50%);
-  z-index: 101;
-  transition: background-color 0.2s ease;
-  -webkit-touch-callout: none; /* iOS Safari */
-  -webkit-user-select: none; /* Safari */
-  -khtml-user-select: none; /* Konqueror HTML */
-  -moz-user-select: none; /* Firefox */
-  -ms-user-select: none; /* Internet Explorer/Edge */
-  user-select: none; /* Non-prefixed version */
-  touch-action: none; /* Prevent touch scrolling during drag */
+  z-index: 103;
+  transition: all 0.2s ease;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  -khtml-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  touch-action: none;
+  display: block;
+  /* Add shadow for better visibility */
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 /* Add visual indicator lines for the resize handle */
@@ -77,7 +80,8 @@
 
 .resize-handle:hover, 
 .resizing .resize-handle {
-  background-color: #7b3fef; /* Show active state when resizing */
+  background-color: #7b3fef;
+  height: 8px;
 }
 
 /* Larger hit area for the resize handle */
@@ -164,7 +168,7 @@
   width: 100%;
   order: 1;
   height: var(--entity-panel-height);
-  padding-bottom: 20px;
+  margin-top: 15px;
 }
 
 .entity-panel h3 {

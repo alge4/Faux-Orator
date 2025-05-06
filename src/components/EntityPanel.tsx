@@ -48,6 +48,7 @@ const EntityPanel: React.FC<EntityPanelProps> = ({
   const [selectedEntity, setSelectedEntity] = useState<EntityData | null>(null);
   const [selectedAction, setSelectedAction] = useState<'edit' | 'delete' | null>(null);
   const [isOfflineMode, setIsOfflineMode] = useState(false);
+  const [isHovering, setIsHovering] = useState(false);
   
   const tableName = getTableName(entityType);
   const loadingKey = `${entityType}_${campaignId}`;
@@ -341,27 +342,30 @@ const EntityPanel: React.FC<EntityPanelProps> = ({
     fetchEntities();
   };
   
+  // In the component, add a function to determine if searching is active
+  const isSearchActive = searchTerm.length > 0;
+  
   return (
-    <div className="entity-panel">
-      <div className="entity-panel-header">
-        <h3>{getPanelTitle()}</h3>
-        
-        <div className="entity-panel-actions">
-          <div className="connection-status">
-            {isOfflineMode ? (
-              <button 
-                onClick={handleReconnect}
-                className="offline-indicator"
-                title="You are working offline. Click to try reconnecting."
-              >
-                <FaExclamationTriangle /> Offline
-              </button>
-            ) : (
-              <span className="online-indicator" title="Connected to database">
-                <FaWifi /> Online
-              </span>
-            )}
-          </div>
+    <div className="entity-panel" 
+      onMouseEnter={() => setIsHovering(true)}
+      onMouseLeave={() => setIsHovering(false)}
+    >
+      {/* Floating toolbar with search and create button */}
+      <div className={`entity-panel-floating-toolbar ${isSearchActive || isHovering ? 'is-searching' : ''}`}>
+        <div className="floating-toolbar-inner">
+          {isOfflineMode ? (
+            <button 
+              onClick={handleReconnect}
+              className="offline-indicator"
+              title="You are working offline. Click to try reconnecting."
+            >
+              <FaExclamationTriangle /> Offline
+            </button>
+          ) : (
+            <span className="online-indicator" title="Connected to database">
+              <FaWifi /> Online
+            </span>
+          )}
           
           <div className="search-container">
             <input
@@ -370,6 +374,8 @@ const EntityPanel: React.FC<EntityPanelProps> = ({
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="search-input"
+              onFocus={(e) => e.currentTarget.parentElement?.parentElement?.parentElement?.classList.add('is-searching')}
+              onBlur={(e) => !searchTerm && e.currentTarget.parentElement?.parentElement?.parentElement?.classList.remove('is-searching')}
             />
             {searchTerm && (
               <button

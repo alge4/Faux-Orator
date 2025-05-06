@@ -175,11 +175,11 @@ const EntityTabsBar: React.FC<EntityTabsBarProps> = ({
       // Update height
       setPanelHeight(newHeight);
       
-      // Update CSS variables directly - no transform needed with column-reverse layout
+      // Update CSS variables directly - accounting for resize handle space
       if (barRef.current) {
         barRef.current.style.setProperty('--panel-height', `${newHeight}px`);
-        // Set entity panel height explicitly
-        barRef.current.style.setProperty('--entity-panel-height', `${newHeight - TABS_BAR_HEIGHT}px`);
+        // Set entity panel height explicitly, accounting for resize handle space
+        barRef.current.style.setProperty('--entity-panel-height', `${newHeight - TABS_BAR_HEIGHT - 15}px`);
       }
     };
     
@@ -232,36 +232,38 @@ const EntityTabsBar: React.FC<EntityTabsBarProps> = ({
   const currentEntityType = TABS[activeTabIndex].type;
   
   // Calculate dynamic styles - ensure the panel extends from bottom upward
-  // Add extra height to prevent content from being cut off
+  // Add extra height to account for the resize handle
   const expandedStyle = {
     height: `${panelHeight}px`,
     bottom: '0',
     left: '0',
     right: '0',
-    // Ensure entity panel gets proper height
-    '--entity-panel-height': `${panelHeight - TABS_BAR_HEIGHT}px`
+    // Ensure entity panel gets proper height, accounting for resize handle space
+    '--entity-panel-height': `${panelHeight - TABS_BAR_HEIGHT - 15}px`
+  };
+  
+  // Modify the handleWindowResize function to account for resize handle
+  const handleWindowResize = () => {
+    if (isExpanded) {
+      // Adjust panel height if it's now larger than the viewport
+      const viewportHeight = window.innerHeight;
+      // Small buffer to prevent overflow
+      const maxAllowedHeight = viewportHeight - 10;
+      
+      if (panelHeight > maxAllowedHeight) {
+        setPanelHeight(maxAllowedHeight);
+        
+        // Update CSS variables - no transform needed with column-reverse layout
+        if (barRef.current) {
+          barRef.current.style.setProperty('--panel-height', `${maxAllowedHeight}px`);
+          barRef.current.style.setProperty('--entity-panel-height', `${maxAllowedHeight - TABS_BAR_HEIGHT - 15}px`);
+        }
+      }
+    }
   };
   
   // Add window resize handler to ensure panel stays within bounds when window is resized
   useEffect(() => {
-    const handleWindowResize = () => {
-      if (isExpanded) {
-        // Adjust panel height if it's now larger than the viewport
-        const viewportHeight = window.innerHeight;
-        // Small buffer to prevent overflow
-        const maxAllowedHeight = viewportHeight - 10;
-        
-        if (panelHeight > maxAllowedHeight) {
-          setPanelHeight(maxAllowedHeight);
-          
-          // Update CSS variables - no transform needed with column-reverse layout
-          if (barRef.current) {
-            barRef.current.style.setProperty('--panel-height', `${maxAllowedHeight}px`);
-          }
-        }
-      }
-    };
-    
     window.addEventListener('resize', handleWindowResize);
     return () => window.removeEventListener('resize', handleWindowResize);
   }, [isExpanded, panelHeight]);
@@ -325,13 +327,25 @@ const EntityTabsBar: React.FC<EntityTabsBarProps> = ({
       ref={barRef}
       style={isExpanded ? expandedStyle : undefined}
     >
+      {/* Position the resize handle at the top of the expanded panel */}
       {isExpanded && (
         <div 
           className="resize-handle" 
           onMouseDown={handleResizeStart}
           onTouchStart={handleResizeStart} 
           title="Drag to resize panel"
-        ></div>
+          style={{ display: 'block', opacity: 1 }}
+        >
+          {/* Add a visible indicator line */}
+          <span style={{ 
+            display: 'block', 
+            width: '30px', 
+            height: '3px', 
+            margin: '0 auto',
+            backgroundColor: '#a0aec0',
+            borderRadius: '2px'
+          }}></span>
+        </div>
       )}
       
       <div className="tabs-container">
