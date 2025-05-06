@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { supabase, withRetry } from '../services/supabase';
+import { supabase, simpleRetry } from '../services/supabase';
 import './EntityForm.css';
 import { FaExclamationTriangle } from 'react-icons/fa';
 
@@ -172,7 +172,7 @@ const EntityForm: React.FC<EntityFormProps> = ({
         
         if (isEditing) {
           // Update existing entity
-          const { error } = await withRetry(() => 
+          const { error } = await simpleRetry(() => 
             supabase
               .from(tableName)
               .update(dataToSave)
@@ -182,7 +182,7 @@ const EntityForm: React.FC<EntityFormProps> = ({
           if (error) throw error;
         } else {
           // Create new entity
-          const { error } = await withRetry(() => 
+          const { error } = await simpleRetry(() => 
             supabase
               .from(tableName)
               .insert({

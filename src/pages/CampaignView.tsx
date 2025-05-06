@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useCampaign, CampaignMode, Entity } from '../hooks/useCampaign';
 import { useAuth } from '../hooks/useAuth';
@@ -69,7 +69,7 @@ const CampaignView: React.FC = () => {
   } = useAssistantChat(currentCampaign?.id || '', activeMode);
 
   // Define fetchCampaigns function
-  const fetchCampaigns = async () => {
+  const fetchCampaigns = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from('campaigns')
@@ -84,26 +84,15 @@ const CampaignView: React.FC = () => {
       setCampaigns(data || []);
     } catch (err) {
       console.error('Failed to fetch campaigns:', err);
-      
-      // Retry after 2 seconds if it's a network error
-      if (err instanceof Error && err.message.includes('Failed to fetch')) {
-        setTimeout(() => {
-          console.log('Retrying campaign fetch...');
-          fetchCampaigns();
-        }, 2000);
-      }
     }
-  };
+  }, []);
 
   // Define fetchEntities function
-  const fetchEntities = async () => {
+  const fetchEntities = useCallback(async () => {
     if (!currentCampaign?.id) return;
 
     try {
-      // Use the batch function instead of multiple parallel requests
       const allEntities = await fetchAllEntitiesForCampaign(currentCampaign.id);
-
-      // Convert to Entity type
       const convertedEntities: Entity[] = [
         ...(allEntities.npcs || []).map(npc => ({
           id: npc.id,
@@ -151,7 +140,7 @@ const CampaignView: React.FC = () => {
     } catch (error) {
       console.error('Error fetching entities:', error);
     }
-  };
+  }, [currentCampaign?.id]);
 
   // Load current campaign data into form when opened
   useEffect(() => {
@@ -173,7 +162,7 @@ const CampaignView: React.FC = () => {
         fetchEntities();
       }
     }
-  }, [user, id, fetchCampaigns, fetchEntities]);
+  }, [user, id]);
 
   // Handle entity selection
   const handleEntitySelect = (entity: EntityData) => {

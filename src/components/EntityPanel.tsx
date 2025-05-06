@@ -1,12 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { 
   supabase, 
-  withRetry, 
+  simpleRetry, 
   pingSupabase, 
   shouldUseOfflineMode, 
   retryOnlineMode,
   fetchAllEntitiesForCampaign,
-  updateEntityAndCache,
   clearCache
 } from '../services/supabase';
 import './EntityPanel.css';
@@ -215,7 +214,7 @@ const EntityPanel: React.FC<EntityPanelProps> = ({
         return true;
       }
       
-      const { error } = await withRetry(() => 
+      const { error } = await simpleRetry(() => 
         supabase
           .from(tableName)
           .insert({
@@ -263,8 +262,15 @@ const EntityPanel: React.FC<EntityPanelProps> = ({
         return true;
       }
       
-      // Use the cache-aware update helper
-      const { error } = await updateEntityAndCache(tableName, id, entityData, campaignId);
+      const { error } = await simpleRetry(() => 
+        supabase
+          .from(tableName)
+          .update({
+            ...entityData,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', id)
+      );
       
       if (error) {
         // If Supabase fails, use mock functionality
@@ -296,7 +302,7 @@ const EntityPanel: React.FC<EntityPanelProps> = ({
         return true;
       }
       
-      const { error } = await withRetry(() => 
+      const { error } = await simpleRetry(() => 
         supabase
           .from(tableName)
           .delete()

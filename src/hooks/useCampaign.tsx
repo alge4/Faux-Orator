@@ -52,7 +52,7 @@ export function CampaignProvider({ children }: { children: React.ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
 
-  // Fetch campaigns
+  // Fetch campaigns with deduplication
   const fetchCampaigns = async () => {
     if (!user) {
       setCampaigns([]);
@@ -65,6 +65,47 @@ export function CampaignProvider({ children }: { children: React.ReactNode }) {
       setLoading(true);
       setError(null);
 
+      // Use a static local cache for this hook specifically
+      const CAMPAIGNS_CACHE_KEY = `campaigns_${user.id}`;
+      const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+      
+      // Check localStorage for cached campaigns
+      const cachedData = localStorage.getItem(CAMPAIGNS_CACHE_KEY);
+      if (cachedData) {
+        try {
+          const { data, timestamp } = JSON.parse(cachedData);
+          const now = Date.now();
+          
+          // If cache is still valid, use it
+          if (now - timestamp < CACHE_TTL) {
+            console.log('Using cached campaigns data');
+            setCampaigns(data || []);
+            
+            // Handle current campaign selection from cached data
+            if (data && data.length > 0 && !currentCampaign) {
+              const activeCampaign = data.find(c => c.is_active) || data[0];
+              setCurrentCampaign(activeCampaign);
+            } else if (currentCampaign) {
+              // Update the current campaign if it exists in the cached data
+              const updatedCurrent = data?.find(c => c.id === currentCampaign.id);
+              if (updatedCurrent) {
+                setCurrentCampaign(updatedCurrent);
+              } else if (data && data.length > 0) {
+                setCurrentCampaign(data[0]);
+              } else {
+                setCurrentCampaign(null);
+              }
+            }
+            
+            setLoading(false);
+            return;
+          }
+        } catch (e) {
+          // If parsing fails, just continue to fetch fresh data
+          console.error('Error parsing cached campaigns:', e);
+        }
+      }
+
       const { data, error } = await supabase
         .from('campaigns')
         .select('*')
@@ -74,6 +115,12 @@ export function CampaignProvider({ children }: { children: React.ReactNode }) {
       if (error) {
         setError(error.message);
       } else {
+        // Cache the result in localStorage
+        localStorage.setItem(CAMPAIGNS_CACHE_KEY, JSON.stringify({
+          data,
+          timestamp: Date.now()
+        }));
+        
         setCampaigns(data || []);
         
         // If we have campaigns but no current campaign, set the first one
@@ -96,6 +143,9 @@ export function CampaignProvider({ children }: { children: React.ReactNode }) {
     } catch (err) {
       console.error('Error fetching campaigns:', err);
       setError('Failed to load campaigns');
+      
+      // Don't try to automatically retry - this could lead to runaway requests
+      // The user can manually refresh or navigate to trigger a new fetch
     } finally {
       setLoading(false);
     }

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { supabase, withRetry } from '../services/supabase';
+import { supabase, simpleRetry } from '../services/supabase';
 import './DeleteConfirmation.css';
 import { FaExclamationTriangle } from 'react-icons/fa';
 
@@ -62,7 +62,7 @@ const DeleteConfirmation: React.FC<DeleteConfirmationProps> = ({
       if (!isOfflineMode) {
         // Default implementation using Supabase directly
         const tableName = getTableName(entityType);
-        const { error } = await withRetry(() => 
+        const { error } = await simpleRetry(() => 
           supabase
             .from(tableName)
             .delete()

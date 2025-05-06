@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getConnectionStatus, pingSupabase, retryOnlineMode, CircuitState } from '../../services/supabase';
+import { getConnectionStatus, pingSupabase, retryOnlineMode } from '../../services/supabase';
 import './ConnectionStatus.css';
 
 interface ConnectionStatusProps {
@@ -10,10 +10,9 @@ const ConnectionStatus: React.FC<ConnectionStatusProps> = () => {
   const [expanded, setExpanded] = useState(false);
   const [isRetrying, setIsRetrying] = useState(false);
   const [status, setStatus] = useState({
-    circuitState: CircuitState.CLOSED,
     isOfflineMode: false,
-    consecutiveFailures: 0,
     lastSuccessTimestamp: 0,
+    failedRequestCount: 0,
     latency: 0
   });
 
@@ -24,9 +23,8 @@ const ConnectionStatus: React.FC<ConnectionStatusProps> = () => {
       const connectionStatus = getConnectionStatus();
       setStatus(prev => ({
         ...prev,
-        circuitState: connectionStatus.circuitState,
         isOfflineMode: connectionStatus.isOfflineMode,
-        consecutiveFailures: connectionStatus.consecutiveFailures,
+        failedRequestCount: connectionStatus.failedRequestCount,
         lastSuccessTimestamp: connectionStatus.lastSuccessTimestamp
       }));
     };
@@ -60,9 +58,8 @@ const ConnectionStatus: React.FC<ConnectionStatusProps> = () => {
       const connectionStatus = getConnectionStatus();
       setStatus(prev => ({
         ...prev,
-        circuitState: connectionStatus.circuitState,
         isOfflineMode: connectionStatus.isOfflineMode,
-        consecutiveFailures: connectionStatus.consecutiveFailures,
+        failedRequestCount: connectionStatus.failedRequestCount,
         lastSuccessTimestamp: connectionStatus.lastSuccessTimestamp
       }));
     } catch (error) {
@@ -75,33 +72,17 @@ const ConnectionStatus: React.FC<ConnectionStatusProps> = () => {
   // Determine status dot color
   const getStatusColor = () => {
     if (status.isOfflineMode) return '#ff5722'; // Orange-red for offline
-    
-    switch (status.circuitState) {
-      case CircuitState.OPEN:
-        return '#f44336'; // Red for open circuit
-      case CircuitState.HALF_OPEN:
-        return '#ff9800'; // Orange for half-open circuit
-      case CircuitState.CLOSED:
-        return '#4caf50'; // Green for closed circuit
-      default:
-        return '#9e9e9e'; // Grey for unknown
-    }
+    if (status.failedRequestCount > 3) return '#f44336'; // Red for high failure count
+    if (status.failedRequestCount > 0) return '#ff9800'; // Orange for some failures
+    return '#4caf50'; // Green for healthy connection
   };
 
   // Get status text
   const getStatusText = () => {
     if (status.isOfflineMode) return 'Offline Mode';
-    
-    switch (status.circuitState) {
-      case CircuitState.OPEN:
-        return 'Connection Error';
-      case CircuitState.HALF_OPEN:
-        return 'Checking Connection';
-      case CircuitState.CLOSED:
-        return 'Connected';
-      default:
-        return 'Unknown';
-    }
+    if (status.failedRequestCount > 3) return 'Connection Issues';
+    if (status.failedRequestCount > 0) return 'Some Errors';
+    return 'Connected';
   };
 
   // Format relative time
@@ -130,16 +111,16 @@ const ConnectionStatus: React.FC<ConnectionStatusProps> = () => {
       {expanded && (
         <div className="status-details">
           <div className="status-row">
-            <div className="status-label">Circuit:</div>
-            <div className="status-value">{status.circuitState}</div>
+            <div className="status-label">Status:</div>
+            <div className="status-value">{getStatusText()}</div>
           </div>
           <div className="status-row">
             <div className="status-label">Offline Mode:</div>
             <div className="status-value">{status.isOfflineMode ? 'Active' : 'Inactive'}</div>
           </div>
           <div className="status-row">
-            <div className="status-label">Failures:</div>
-            <div className="status-value">{status.consecutiveFailures}</div>
+            <div className="status-label">Failed Requests:</div>
+            <div className="status-value">{status.failedRequestCount}</div>
           </div>
           <div className="status-row">
             <div className="status-label">Last Success:</div>
