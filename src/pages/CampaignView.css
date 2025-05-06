@@ -703,6 +703,12 @@ textarea.form-control {
   padding-bottom: 350px; /* Match the height of the expanded EntityTabsBar */
 }
 
+/* Make sure all content inside is properly sized */
+.campaign-view.expanded-padding .main-panel {
+  padding-bottom: 350px; /* Match the height of the expanded EntityTabsBar */
+  overflow-y: auto; /* Allow scrolling */
+}
+
 /* Make sure the entity tabs bar stays on top */
 .entity-tabs-bar {
   z-index: 1050; /* Higher than other elements in the view */

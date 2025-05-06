@@ -85,7 +85,7 @@ const CampaignWorkspace: React.FC = () => {
       <EntityTabsBar 
         campaignId={currentCampaign.id}
         onEntitySelect={handleEntitySelect}
-        onExpand={() => setMainContentPadding(true)}
+        onExpand={(isExpanded) => setMainContentPadding(isExpanded)}
       />
     </div>
   );

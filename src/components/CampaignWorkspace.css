@@ -3,6 +3,7 @@
   flex-direction: column;
   height: 100%;
   overflow: hidden;
+  position: relative;
 }
 
 .workspace-header {
@@ -26,11 +27,13 @@
   display: flex;
   flex: 1;
   overflow: hidden;
+  position: relative;
+  height: 100%;
 }
 
 .main-content {
   flex: 1;
-  overflow: hidden;
+  overflow-y: auto;
   padding: 20px;
   position: relative;
 }
@@ -88,7 +91,11 @@
 }
 
 .workspace-content.expanded-padding {
-  padding-bottom: 350px; /* Match the height of the expanded tab bar */
+  padding-bottom: 0;
+}
+
+.workspace-content.expanded-padding .main-content {
+  padding-bottom: 350px;
 }
 
 /* Review mode specific styles */
