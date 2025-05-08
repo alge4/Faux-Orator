@@ -171,6 +171,29 @@ const CampaignView: React.FC = () => {
     }
   }, [user, id]);
 
+  // Add an event listener to refresh entities when created
+  useEffect(() => {
+    // Function to handle the entity created event
+    const handleEntityCreated = (event: Event) => {
+      const customEvent = event as CustomEvent<{entityType: string, campaignId: string}>;
+      const { campaignId } = customEvent.detail;
+      
+      // Only refresh if it's for the current campaign
+      if (campaignId === id) {
+        console.log('Entity created event received, refreshing entities for campaign:', campaignId);
+        fetchEntities();
+      }
+    };
+
+    // Add event listener
+    window.addEventListener('entityCreated', handleEntityCreated);
+
+    // Clean up event listener on unmount
+    return () => {
+      window.removeEventListener('entityCreated', handleEntityCreated);
+    };
+  }, [id, fetchEntities]);
+
   // Handle entity selection
   const handleEntitySelect = (entity: EntityData) => {
     console.log('Selected entity:', entity);

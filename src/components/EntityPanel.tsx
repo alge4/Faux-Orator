@@ -204,45 +204,82 @@ const EntityPanel: React.FC<EntityPanelProps> = ({
   
   // Handle entity creation
   const handleCreateEntitySubmit = async (entityData: any) => {
+    console.log('Creating new entity with data:', entityData);
     try {
+      let createdSuccessfully = false;
+      let createdEntity = null;
+      
       if (isOfflineMode) {
         // If offline, use mock creation directly
-        const mockEntity = createMockEntity(entityType, {
+        createdEntity = createMockEntity(entityType, {
           ...entityData,
           campaign_id: campaignId
         });
-        setEntities(prev => [...prev, mockEntity]);
-        return true;
-      }
-      
-      const { error } = await simpleRetry(() => 
-        supabase
-          .from(tableName)
-          .insert({
+        console.log('Created mock entity in offline mode:', createdEntity);
+        setEntities(prev => [...prev, createdEntity]);
+        createdSuccessfully = true;
+      } else {
+        console.log(`Sending create request to Supabase table ${tableName}`);
+        const { data, error } = await simpleRetry(() => 
+          supabase
+            .from(tableName)
+            .insert({
+              ...entityData,
+              campaign_id: campaignId,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            })
+            .select() // Add .select() to get the created entity data back
+        );
+        
+        console.log('Supabase insert response:', { data, error });
+        
+        if (error) {
+          console.error('Error from Supabase when creating entity:', error);
+          // If Supabase fails, use mock functionality
+          createdEntity = createMockEntity(entityType, {
             ...entityData,
-            campaign_id: campaignId,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          })
-      );
-      
-      if (error) {
-        // If Supabase fails, use mock functionality
-        const mockEntity = createMockEntity(entityType, {
-          ...entityData,
-          campaign_id: campaignId
-        });
-        setEntities(prev => [...prev, mockEntity]);
-        return true;
+            campaign_id: campaignId
+          });
+          console.log('Falling back to mock entity due to error:', createdEntity);
+          setEntities(prev => [...prev, createdEntity]);
+          createdSuccessfully = true;
+        } else if (data && data.length > 0) {
+          // If we got data back, add it directly to the entities state
+          createdEntity = data[0];
+          console.log('Successfully created entity with data:', createdEntity);
+          setEntities(prev => [...prev, createdEntity]);
+          createdSuccessfully = true;
+          
+          // Clear cache for this entity type and campaign
+          console.log('Clearing cache for updated entity data');
+          clearCache(tableName, campaignId);
+          clearCache('all_entities', campaignId);
+        }
       }
       
-      // Clear cache for this entity type and campaign
-      clearCache(tableName, campaignId);
-      clearCache('all_entities', campaignId);
+      // If entity was created successfully, refresh and notify
+      if (createdSuccessfully) {
+        // First refresh our local entities list after a short delay
+        setTimeout(() => {
+          console.log('Executing delayed entity refresh');
+          fetchEntities();
+          
+          // Then dispatch the event to notify other components
+          console.log('Dispatching entityCreated event');
+          setTimeout(() => {
+            window.dispatchEvent(new CustomEvent('entityCreated', { 
+              detail: { 
+                entityType, 
+                campaignId,
+                entityId: createdEntity?.id 
+              } 
+            }));
+          }, 100); // Small delay to ensure state updates have settled
+        }, 500);
+      }
       
-      // Refresh the entities list
-      fetchEntities();
-      return true;
+      return createdSuccessfully;
     } catch (err) {
       console.error(`Error creating ${entityType}:`, err);
       return false;

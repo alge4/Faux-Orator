@@ -36,10 +36,16 @@ const NetworkView: React.FC<NetworkViewProps> = ({
     console.log('NetworkView: entities length:', entities?.length);
     console.log('NetworkView: relationships length:', relationships?.length);
     
+    // Add more detailed logging about entities
+    if (entities && entities.length > 0) {
+      console.log('NetworkView: Current entities:', entities.map(e => `${e.id} (${e.name})`));
+    }
+    
     // Determine if we should show the empty state
     if (!entities || entities.length === 0) {
       console.log('NetworkView: No entities available, showing empty state');
       setShowEmptyState(true);
+      setElements([]); // Clear any existing elements
       return;
     }
     
@@ -96,6 +102,12 @@ const NetworkView: React.FC<NetworkViewProps> = ({
       nodeCount: graphElements.filter(el => !el.data.source).length,
       edgeCount: graphElements.filter(el => !!el.data.source).length
     });
+    
+    // If we have a Cytoscape instance, run the layout again to position new nodes nicely
+    if (cyRef.current) {
+      console.log('NetworkView: Re-running layout with updated data');
+      cyRef.current.layout({ name: 'cose', animate: true, randomize: false }).run();
+    }
   }, [entities, relationships]);
 
   // Cytoscape style with our custom type
