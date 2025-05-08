@@ -166,6 +166,63 @@ BEFORE UPDATE ON story_arcs
 FOR EACH ROW
 EXECUTE FUNCTION public.moddatetime();
 
+-- Create a table for entity relationships
+CREATE TABLE entity_relationships (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  campaign_id UUID REFERENCES campaigns(id) ON DELETE CASCADE NOT NULL,
+  source_id UUID NOT NULL,
+  target_id UUID NOT NULL,
+  relationship_type TEXT NOT NULL,
+  description TEXT,
+  strength INTEGER DEFAULT 1,
+  bidirectional BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW()) NOT NULL,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW()) NOT NULL
+);
+
+-- Create a trigger to set updated_at on entity_relationships
+CREATE TRIGGER set_updated_at_entity_relationships
+BEFORE UPDATE ON entity_relationships
+FOR EACH ROW
+EXECUTE FUNCTION public.moddatetime();
+
+-- Create indexes for faster relationship queries
+CREATE INDEX idx_entity_relationships_source ON entity_relationships(source_id);
+CREATE INDEX idx_entity_relationships_target ON entity_relationships(target_id);
+CREATE INDEX idx_entity_relationships_campaign ON entity_relationships(campaign_id);
+
+-- Enable Row Level Security for entity_relationships
+ALTER TABLE entity_relationships ENABLE ROW LEVEL SECURITY;
+
+-- Create RLS policies for entity_relationships
+CREATE POLICY "Users can view relationships in their campaigns" ON entity_relationships
+  FOR SELECT USING (
+    campaign_id IN (
+      SELECT campaign_id FROM campaign_members WHERE user_id = auth.uid()
+    )
+  );
+
+CREATE POLICY "Campaign owners can create relationships" ON entity_relationships
+  FOR INSERT WITH CHECK (
+    campaign_id IN (
+      SELECT c.id FROM campaigns c WHERE c.created_by = auth.uid()
+    )
+  );
+
+CREATE POLICY "Campaign owners can update relationships" ON entity_relationships
+  FOR UPDATE USING (
+    campaign_id IN (
+      SELECT c.id FROM campaigns c WHERE c.created_by = auth.uid()
+    )
+  );
+
+CREATE POLICY "Campaign owners can delete relationships" ON entity_relationships
+  FOR DELETE USING (
+    campaign_id IN (
+      SELECT c.id FROM campaigns c WHERE c.created_by = auth.uid()
+    )
+  );
+
 -- Action consequences table
 CREATE TABLE action_consequences (
   id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,

@@ -1,6 +1,13 @@
 import { createClient } from "@supabase/supabase-js";
 import { Database } from "../supabase/types";
 import type { PostgrestFilterBuilder } from '@supabase/postgrest-js';
+import { 
+  Entity, 
+  EntityRelationship, 
+  EntityRelationshipInsert, 
+  EntityRelationshipUpdate,
+  EntityRelationshipDisplay 
+} from '../types/entities';
 
 // Define Json type (matching Supabase definition)
 export type Json =
@@ -935,3 +942,287 @@ export const fetchStoryArcsByCampaignId = async (campaignId: string) => {
     () => [] // Empty fallback for story arcs
   );
 };
+
+/**
+ * Fetches all entity relationships for a campaign
+ */
+export const fetchEntityRelationships = async (campaignId: string): Promise<SupabaseQueryResult<EntityRelationship>> => {
+  const requestKey = `entity_relationships_${campaignId}`;
+  
+  return deduplicateRequest(requestKey, async () => {
+    try {
+      if (shouldUseOfflineMode()) {
+        throw new DatabaseError('Using offline mode', 'OFFLINE_MODE');
+      }
+      
+      const result = await simpleRetry(() => 
+        // Use any type to bypass TypeScript restrictions
+        supabase
+          .from('entity_relationships' as any)
+          .select('*')
+          .eq('campaign_id', campaignId)
+      );
+      
+      const data = result.data;
+      const error = result.error;
+      
+      if (error) throw error;
+      
+      return { data, error: null };
+    } catch (error) {
+      console.error('Error fetching entity relationships:', error);
+      
+      // Fall back to mock data in development or offline mode
+      if (import.meta.env.DEV || isOfflineMode) {
+        return { 
+          data: [], // You can add mock relationships here if needed
+          error: null 
+        };
+      }
+      
+      return { data: null, error: error as Error };
+    }
+  });
+};
+
+/**
+ * Fetches entity relationships with detailed entity information
+ */
+export const fetchEntityRelationshipsWithDetails = async (campaignId: string): Promise<SupabaseQueryResult<EntityRelationshipDisplay>> => {
+  try {
+    // First fetch all relationships
+    const relationshipsResult = await fetchEntityRelationships(campaignId);
+    if (relationshipsResult.error) throw relationshipsResult.error;
+    if (!relationshipsResult.data) return { data: [], error: null };
+    
+    // Then fetch all entities for this campaign to get their names and types
+    const entitiesResult = await fetchAllEntitiesForCampaign(campaignId);
+    if (!entitiesResult || (entitiesResult as any).error) throw (entitiesResult as any).error;
+    
+    // Extract all entities from the result
+    const allEntities: Entity[] = [
+      ...((entitiesResult as any).npcs || []),
+      ...((entitiesResult as any).locations || []), 
+      ...((entitiesResult as any).factions || []),
+      ...((entitiesResult as any).items || [])
+    ];
+    
+    // Create a map of entity IDs to entities for quick lookup
+    const entityMap = new Map<string, Entity>();
+    allEntities.forEach(entity => {
+      if (entity && entity.id) {
+        entityMap.set(entity.id, entity);
+      }
+    });
+    
+    // Enrich the relationships with entity details
+    const enrichedRelationships: EntityRelationshipDisplay[] = relationshipsResult.data
+      .filter(rel => entityMap.has(rel.source_id) && entityMap.has(rel.target_id))
+      .map(rel => {
+        const sourceEntity = entityMap.get(rel.source_id)!;
+        const targetEntity = entityMap.get(rel.target_id)!;
+        
+        return {
+          id: rel.id,
+          source: {
+            id: sourceEntity.id,
+            name: sourceEntity.name,
+            type: sourceEntity.type
+          },
+          target: {
+            id: targetEntity.id,
+            name: targetEntity.name,
+            type: targetEntity.type
+          },
+          relationship_type: rel.relationship_type,
+          description: rel.description,
+          strength: rel.strength,
+          bidirectional: rel.bidirectional
+        };
+      });
+    
+    return { data: enrichedRelationships, error: null };
+  } catch (error) {
+    console.error('Error fetching entity relationships with details:', error);
+    return { data: null, error: error as Error };
+  }
+};
+
+/**
+ * Creates a new entity relationship
+ */
+export const createEntityRelationship = async (
+  relationship: EntityRelationshipInsert
+): Promise<SupabaseQueryResult<EntityRelationship>> => {
+  console.log('createEntityRelationship called with data:', relationship);
+  console.log('Auth status:', await supabase.auth.getSession());
+
+  try {
+    if (shouldUseOfflineMode()) {
+      console.log('Using offline mode, will return mock data');
+      throw new DatabaseError('Using offline mode', 'OFFLINE_MODE');
+    }
+    
+    console.log('Preparing to insert relationship into entity_relationships table');
+    const startTime = performance.now();
+    
+    // Fix the type issues by using a more generic approach
+    const { data, error } = await simpleRetry(() => {
+      console.log('Executing Supabase insert operation...');
+      return supabase
+        .from('entity_relationships')
+        .insert(relationship as any)
+        .select()
+        .single();
+    });
+    
+    const endTime = performance.now();
+    console.log(`API call completed in ${endTime - startTime}ms`);
+    
+    if (error) {
+      console.error('Supabase error details:', {
+        code: error.code,
+        message: error.message,
+        details: error.details,
+        hint: error.hint
+      });
+      throw error;
+    }
+    
+    console.log('Relationship created successfully:', data);
+    
+    // Clear cache for this campaign's relationships
+    clearCacheByPattern(`entity_relationships_${relationship.campaign_id}`);
+    
+    return { data, error: null };
+  } catch (error) {
+    console.error('Error creating entity relationship:', error);
+    return { data: null, error: error as Error };
+  }
+};
+
+/**
+ * Updates an existing entity relationship
+ */
+export const updateEntityRelationship = async (
+  id: string,
+  updates: EntityRelationshipUpdate
+): Promise<SupabaseQueryResult<EntityRelationship>> => {
+  try {
+    if (shouldUseOfflineMode()) {
+      throw new DatabaseError('Using offline mode', 'OFFLINE_MODE');
+    }
+    
+    const result = await simpleRetry(() => 
+      supabase
+        .from('entity_relationships' as any)
+        .update(updates as any)
+        .eq('id', id)
+        .select()
+        .single()
+    );
+    
+    const data = result.data;
+    const error = result.error;
+    
+    if (error) throw error;
+    
+    // Clear cache for this campaign's relationships
+    if (data) {
+      clearCacheByPattern(`entity_relationships_${data.campaign_id}`);
+    }
+    
+    return { data, error: null };
+  } catch (error) {
+    console.error('Error updating entity relationship:', error);
+    return { data: null, error: error as Error };
+  }
+};
+
+/**
+ * Deletes an entity relationship
+ */
+export const deleteEntityRelationship = async (
+  id: string,
+  campaignId: string
+): Promise<SupabaseQueryResult<null>> => {
+  try {
+    if (shouldUseOfflineMode()) {
+      throw new DatabaseError('Using offline mode', 'OFFLINE_MODE');
+    }
+    
+    const result = await simpleRetry(() => 
+      supabase
+        .from('entity_relationships' as any)
+        .delete()
+        .eq('id', id)
+    );
+    
+    const error = result.error;
+    
+    if (error) throw error;
+    
+    // Clear cache for this campaign's relationships
+    clearCacheByPattern(`entity_relationships_${campaignId}`);
+    
+    return { data: null, error: null };
+  } catch (error) {
+    console.error('Error deleting entity relationship:', error);
+    return { data: null, error: error as Error };
+  }
+};
+
+// Add the clearCacheByPattern function which is missing
+export const clearCacheByPattern = (pattern: string): void => {
+  Object.keys(dataCache)
+    .filter(key => key.includes(pattern))
+    .forEach(key => delete dataCache[key]);
+};
+
+// Add this type augmentation to incorporate entity_relationships into the Database type
+declare module '../supabase/types' {
+  interface Database {
+    public: {
+      Tables: {
+        entity_relationships: {
+          Row: {
+            id: string;
+            campaign_id: string;
+            source_id: string;
+            target_id: string;
+            relationship_type: string;
+            description: string | null;
+            strength: number;
+            bidirectional: boolean;
+            created_at: string;
+            updated_at: string;
+          };
+          Insert: {
+            id?: string;
+            campaign_id: string;
+            source_id: string;
+            target_id: string;
+            relationship_type: string;
+            description?: string | null;
+            strength?: number;
+            bidirectional?: boolean;
+            created_at?: string;
+            updated_at?: string;
+          };
+          Update: {
+            id?: string;
+            campaign_id?: string;
+            source_id?: string;
+            target_id?: string;
+            relationship_type?: string;
+            description?: string | null;
+            strength?: number;
+            bidirectional?: boolean;
+            created_at?: string;
+            updated_at?: string;
+          };
+        };
+      };
+    };
+  }
+}

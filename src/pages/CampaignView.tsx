@@ -9,9 +9,11 @@ import DataView from '../components/DataView';
 import VoiceChat from '../components/VoiceChat';
 import CampaignMenu from '../components/CampaignMenu';
 import EntityTabsBar from '../components/EntityTabsBar';
-import { supabase, fetchAllEntitiesForCampaign } from '../services/supabase';
+import { supabase, fetchAllEntitiesForCampaign, fetchEntityRelationshipsWithDetails } from '../services/supabase';
 import chevronIcon from '../assets/icons/chevron.svg';
 import { useAssistantChat } from '../hooks/useAssistantChat';
+import EntityRelationshipsManager from '../components/EntityRelationshipsManager';
+import { EntityRelationshipDisplay } from '../types/entities';
 import './CampaignView.css';
 
 interface CampaignFormData {
@@ -58,6 +60,9 @@ const CampaignView: React.FC = () => {
   const [isRotating, setIsRotating] = useState<'left' | 'right' | null>(null);
   const [mainContentPadding, setMainContentPadding] = useState(false);
   const [selectedEntityForView, setSelectedEntityForView] = useState<EntityData | null>(null);
+  const [relationships, setRelationships] = useState<EntityRelationshipDisplay[]>([]);
+  const [isLoadingRelationships, setIsLoadingRelationships] = useState(true);
+  const [relationshipsError, setRelationshipsError] = useState<string | null>(null);
 
   const {
     assistantChat,
@@ -92,6 +97,7 @@ const CampaignView: React.FC = () => {
     if (!currentCampaign?.id) return;
 
     try {
+      console.log('CampaignView: Fetching entities for campaign:', currentCampaign.id);
       const allEntities = await fetchAllEntitiesForCampaign(currentCampaign.id);
       const convertedEntities: Entity[] = [
         ...(allEntities.npcs || []).map(npc => ({
@@ -136,6 +142,7 @@ const CampaignView: React.FC = () => {
         }))
       ];
 
+      console.log('CampaignView: Entities loaded successfully, count:', convertedEntities.length, convertedEntities);
       setEntities(convertedEntities);
     } catch (error) {
       console.error('Error fetching entities:', error);
@@ -294,6 +301,61 @@ const CampaignView: React.FC = () => {
     // Reset animation class after animation completes
     setTimeout(() => setIsRotating(null), 300);
   };
+
+  const fetchRelationships = useCallback(async () => {
+    if (!currentCampaign?.id) {
+      console.warn('CampaignView: Cannot fetch relationships - no campaign ID');
+      return;
+    }
+
+    console.log('CampaignView: Starting to fetch relationships for campaign:', currentCampaign.id);
+    setIsLoadingRelationships(true);
+    setRelationshipsError(null);
+    
+    try {
+      console.log('CampaignView: Calling fetchEntityRelationshipsWithDetails API');
+      const result = await fetchEntityRelationshipsWithDetails(currentCampaign.id);
+      
+      if (result.data) {
+        console.log('CampaignView: Relationships loaded successfully. Count:', result.data.length);
+        console.log('CampaignView: Relationship data:', result.data);
+        setRelationships(result.data);
+      } else if (result.error) {
+        console.error('CampaignView: Failed to load relationships:', result.error);
+        console.error('CampaignView: Error details:', {
+          name: result.error.name,
+          message: result.error.message,
+          stack: result.error.stack
+        });
+        setRelationshipsError(`Failed to load relationships: ${result.error.message}`);
+      }
+    } catch (err: any) {
+      console.error('CampaignView: Error loading relationships:', err);
+      console.error('CampaignView: Error details:', {
+        name: err?.name,
+        message: err?.message,
+        stack: err?.stack
+      });
+      setRelationshipsError(`An unexpected error occurred: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      console.log('CampaignView: Finished relationship fetch attempt');
+      setIsLoadingRelationships(false);
+    }
+  }, [currentCampaign?.id]);
+
+  useEffect(() => {
+    if (currentCampaign?.id) {
+      console.log('CampaignView: Campaign ID changed, fetching relationships for:', currentCampaign.id);
+      fetchRelationships();
+    }
+  }, [currentCampaign?.id, fetchRelationships]);
+
+  const handleRelationshipsChange = useCallback(() => {
+    console.log('CampaignView: handleRelationshipsChange called - relationship data changed');
+    console.log('CampaignView: Current campaign ID:', currentCampaign?.id);
+    console.log('CampaignView: Will now refresh relationships data');
+    fetchRelationships();
+  }, [fetchRelationships, currentCampaign?.id]);
 
   if (loading) {
     return <div className="loading">Loading...</div>;
@@ -486,12 +548,31 @@ const CampaignView: React.FC = () => {
         <main className="main-panel">
           {activeMode === CampaignMode.Planning && (
             <div className="planning-view">
+              {console.log('CampaignView planning mode entities:', entities)}
+              
               <div className="world-graph">
                 <h2>World Graph</h2>
-                <NetworkView 
-                  currentCampaign={currentCampaign}
-                  entities={entities}
-                />
+                <div className="graph-container">
+                  <NetworkView 
+                    currentCampaign={currentCampaign}
+                    entities={entities}
+                    relationships={relationships}
+                    onEntitySelect={handleEntitySelect}
+                  />
+                </div>
+                {currentCampaign?.id && (
+                  <div className="relationship-manager-container">
+                    <EntityRelationshipsManager
+                      campaignId={currentCampaign.id}
+                      entities={entities}
+                      relationships={relationships}
+                      isLoading={isLoadingRelationships}
+                      error={relationshipsError}
+                      onRelationshipsChange={handleRelationshipsChange}
+                      selectedEntityId={selectedEntityForView?.id}
+                    />
+                  </div>
+                )}
               </div>
               <div className="dm-assistant-chat">
                 <h2>DM Assistant</h2>
@@ -532,11 +613,26 @@ const CampaignView: React.FC = () => {
                 <NetworkView 
                   currentCampaign={currentCampaign}
                   entities={entities}
+                  relationships={relationships}
                 />
                 {selectedEntityForView && (
                   <div className="selected-entity-details">
                     <h3>{selectedEntityForView.name}</h3>
                     <p>{selectedEntityForView.description || 'No description available'}</p>
+                    {currentCampaign?.id && (
+                      <div className="entity-relationships-section">
+                        <h4>Relationships</h4>
+                        <EntityRelationshipsManager
+                          campaignId={currentCampaign.id}
+                          entities={entities}
+                          relationships={relationships}
+                          isLoading={isLoadingRelationships}
+                          error={relationshipsError}
+                          onRelationshipsChange={handleRelationshipsChange}
+                          selectedEntityId={selectedEntityForView.id}
+                        />
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

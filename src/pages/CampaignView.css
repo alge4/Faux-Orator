@@ -631,6 +631,25 @@ textarea.form-control {
   border-bottom: 1px solid #e5e7eb;
 }
 
+/* Add styles for the graph and relationship manager containers */
+.graph-container {
+  flex: 2;
+  min-height: 300px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.relationship-manager-container {
+  flex: 1;
+  min-height: 200px;
+  max-height: 40%;
+  border-top: 1px solid #e5e7eb;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
 .dm-assistant-chat {
   flex: 1;
   min-width: 300px;
@@ -668,34 +687,57 @@ textarea.form-control {
   display: flex;
   flex-direction: column;
   height: 100%;
+  overflow: hidden;
 }
 
 .review-content {
   display: flex;
   flex-direction: column;
-  flex: 1;
-  gap: 16px;
-  overflow-y: auto;
+  height: 100%;
+  overflow: hidden;
 }
 
 .selected-entity-details {
-  background-color: white;
-  border-radius: 8px;
-  padding: 16px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-  border: 1px solid #e5e7eb;
+  padding: 1rem;
+  background: #ffffff;
+  border-top: 1px solid #e5e7eb;
+  overflow-y: auto;
+  max-height: 40%;
 }
 
 .selected-entity-details h3 {
   margin-top: 0;
-  color: #111827;
-  font-size: 1.25rem;
-  font-weight: 600;
+  color: var(--primary-color, #333);
+  margin-bottom: 0.5rem;
 }
 
 .selected-entity-details p {
-  color: #4b5563;
-  margin-bottom: 0;
+  color: var(--text-color, #4b5563);
+  margin-bottom: 1rem;
+}
+
+.entity-relationships-section {
+  margin-top: 1rem;
+}
+
+.entity-relationships-section h4 {
+  margin-top: 0;
+  margin-bottom: 0.5rem;
+  color: var(--primary-color, #333);
+  font-size: 1rem;
+}
+
+/* Make the relationships manager more compact in review mode */
+.review-section .entity-relationships-manager {
+  padding: 0;
+}
+
+.review-section .relationship-item {
+  margin-bottom: 4px;
+}
+
+.review-section .relationships-header {
+  margin-bottom: 8px;
 }
 
 /* Support for EntityTabsBar padding */
