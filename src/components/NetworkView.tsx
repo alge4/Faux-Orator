@@ -1,116 +1,125 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, Component, ErrorInfo, ReactNode } from 'react';
 import { Entity, EntityRelationshipDisplay } from '../types/entities';
 import CytoscapeComponent from 'react-cytoscapejs';
 import cytoscape from 'cytoscape';
 import './NetworkView.css';
 
-// Define a type for our stylesheet that isn't tied to cytoscape's complex type system
+// Error boundary to catch errors in the Cytoscape component
+class CytoscapeErrorBoundary extends Component<
+  { children: ReactNode; fallback: ReactNode },
+  { hasError: boolean }
+> {
+  constructor(props: { children: ReactNode; fallback: ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(_: Error) {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.error('CytoscapeErrorBoundary caught an error:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return this.props.fallback;
+    }
+
+    return this.props.children;
+  }
+}
+
+// Define a type for our stylesheet
 type StylesheetElement = {
   selector: string;
   style: Record<string, string | number | boolean>;
 };
 
-// Let's simplify and not fight TypeScript - remove the StyleSheet custom type entirely
 interface NetworkViewProps {
   entities?: Entity[];
   relationships?: EntityRelationshipDisplay[];
   onEntitySelect?: (entityId: string) => void;
 }
 
+type ViewMode = 'graph' | 'list';
+
 const NetworkView: React.FC<NetworkViewProps> = ({ 
   entities = [],
   relationships = [],
   onEntitySelect
 }) => {
-  // Add debugging statement
-  console.log('NetworkView received entities:', entities.length, entities);
-  console.log('NetworkView received relationships:', relationships.length, relationships);
+  console.log('NetworkView received entities:', entities.length);
+  console.log('NetworkView received relationships:', relationships.length);
   
   const [elements, setElements] = useState<cytoscape.ElementDefinition[]>([]);
-  const cyRef = useRef<cytoscape.Core | null>(null);
   const [showEmptyState, setShowEmptyState] = useState(true);
+  const [hasError, setHasError] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>('graph');
 
-  // Update the network when entities or relationships change
+  // Create elements for Cytoscape
   useEffect(() => {
-    console.log('NetworkView: entities/relationships dependencies changed');
-    console.log('NetworkView: entities length:', entities?.length);
-    console.log('NetworkView: relationships length:', relationships?.length);
-    
-    // Add more detailed logging about entities
-    if (entities && entities.length > 0) {
-      console.log('NetworkView: Current entities:', entities.map(e => `${e.id} (${e.name})`));
-    }
-    
-    // Determine if we should show the empty state
-    if (!entities || entities.length === 0) {
-      console.log('NetworkView: No entities available, showing empty state');
-      setShowEmptyState(true);
-      setElements([]); // Clear any existing elements
-      return;
-    }
-    
-    // If we have entities, don't show the empty state
-    setShowEmptyState(false);
-    
-    // Process entities and relationships to create the graph
-    const graphElements: cytoscape.ElementDefinition[] = [];
-    
-    console.log('NetworkView: Processing entities for graph...');
-    // Add nodes for entities
-    entities.forEach(entity => {
-      console.log(`NetworkView: Adding entity node: ${entity.id} (${entity.name})`);
-      graphElements.push({
-        data: {
-          id: entity.id,
-          label: entity.name,
-          type: entity.type,
-          nodeType: 'entity'
-        }
-      });
-    });
-    
-    // No longer adding a campaign node or connecting entities to it
-    
-    // Add edges for relationships
-    if (relationships && relationships.length > 0) {
-      console.log('NetworkView: Processing relationships for graph...');
-      relationships.forEach(rel => {
-        console.log(`NetworkView: Adding relationship edge: ${rel.id} (${rel.source.name} → ${rel.target.name})`);
+    try {
+      if (!entities || entities.length === 0) {
+        setShowEmptyState(true);
+        setElements([]);
+        return;
+      }
+
+      setShowEmptyState(false);
+      
+      // Build graph elements
+      const graphElements: cytoscape.ElementDefinition[] = [];
+      
+      // Add nodes
+      const validEntities = entities.filter(e => e && e.id && e.name);
+      validEntities.forEach(entity => {
         graphElements.push({
           data: {
-            id: rel.id,
-            source: rel.source.id,
-            target: rel.target.id,
-            label: rel.relationship_type,
-            edgeType: 'relationship',
-            strength: rel.strength,
-            bidirectional: rel.bidirectional
+            id: entity.id,
+            label: entity.name,
+            type: entity.type,
+            nodeType: 'entity'
           }
         });
       });
-    }
-    
-    console.log('NetworkView: Generating network elements with:', {
-      entityCount: entities.length,
-      relationshipCount: relationships.length
-    });
-    
-    // Set the elements state to update the graph
-    setElements(graphElements);
-    
-    console.log('NetworkView: Generated network elements:', {
-      nodeCount: graphElements.filter(el => !el.data.source).length,
-      edgeCount: graphElements.filter(el => !!el.data.source).length
-    });
-    
-    // If we have a Cytoscape instance, run the layout again to position new nodes nicely
-    if (cyRef.current) {
-      console.log('NetworkView: Re-running layout with updated data');
-      cyRef.current.layout({ name: 'cose', animate: true, randomize: false }).run();
+      
+      // Add edges
+      if (relationships && relationships.length > 0) {
+        const validRelationships = relationships.filter(
+          r => r && r.id && r.source && r.source.id && r.target && r.target.id
+        );
+        
+        validRelationships.forEach(rel => {
+          // Make sure both source and target entities exist
+          const sourceExists = validEntities.some(e => e.id === rel.source.id);
+          const targetExists = validEntities.some(e => e.id === rel.target.id);
+          
+          if (sourceExists && targetExists) {
+            graphElements.push({
+              data: {
+                id: rel.id,
+                source: rel.source.id,
+                target: rel.target.id,
+                label: rel.relationship_type,
+                edgeType: 'relationship',
+                strength: rel.strength,
+                bidirectional: rel.bidirectional
+              }
+            });
+          }
+        });
+      }
+      
+      setElements(graphElements);
+    } catch (error) {
+      console.error('Error creating network elements:', error);
+      setHasError(true);
     }
   }, [entities, relationships]);
 
-  // Cytoscape style with our custom type
+  // Define styles
   const cytoscapeStyle: StylesheetElement[] = [
     {
       selector: 'node',
@@ -176,40 +185,144 @@ const NetworkView: React.FC<NetworkViewProps> = ({
     }
   ];
 
-  // Handle node tap/click
-  const handleNodeTap = (event: cytoscape.EventObject) => {
-    const node = event.target;
-    if (onEntitySelect) {
-      onEntitySelect(node.id());
+  // Safe handle for node selection
+  const safeHandleNodeTap = (evt: cytoscape.EventObject) => {
+    try {
+      if (onEntitySelect && evt.target && evt.target.id) {
+        onEntitySelect(evt.target.id());
+      }
+    } catch (error) {
+      console.error('Error handling node tap:', error);
     }
   };
-  
-  // Set up Cytoscape instance when it's mounted
-  const handleCytoscapeCreated = (cy: cytoscape.Core) => {
-    cyRef.current = cy;
-    
-    // Set up event handlers
-    cy.on('tap', 'node', handleNodeTap);
-    
-    // Set up layout
-    cy.layout({ name: 'cose' }).run();
+
+  // Safe initialize cytoscape
+  const safeInitializeCytoscape = (cy: cytoscape.Core) => {
+    try {
+      // Set up event handlers
+      cy.on('tap', 'node', safeHandleNodeTap);
+      
+      // Run layout
+      cy.layout({ 
+        name: 'cose',
+        animate: true,
+        nodeDimensionsIncludeLabels: true,
+        randomize: true,
+        componentSpacing: 100,
+        nodeRepulsion: function(node: any) { return 2048; },
+        idealEdgeLength: function(edge: any) { return 128; }
+      }).run();
+    } catch (error) {
+      console.error('Error initializing cytoscape:', error);
+      setHasError(true);
+    }
   };
 
-  return (
-    <div className="network-view">
-      {showEmptyState ? (
+  // Toggle between graph and list view
+  const toggleViewMode = () => {
+    setViewMode(viewMode === 'graph' ? 'list' : 'graph');
+  };
+
+  // Handle entity selection from list view
+  const handleEntityClick = (entityId: string) => {
+    if (onEntitySelect) {
+      onEntitySelect(entityId);
+    }
+  };
+
+  // Error fallback UI
+  const errorFallback = (
+    <div className="network-error">
+      <p>There was an error loading the network graph. Please try refreshing the page or use the list view.</p>
+    </div>
+  );
+
+  // Empty state UI
+  if (showEmptyState) {
+    return (
+      <div className="network-view">
         <div className="network-empty-state">
           <p>Create your first entity to start building your campaign's network graph.</p>
         </div>
-      ) : (
-        <CytoscapeComponent
-          elements={elements}
-          style={{ width: '100%', height: '100%' }}
-          stylesheet={cytoscapeStyle}
-          layout={{ name: 'cose', fit: true }}
-          cy={handleCytoscapeCreated}
-        />
-      )}
+      </div>
+    );
+  }
+
+  // List view of entities
+  const renderListView = () => {
+    return (
+      <div className="network-list-view">
+        <div className="entity-section">
+          <h3>Entities</h3>
+          <div className="entity-list">
+            {entities.map(entity => (
+              <div 
+                key={entity.id} 
+                className={`entity-item entity-${entity.type}`}
+                onClick={() => handleEntityClick(entity.id)}
+              >
+                <div className="entity-icon"></div>
+                <div className="entity-name">{entity.name}</div>
+                <div className="entity-type">{entity.type}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+        
+        {relationships && relationships.length > 0 && (
+          <div className="relationship-section">
+            <h3>Relationships</h3>
+            <div className="relationship-list">
+              {relationships.map(rel => (
+                <div key={rel.id} className="relationship-item">
+                  <span className={`entity-badge entity-${rel.source.type}`}>{rel.source.name}</span>
+                  <span className="relationship-type">
+                    {rel.bidirectional ? '⟷' : '→'} {rel.relationship_type}
+                  </span>
+                  <span className={`entity-badge entity-${rel.target.type}`}>{rel.target.name}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // Graph view with error boundary
+  const renderGraphView = () => {
+    return (
+      <CytoscapeErrorBoundary fallback={errorFallback}>
+        {elements.length > 0 && (
+          <CytoscapeComponent
+            elements={elements}
+            style={{ width: '100%', height: '100%' }}
+            stylesheet={cytoscapeStyle}
+            layout={{ name: 'cose', fit: true }}
+            cy={safeInitializeCytoscape}
+          />
+        )}
+      </CytoscapeErrorBoundary>
+    );
+  };
+
+  // If there's an error in the graph view, default to list view
+  if (hasError && viewMode === 'graph') {
+    setViewMode('list');
+  }
+
+  return (
+    <div className="network-view">
+      <div className="network-view-controls">
+        <button 
+          onClick={toggleViewMode}
+          className={`view-toggle-button ${viewMode}`}
+        >
+          {viewMode === 'graph' ? 'Switch to List View' : 'Switch to Graph View'}
+        </button>
+      </div>
+      
+      {viewMode === 'graph' ? renderGraphView() : renderListView()}
     </div>
   );
 };

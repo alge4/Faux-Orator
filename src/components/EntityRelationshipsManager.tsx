@@ -30,6 +30,8 @@ import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import BidirectionalIcon from '@mui/icons-material/CompareArrows';
 import DirectionalIcon from '@mui/icons-material/ArrowRightAlt';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 
 // Define proper entity option type
 interface EntityOption {
@@ -60,6 +62,24 @@ const EntityRelationshipsManager: React.FC<EntityRelationshipsManagerProps> = ({
   const [showForm, setShowForm] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [selectedRelationship, setSelectedRelationship] = useState<EntityRelationship | null>(null);
+  const [minimized, setMinimized] = useState(() => {
+    const saved = localStorage.getItem('entityRelationshipsMinimized');
+    return saved === 'true';
+  });
+  
+  useEffect(() => {
+    localStorage.setItem('entityRelationshipsMinimized', String(minimized));
+    
+    // Add class to parent world-graph container when minimized
+    const parentContainer = document.querySelector('.relationship-manager-container')?.parentElement;
+    if (parentContainer) {
+      if (minimized) {
+        parentContainer.classList.add('relationships-minimized');
+      } else {
+        parentContainer.classList.remove('relationships-minimized');
+      }
+    }
+  }, [minimized]);
   
   useEffect(() => {
     console.log('EntityRelationshipsManager: entities count:', entities.length);
@@ -155,11 +175,18 @@ const EntityRelationshipsManager: React.FC<EntityRelationshipsManagerProps> = ({
     : relationships;
   
   return (
-    <div className="entity-relationships-manager">
+    <div className={`entity-relationships-manager ${minimized ? 'minimized' : ''}`}>
       <div className="relationships-header">
-        <Typography variant="h6">
-          {selectedEntityId ? 'Entity Relationships' : 'All Relationships'}
-        </Typography>
+        <div className="header-left">
+          <Typography variant="h6">
+            {selectedEntityId ? 'Entity Relationships' : 'All Relationships'}
+          </Typography>
+          <Tooltip title={minimized ? "Expand" : "Minimize"}>
+            <IconButton onClick={() => setMinimized(!minimized)} size="small">
+              {minimized ? <ExpandMoreIcon /> : <ExpandLessIcon />}
+            </IconButton>
+          </Tooltip>
+        </div>
         <Button
           variant="contained"
           color="primary"
@@ -171,95 +198,99 @@ const EntityRelationshipsManager: React.FC<EntityRelationshipsManagerProps> = ({
         </Button>
       </div>
       
-      {isLoading ? (
-        <div className="loading-container">
-          <CircularProgress />
-        </div>
-      ) : error ? (
-        <div className="error-message">{error}</div>
-      ) : !entities || entities.length < 2 ? (
-        <div className="no-relationships">
-          <Typography>
-            You need at least two entities to create relationships.
-            <br />
-            Add more entities to your campaign first.
-          </Typography>
-        </div>
-      ) : filteredRelationships.length === 0 ? (
-        <div className="no-relationships">
-          <Typography>
-            {selectedEntityId 
-              ? 'No relationships for this entity. Create one to connect it to your world.'
-              : 'No relationships defined yet. Create your first relationship to start building your world graph.'}
-          </Typography>
-        </div>
-      ) : (
-        <List className="relationships-list">
-          {filteredRelationships.map(relationship => (
-            <Paper key={relationship.id} className="relationship-item" elevation={1}>
-              <ListItem>
-                <ListItemText
-                  primary={
-                    <div className="relationship-title">
-                      <span className={`entity-type-badge ${relationship.source.type}`}>
-                        {relationship.source.type}
-                      </span>
-                      <span className="entity-name">{relationship.source.name}</span>
-                      <span className="relationship-direction">
-                        {relationship.bidirectional ? (
-                          <BidirectionalIcon fontSize="small" />
-                        ) : (
-                          <DirectionalIcon fontSize="small" />
-                        )}
-                      </span>
-                      <span className="entity-name">{relationship.target.name}</span>
-                      <span className={`entity-type-badge ${relationship.target.type}`}>
-                        {relationship.target.type}
-                      </span>
-                    </div>
-                  }
-                  secondary={
-                    <div className="relationship-details">
-                      <Typography variant="body2" color="textPrimary" className="relationship-type">
-                        {relationship.relationship_type.replace(/_/g, ' ')}
-                      </Typography>
-                      {relationship.description && (
-                        <Typography variant="body2" color="textSecondary" className="relationship-description">
-                          {relationship.description}
-                        </Typography>
-                      )}
-                      <div className="relationship-strength">
-                        <Typography variant="caption" color="textSecondary">
-                          Strength: <span className="strength-dots">{renderStrength(relationship.strength)}</span>
-                        </Typography>
-                      </div>
-                    </div>
-                  }
-                />
-                <ListItemSecondaryAction>
-                  <Tooltip title="Edit relationship">
-                    <IconButton
-                      edge="end"
-                      onClick={() => handleEditRelationship(relationship)}
-                      size="small"
-                    >
-                      <EditIcon fontSize="small" />
-                    </IconButton>
-                  </Tooltip>
-                  <Tooltip title="Delete relationship">
-                    <IconButton
-                      edge="end"
-                      onClick={() => handleDeleteConfirm(relationship)}
-                      size="small"
-                    >
-                      <DeleteIcon fontSize="small" />
-                    </IconButton>
-                  </Tooltip>
-                </ListItemSecondaryAction>
-              </ListItem>
-            </Paper>
-          ))}
-        </List>
+      {!minimized && (
+        <>
+          {isLoading ? (
+            <div className="loading-container">
+              <CircularProgress />
+            </div>
+          ) : error ? (
+            <div className="error-message">{error}</div>
+          ) : !entities || entities.length < 2 ? (
+            <div className="no-relationships">
+              <Typography>
+                You need at least two entities to create relationships.
+                <br />
+                Add more entities to your campaign first.
+              </Typography>
+            </div>
+          ) : filteredRelationships.length === 0 ? (
+            <div className="no-relationships">
+              <Typography>
+                {selectedEntityId 
+                  ? 'No relationships for this entity. Create one to connect it to your world.'
+                  : 'No relationships defined yet. Create your first relationship to start building your world graph.'}
+              </Typography>
+            </div>
+          ) : (
+            <List className="relationships-list">
+              {filteredRelationships.map(relationship => (
+                <Paper key={relationship.id} className="relationship-item" elevation={1}>
+                  <ListItem>
+                    <ListItemText
+                      primary={
+                        <div className="relationship-title">
+                          <span className={`entity-type-badge ${relationship.source.type}`}>
+                            {relationship.source.type}
+                          </span>
+                          <span className="entity-name">{relationship.source.name}</span>
+                          <span className="relationship-direction">
+                            {relationship.bidirectional ? (
+                              <BidirectionalIcon fontSize="small" />
+                            ) : (
+                              <DirectionalIcon fontSize="small" />
+                            )}
+                          </span>
+                          <span className="entity-name">{relationship.target.name}</span>
+                          <span className={`entity-type-badge ${relationship.target.type}`}>
+                            {relationship.target.type}
+                          </span>
+                        </div>
+                      }
+                      secondary={
+                        <div className="relationship-details">
+                          <Typography variant="body2" color="textPrimary" className="relationship-type">
+                            {relationship.relationship_type.replace(/_/g, ' ')}
+                          </Typography>
+                          {relationship.description && (
+                            <Typography variant="body2" color="textSecondary" className="relationship-description">
+                              {relationship.description}
+                            </Typography>
+                          )}
+                          <div className="relationship-strength">
+                            <Typography variant="caption" color="textSecondary">
+                              Strength: <span className="strength-dots">{renderStrength(relationship.strength)}</span>
+                            </Typography>
+                          </div>
+                        </div>
+                      }
+                    />
+                    <ListItemSecondaryAction>
+                      <Tooltip title="Edit relationship">
+                        <IconButton
+                          edge="end"
+                          onClick={() => handleEditRelationship(relationship)}
+                          size="small"
+                        >
+                          <EditIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Delete relationship">
+                        <IconButton
+                          edge="end"
+                          onClick={() => handleDeleteConfirm(relationship)}
+                          size="small"
+                        >
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                    </ListItemSecondaryAction>
+                  </ListItem>
+                </Paper>
+              ))}
+            </List>
+          )}
+        </>
       )}
       
       {/* Relationship Form Dialog */}

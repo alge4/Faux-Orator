@@ -577,10 +577,14 @@ const CampaignView: React.FC = () => {
                 <h2>World Graph</h2>
                 <div className="graph-container">
                   <NetworkView 
-                    currentCampaign={currentCampaign}
                     entities={entities}
                     relationships={relationships}
-                    onEntitySelect={handleEntitySelect}
+                    onEntitySelect={(entityId) => {
+                      const entity = entities.find(e => e.id === entityId);
+                      if (entity) {
+                        handleEntitySelect(entity);
+                      }
+                    }}
                   />
                 </div>
                 {currentCampaign?.id && (
@@ -634,9 +638,14 @@ const CampaignView: React.FC = () => {
               <h2>Campaign Review</h2>
               <div className="review-content">
                 <NetworkView 
-                  currentCampaign={currentCampaign}
                   entities={entities}
                   relationships={relationships}
+                  onEntitySelect={(entityId) => {
+                    const entity = entities.find(e => e.id === entityId);
+                    if (entity) {
+                      handleEntitySelect(entity);
+                    }
+                  }}
                 />
                 {selectedEntityForView && (
                   <div className="selected-entity-details">

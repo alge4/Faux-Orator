@@ -277,22 +277,14 @@ const checkOnlineStatus = async (): Promise<boolean> => {
   }
 };
 
-// Create Supabase client with improved error handling
-export const supabase = createClient<Database>(
-  supabaseUrl || "",
-  supabaseKey || "",
-  {
-    auth: {
-      persistSession: true,
-      autoRefreshToken: true,
-    },
-    global: {
-      headers: {
-        "X-Client-Info": "faux-orator-app", 
-      }
-    }
+/**
+ * Initialize Supabase client 
+ */
+export const supabase = createClient<Database>(supabaseUrl, supabaseKey, {
+  auth: {
+    persistSession: true
   }
-);
+});
 
 // Reset offline mode and force the next request to try the real API
 export const retryOnlineMode = async (): Promise<boolean> => {
@@ -1226,3 +1218,35 @@ declare module '../supabase/types' {
     };
   }
 }
+
+/**
+ * Log agent actions to the database for tracking and analysis
+ */
+export const logAgentAction = async (
+  campaignId: string,
+  sessionId: string,
+  agentType: string,
+  action: string,
+  details: any,
+  output: any
+): Promise<void> => {
+  try {
+    const { error } = await supabase
+      .from('agent_logs')
+      .insert({
+        campaign_id: campaignId,
+        session_id: sessionId,
+        agent_type: agentType,
+        action_type: action,
+        details: details,
+        output: output,
+        created_at: new Date().toISOString()
+      });
+    
+    if (error) {
+      console.error('Error logging agent action:', error);
+    }
+  } catch (error) {
+    console.error('Failed to log agent action:', error);
+  }
+};

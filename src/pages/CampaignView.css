@@ -633,11 +633,30 @@ textarea.form-control {
 
 /* Add styles for the graph and relationship manager containers */
 .graph-container {
-  flex: 2;
+  flex: 1;
   min-height: 300px;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  transition: flex-grow 0.3s ease;
+}
+
+/* Parent container styles when relationships are minimized */
+.world-graph.relationships-minimized {
+  display: flex;
+  flex-direction: column;
+}
+
+.world-graph.relationships-minimized .graph-container {
+  flex-grow: 5;
+}
+
+.world-graph.relationships-minimized .relationship-manager-container {
+  flex-shrink: 1;
+  flex-grow: 0;
+  min-height: 60px;
+  max-height: 60px;
+  transition: min-height 0.3s ease, max-height 0.3s ease;
 }
 
 .relationship-manager-container {
@@ -648,6 +667,22 @@ textarea.form-control {
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  transition: all 0.3s ease;
+}
+
+/* When relationships are minimized, adjust container sizes */
+.relationship-manager-container .entity-relationships-manager.minimized {
+  min-height: 60px;
+  max-height: 60px;
+}
+
+.relationship-manager-container .entity-relationships-manager.minimized .relationships-header {
+  margin-bottom: 0;
+}
+
+/* Adjust the world graph container when relationships are minimized */
+.relationship-manager-container .entity-relationships-manager.minimized ~ .graph-container {
+  flex-grow: 2;
 }
 
 .dm-assistant-chat {

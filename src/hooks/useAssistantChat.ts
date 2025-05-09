@@ -4,6 +4,8 @@ import {
   extractDocumentContent,
   generateContentPreview,
 } from "../lib/documentProcessor";
+import { DMAssistantAgent } from "../ai-agents/DMAssistantAgent";
+import { v4 as uuidv4 } from "uuid";
 
 export interface AssistantChat {
   id: string;
@@ -80,20 +82,53 @@ export function useAssistantChat(
   ) => {
     setIsTyping(true);
     try {
-      // Here you would typically call your AI service (e.g., OpenAI, Claude, etc.)
-      // For now, we'll simulate the AI response with a placeholder
-      const modeContext = DM_ASSISTANT_CONTEXT.modeContexts[mode];
+      // Create a session ID for this interaction
+      const sessionId = chatContext.id || uuidv4();
+      const userId = (await supabase.auth.getUser()).data.user?.id || "anonymous";
+      
+      // Create agent context
+      const agentContext = {
+        sessionId,
+        campaignId,
+        userId,
+        timestamp: new Date().toISOString()
+      };
+      
+      // Initialize the DMAssistantAgent with our context
+      const dmAssistant = new DMAssistantAgent(agentContext);
+      
+      // Prepare the message history for context
+      const sessionHistory = previousMessages.map(msg => ({
+        role: msg.is_ai_response ? "assistant" : "user",
+        content: msg.content
+      }));
+      
+      // Process the message through the DMAssistantAgent
+      const response = await dmAssistant.process({
+        type: mode,
+        message: userMessage,
+        context: {
+          sessionHistory,
+          currentMode: mode,
+          // Include pinned entities if any
+          pinnedEntities: chatContext.context.pinnedEntities || []
+        }
+      });
+      
+      if (!response.success) {
+        throw new Error(response.error || "Failed to generate AI response");
+      }
 
       // Insert AI response into the database
       const { data: aiMessage, error: aiError } = await supabase
         .from("messages")
         .insert({
           campaign_id: campaignId,
-          content: "AI response placeholder - integrate with your AI service",
+          content: response.message,
           mode,
           assistant_chat_id: chatContext.id,
           is_ai_response: true,
-          entities: [],
+          entities: response.data?.context?.recentEntities || [],
           has_attachments: false,
         })
         .select()
@@ -101,11 +136,14 @@ export function useAssistantChat(
 
       if (aiError) throw aiError;
 
-      // Update context with any new information
+      // Update context with any new information from the response
       const updatedContext = {
         ...chatContext.context,
         lastDiscussedTopic: userMessage,
         messageCount: previousMessages.length + 2,
+        recentEntities: response.data?.context?.recentEntities || chatContext.context.recentEntities || [],
+        // Save any entities that were created or modified in this interaction
+        modifiedEntities: response.data?.modifiedEntities || []
       };
 
       // Update the chat context

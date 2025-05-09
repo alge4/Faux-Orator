@@ -4,6 +4,14 @@
   flex-direction: column;
   height: 100%;
   overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.entity-relationships-manager.minimized {
+  height: auto;
+  padding-bottom: 0;
+  min-height: 0;
+  overflow: visible;
 }
 
 .relationships-header {
@@ -11,6 +19,16 @@
   justify-content: space-between;
   align-items: center;
   margin-bottom: 16px;
+}
+
+.entity-relationships-manager.minimized .relationships-header {
+  margin-bottom: 0;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .loading-container {
