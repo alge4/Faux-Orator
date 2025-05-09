@@ -57,6 +57,7 @@ const NetworkView: React.FC<NetworkViewProps> = ({
   const [showEmptyState, setShowEmptyState] = useState(true);
   const [hasError, setHasError] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('graph');
+  const cyRef = useRef<cytoscape.Core | null>(null);
 
   // Create elements for Cytoscape
   useEffect(() => {
@@ -118,6 +119,62 @@ const NetworkView: React.FC<NetworkViewProps> = ({
       setHasError(true);
     }
   }, [entities, relationships]);
+
+  // Force layout recalculation when elements change or component mounts
+  useEffect(() => {
+    if (cyRef.current && elements.length > 0 && viewMode === 'graph') {
+      // First immediate layout calculation
+      try {
+        console.log('NetworkView: Initial layout calculation');
+        cyRef.current.layout({ 
+          name: 'cose',
+          animate: true,
+          nodeDimensionsIncludeLabels: true,
+          randomize: true,
+          componentSpacing: 100,
+          nodeRepulsion: function(node: any) { return 2048; },
+          idealEdgeLength: function(edge: any) { return 128; }
+        }).run();
+      } catch (err) {
+        console.error('Error in initial layout:', err);
+      }
+      
+      // Second delayed layout to ensure container sizes are set
+      setTimeout(() => {
+        if (cyRef.current) {
+          console.log('NetworkView: Delayed layout recalculation');
+          try {
+            // Check if the container has dimensions
+            const container = cyRef.current.container();
+            if (container) {
+              const width = container.clientWidth;
+              const height = container.clientHeight;
+              console.log(`NetworkView: Container size: ${width}x${height}`);
+              
+              if (width > 0 && height > 0) {
+                cyRef.current.layout({ 
+                  name: 'cose',
+                  animate: true,
+                  nodeDimensionsIncludeLabels: true,
+                  randomize: true,
+                  componentSpacing: 100,
+                  nodeRepulsion: function(node: any) { return 2048; },
+                  idealEdgeLength: function(edge: any) { return 128; }
+                }).run();
+                
+                // Force a fit to the viewport
+                cyRef.current.fit();
+              } else {
+                console.warn('NetworkView: Container has zero dimensions, graph may not display correctly');
+              }
+            }
+          } catch (err) {
+            console.error('Error in delayed layout:', err);
+          }
+        }
+      }, 300); // Longer delay to ensure DOM is fully rendered
+    }
+  }, [elements.length, viewMode]);
 
   // Define styles
   const cytoscapeStyle: StylesheetElement[] = [
@@ -199,6 +256,9 @@ const NetworkView: React.FC<NetworkViewProps> = ({
   // Safe initialize cytoscape
   const safeInitializeCytoscape = (cy: cytoscape.Core) => {
     try {
+      // Store the reference
+      cyRef.current = cy;
+      
       // Set up event handlers
       cy.on('tap', 'node', safeHandleNodeTap);
       
