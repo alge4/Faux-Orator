@@ -19,6 +19,40 @@ export class PlanningAgent extends BaseAgent {
     super(context);
   }
 
+  // Validate the input structure
+  private validateInput(input: any): boolean {
+    if (!input) return false;
+
+    if (typeof input !== "object") return false;
+
+    if (
+      !input.type ||
+      !["session", "arc", "consequence"].includes(input.type)
+    ) {
+      return false;
+    }
+
+    if (!input.details || typeof input.details !== "object") return false;
+
+    if (
+      !input.details.prompt ||
+      typeof input.details.prompt !== "string" ||
+      input.details.prompt.trim() === ""
+    ) {
+      return false;
+    }
+
+    if (
+      !input.details.campaignId ||
+      typeof input.details.campaignId !== "string" ||
+      input.details.campaignId.trim() === ""
+    ) {
+      return false;
+    }
+
+    return true;
+  }
+
   async process(input: PlanningInput): Promise<AgentResponse> {
     try {
       if (!this.validateInput(input)) {
@@ -29,10 +63,17 @@ export class PlanningAgent extends BaseAgent {
 
       // Initialize planning context if not already initialized
       if (!this.planningSessionId) {
-        this.planningSessionId =
-          await sessionPlanningService.initPlanningContext(
-            input.details.campaignId
+        try {
+          this.planningSessionId =
+            await sessionPlanningService.initPlanningContext(
+              input.details.campaignId
+            );
+        } catch (initError) {
+          console.error("Failed to initialize planning context:", initError);
+          throw new Error(
+            "Failed to initialize planning session. Please check your campaign ID and try again."
           );
+        }
       }
 
       switch (input.type) {
@@ -59,17 +100,34 @@ export class PlanningAgent extends BaseAgent {
       }
 
       // Generate session plan using the SessionPlanningService
-      const sessionPlan = await sessionPlanningService.generateSessionPlan(
-        this.planningSessionId,
-        details.campaignId,
-        details.prompt
-      );
+      let sessionPlan;
+      try {
+        sessionPlan = await sessionPlanningService.generateSessionPlan(
+          this.planningSessionId,
+          details.campaignId,
+          details.prompt
+        );
+      } catch (planError) {
+        console.error("Error generating session plan:", planError);
+        return {
+          success: false,
+          message:
+            "I'm having trouble creating a session plan right now. Can you try a different prompt or try again later?",
+          error:
+            planError instanceof Error ? planError.message : "Unknown error",
+        };
+      }
 
       // Store the session plan in the database via the BaseAgent
-      await this.updateStateInDatabase({
-        tableId: "session_plans",
-        data: sessionPlan,
-      });
+      try {
+        await this.updateStateInDatabase({
+          tableId: "session_plans",
+          data: sessionPlan,
+        });
+      } catch (dbError) {
+        console.error("Error saving session plan to database:", dbError);
+        // Continue even if we couldn't save to DB - at least return the plan to the user
+      }
 
       return {
         success: true,
@@ -78,7 +136,12 @@ export class PlanningAgent extends BaseAgent {
       };
     } catch (error) {
       console.error("Error in planSession:", error);
-      throw error;
+      return {
+        success: false,
+        message:
+          "There was an error creating your session plan. Please try again with a different prompt.",
+        error: error instanceof Error ? error.message : "Unknown error",
+      };
     }
   }
 
@@ -91,12 +154,26 @@ export class PlanningAgent extends BaseAgent {
       }
 
       // Get suggestions for the story arc
-      const suggestions = await sessionPlanningService.getSuggestions(
-        this.planningSessionId,
-        `Generate a story arc for: ${details.prompt}`
-      );
+      let suggestions;
+      try {
+        suggestions = await sessionPlanningService.getSuggestions(
+          this.planningSessionId,
+          `Generate a story arc for: ${details.prompt}`
+        );
+      } catch (suggestionsError) {
+        console.error("Error getting story arc suggestions:", suggestionsError);
+        return {
+          success: false,
+          message:
+            "I couldn't generate story arc suggestions right now. Please try again with a different prompt.",
+          error:
+            suggestionsError instanceof Error
+              ? suggestionsError.message
+              : "Unknown error",
+        };
+      }
 
-      // Create a mock story arc structure
+      // Create a story arc structure
       const storyArc = {
         id: uuidv4(),
         title: details.prompt,
@@ -114,10 +191,15 @@ export class PlanningAgent extends BaseAgent {
       };
 
       // Store the story arc in the database
-      await this.updateStateInDatabase({
-        tableId: "story_arcs",
-        data: storyArc,
-      });
+      try {
+        await this.updateStateInDatabase({
+          tableId: "story_arcs",
+          data: storyArc,
+        });
+      } catch (dbError) {
+        console.error("Error saving story arc to database:", dbError);
+        // Continue even if we couldn't save to DB
+      }
 
       return {
         success: true,
@@ -126,7 +208,12 @@ export class PlanningAgent extends BaseAgent {
       };
     } catch (error) {
       console.error("Error in planStoryArc:", error);
-      throw error;
+      return {
+        success: false,
+        message:
+          "There was an error creating your story arc. Please try again.",
+        error: error instanceof Error ? error.message : "Unknown error",
+      };
     }
   }
 
@@ -139,10 +226,27 @@ export class PlanningAgent extends BaseAgent {
       }
 
       // Get suggestions for consequences
-      const consequences = await sessionPlanningService.getSuggestions(
-        this.planningSessionId,
-        `Generate consequences for this player action: ${details.prompt}`
-      );
+      let consequences;
+      try {
+        consequences = await sessionPlanningService.getSuggestions(
+          this.planningSessionId,
+          `Generate consequences for this player action: ${details.prompt}`
+        );
+      } catch (suggestionsError) {
+        console.error(
+          "Error getting consequence suggestions:",
+          suggestionsError
+        );
+        return {
+          success: false,
+          message:
+            "I couldn't generate action consequences right now. Please try again with a different prompt.",
+          error:
+            suggestionsError instanceof Error
+              ? suggestionsError.message
+              : "Unknown error",
+        };
+      }
 
       // Create a structured consequence object
       const consequenceObject = {
@@ -160,10 +264,15 @@ export class PlanningAgent extends BaseAgent {
       };
 
       // Store the consequences in the database
-      await this.updateStateInDatabase({
-        tableId: "action_consequences",
-        data: consequenceObject,
-      });
+      try {
+        await this.updateStateInDatabase({
+          tableId: "action_consequences",
+          data: consequenceObject,
+        });
+      } catch (dbError) {
+        console.error("Error saving consequences to database:", dbError);
+        // Continue even if we couldn't save to DB
+      }
 
       return {
         success: true,
@@ -172,7 +281,12 @@ export class PlanningAgent extends BaseAgent {
       };
     } catch (error) {
       console.error("Error in planConsequence:", error);
-      throw error;
+      return {
+        success: false,
+        message:
+          "There was an error generating consequences. Please try again.",
+        error: error instanceof Error ? error.message : "Unknown error",
+      };
     }
   }
 

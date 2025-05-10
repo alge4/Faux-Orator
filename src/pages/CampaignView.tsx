@@ -1,13 +1,14 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useCampaign, CampaignMode, Entity } from '../hooks/useCampaign';
 import { useAuth } from '../hooks/useAuth';
-import { FaChevronLeft, FaChevronRight } from 'react-icons/fa';
+import { FaChevronLeft, FaChevronRight, FaChevronUp, FaChevronDown, FaMinusCircle, FaPlusCircle } from 'react-icons/fa';
 import ChatInterface from '../components/ChatInterface/ChatInterface';
 import NetworkView from '../components/NetworkView';
 import DataView from '../components/DataView';
 import VoiceChat from '../components/VoiceChat';
 import CampaignMenu from '../components/CampaignMenu';
+import SessionPlanningChat from '../components/SessionPlanningChat';
 import { supabase } from '../services/supabase';
 import chevronIcon from '../assets/icons/chevron.svg';
 import { useAssistantChat } from '../hooks/useAssistantChat';
@@ -18,6 +19,16 @@ interface CampaignFormData {
   description: string;
   setting: string;
   theme: string;
+}
+
+interface Panel {
+  id: string;
+  title: string;
+  type: string;
+  collapsed: boolean;
+  minimized: boolean;
+  flex: number;
+  minSize?: number;
 }
 
 const CampaignView: React.FC = () => {
@@ -46,6 +57,158 @@ const CampaignView: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isRotating, setIsRotating] = useState<'left' | 'right' | null>(null);
+  const [sessionPlan, setSessionPlan] = useState<any>(null);
+  
+  // Panel state for different modes
+  const [planningPanels, setPlanningPanels] = useState<Panel[]>([
+    { id: 'worldGraph', title: 'World Graph', type: 'graph', collapsed: false, minimized: false, flex: 1, minSize: 300 },
+    { id: 'dmAssistant', title: 'DM Assistant', type: 'assistant', collapsed: false, minimized: false, flex: 1, minSize: 200 }
+  ]);
+  
+  const [runningPanels, setRunningPanels] = useState<Panel[]>([
+    { id: 'sessionChat', title: 'Session Chat', type: 'chat', collapsed: false, minimized: false, flex: 3, minSize: 400 },
+    { id: 'quickReference', title: 'Quick Reference', type: 'reference', collapsed: false, minimized: false, flex: 1, minSize: 200 }
+  ]);
+  
+  const [reviewPanels, setReviewPanels] = useState<Panel[]>([
+    { id: 'sessionReview', title: 'Session Review', type: 'review', collapsed: false, minimized: false, flex: 2, minSize: 300 },
+    { id: 'dataView', title: 'Data View', type: 'data', collapsed: false, minimized: false, flex: 1, minSize: 200 }
+  ]);
+  
+  // Refs for resizing
+  const resizingRef = useRef<{
+    active: boolean,
+    index: number,
+    startX: number,
+    startSizes: number[]
+  }>({
+    active: false,
+    index: -1,
+    startX: 0,
+    startSizes: []
+  });
+
+  // Get active panels based on mode
+  const getActivePanels = () => {
+    switch (activeMode) {
+      case CampaignMode.Planning:
+        return planningPanels;
+      case CampaignMode.Running:
+        return runningPanels;
+      case CampaignMode.Review:
+        return reviewPanels;
+      default:
+        return planningPanels;
+    }
+  };
+
+  // Set panels based on mode
+  const setActivePanels = (panels: Panel[]) => {
+    switch (activeMode) {
+      case CampaignMode.Planning:
+        setPlanningPanels(panels);
+        break;
+      case CampaignMode.Running:
+        setRunningPanels(panels);
+        break;
+      case CampaignMode.Review:
+        setReviewPanels(panels);
+        break;
+    }
+  };
+
+  // Start panel resize
+  const handleResizeStart = (index: number, e: React.MouseEvent) => {
+    e.preventDefault();
+    const panels = [...getActivePanels()];
+    
+    // Only allow resizing if there's a panel to the right
+    if (index >= panels.length - 1) return;
+    
+    // Store the current sizes and mouse position
+    resizingRef.current = {
+      active: true,
+      index,
+      startX: e.clientX,
+      startSizes: panels.map(p => p.flex)
+    };
+    
+    document.addEventListener('mousemove', handleResizeMove);
+    document.addEventListener('mouseup', handleResizeEnd);
+  };
+  
+  // Handle resize movement
+  const handleResizeMove = (e: MouseEvent) => {
+    if (!resizingRef.current?.active) return;
+    
+    const { index, startX, startSizes } = resizingRef.current;
+    const deltaX = e.clientX - startX;
+    const panels = [...getActivePanels()];
+    
+    // Calculate the total width of the container
+    const containerWidth = panelContainerRef.current?.clientWidth || 1000;
+    
+    // Calculate how much one flex unit is worth in pixels
+    const totalFlex = panels.reduce((sum, panel) => sum + panel.flex, 0);
+    const flexUnit = containerWidth / totalFlex;
+    
+    // Calculate new flex values
+    const newSizes = [...startSizes];
+    const flexDelta = deltaX / flexUnit;
+    
+    // Apply size changes to current and next panel
+    newSizes[index] = Math.max(0.1, startSizes[index] + flexDelta);
+    newSizes[index + 1] = Math.max(0.1, startSizes[index + 1] - flexDelta);
+    
+    // Update panel sizes
+    setPanels(prev => {
+      const updated = [...prev];
+      panels.forEach((panel, i) => {
+        const panelIndex = updated.findIndex(p => p.id === panel.id);
+        if (panelIndex !== -1) {
+          updated[panelIndex] = {
+            ...updated[panelIndex],
+            flex: newSizes[i]
+          };
+        }
+      });
+      return updated;
+    });
+  };
+  
+  // End panel resize
+  const handleResizeEnd = () => {
+    if (resizingRef.current?.active) {
+      resizingRef.current.active = false;
+      document.body.style.cursor = '';
+      document.removeEventListener('mousemove', handleResizeMove);
+      document.removeEventListener('mouseup', handleResizeEnd);
+    }
+  };
+  
+  // Handle panel collapse toggle
+  const togglePanelCollapse = (index: number) => {
+    const panels = [...getActivePanels()];
+    panels[index].collapsed = !panels[index].collapsed;
+    setActivePanels(panels);
+  };
+  
+  // Handle panel minimize toggle
+  const togglePanelMinimize = (index: number) => {
+    const panels = [...getActivePanels()];
+    panels[index].minimized = !panels[index].minimized;
+    setActivePanels(panels);
+  };
+  
+  // Handle panel restore from minimized state
+  const restoreMinimizedPanel = (id: string) => {
+    const panels = [...getActivePanels()];
+    const index = panels.findIndex(panel => panel.id === id);
+    if (index !== -1) {
+      panels[index].minimized = false;
+      setActivePanels(panels);
+    }
+  };
 
   const {
     assistantChat,
@@ -55,6 +218,11 @@ const CampaignView: React.FC = () => {
     sendMessage,
     isTyping
   } = useAssistantChat(currentCampaign?.id || '', activeMode);
+
+  // Handler for session plan updates from the session planning chat
+  const handleSessionPlanUpdate = (plan: any) => {
+    setSessionPlan(plan);
+  };
 
   // Load current campaign data into form when opened
   useEffect(() => {
@@ -267,6 +435,202 @@ const CampaignView: React.FC = () => {
     setTimeout(() => setIsRotating(null), 300);
   };
 
+  const renderPanelContent = (panel: Panel) => {
+    switch (panel.type) {
+      case 'graph':
+        return (
+          <NetworkView 
+            currentCampaign={currentCampaign}
+            entities={entities}
+          />
+        );
+      case 'assistant':
+        return (
+          <div className="assistant-container">
+            <div className="assistant-tabs">
+              <div className="tab active">Chat</div>
+              <div className="tab">Session Planning</div>
+              <div className="tab">NPCs</div>
+              <div className="tab">Encounters</div>
+            </div>
+            <ChatInterface 
+              mode="planning"
+              messages={assistantMessages}
+              onSendMessage={handleSendMessage}
+              availableEntities={entities}
+              isTyping={isTyping}
+              campaignId={currentCampaign?.id}
+              userId={user?.id}
+              isAIAssistant={true}
+              assistantChat={assistantChat}
+            />
+          </div>
+        );
+      case 'chat':
+        // Keeping this for backward compatibility
+        return (
+          <SessionPlanningChat
+            campaignId={currentCampaign?.id || ''}
+            userId={user?.id || ''}
+            compact={true}
+            onPlanUpdate={handleSessionPlanUpdate}
+          />
+        );
+      case 'plan':
+        // Keeping this for backward compatibility
+        return (
+          <div className="session-plan-output">
+            {sessionPlan ? (
+              <>
+                <div className="plan-header">
+                  <h3>{sessionPlan.title}</h3>
+                  <div className="plan-summary">{sessionPlan.summary}</div>
+                </div>
+                
+                <div className="plan-section">
+                  <h4>Objectives</h4>
+                  <ul className="objectives-list">
+                    {sessionPlan.objectives && sessionPlan.objectives.map((objective: string, index: number) => (
+                      <li key={index}>{objective}</li>
+                    ))}
+                  </ul>
+                </div>
+                
+                <div className="plan-section">
+                  <h4>Story Beats</h4>
+                  <div className="story-beats">
+                    {sessionPlan.storyBeats && sessionPlan.storyBeats.map((beat: any) => (
+                      <div key={beat.id} className={`story-beat ${beat.type}`}>
+                        <div className="beat-type">{beat.type}</div>
+                        <div className="beat-description">{beat.description}</div>
+                        <div className="beat-duration">{beat.expectedDuration} min</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="empty-plan">
+                <p>No session plan created yet.</p>
+                <p>Use the Session Planning panel to create a plan.</p>
+              </div>
+            )}
+          </div>
+        );
+      case 'review':
+        return (
+          <ChatInterface 
+            mode="review"
+            messages={assistantMessages}
+            onSendMessage={handleSendMessage}
+            availableEntities={entities}
+            isTyping={isTyping}
+            campaignId={currentCampaign?.id}
+            userId={user?.id}
+            isAIAssistant={true}
+            assistantChat={assistantChat}
+          />
+        );
+      case 'data':
+        return (
+          <DataView entities={entities} />
+        );
+      case 'reference':
+        return (
+          <div className="quick-reference">
+            <h3>Quick Reference</h3>
+            <p>Reference content will go here</p>
+          </div>
+        );
+      default:
+        return <div>Panel content not implemented</div>;
+    }
+  };
+
+  // Render the minimized panels bar
+  const renderMinimizedBar = () => {
+    const minimizedPanels = getActivePanels().filter(panel => panel.minimized);
+    
+    if (minimizedPanels.length === 0) return null;
+    
+    return (
+      <div className="minimized-panels-bar">
+        {minimizedPanels.map(panel => (
+          <button 
+            key={panel.id}
+            className="minimized-panel-tab"
+            onClick={() => restoreMinimizedPanel(panel.id)}
+            title={`Restore ${panel.title}`}
+          >
+            <FaPlusCircle className="restore-icon" />
+            <span>{panel.title}</span>
+          </button>
+        ))}
+      </div>
+    );
+  };
+
+  // Render the active panels
+  const renderPanels = () => {
+    const activePanels = getActivePanels();
+    const visiblePanels = activePanels.filter(panel => !panel.minimized);
+    
+    if (visiblePanels.length === 0) {
+      return (
+        <div className="no-panels-message">
+          <p>All panels are minimized. Restore panels from the bottom bar.</p>
+        </div>
+      );
+    }
+    
+    return (
+      <>
+        <div className="panels-container">
+          {visiblePanels.map((panel, index) => (
+            <div
+              key={panel.id}
+              className={`panel-wrapper ${panel.collapsed ? 'collapsed' : ''}`}
+              style={{ flex: panel.collapsed ? 'none' : panel.flex }}
+            >
+              <div className="panel-header">
+                <h3>{panel.title}</h3>
+                <div className="panel-controls">
+                  <button
+                    className="panel-control"
+                    onClick={() => togglePanelCollapse(index)}
+                    aria-label={panel.collapsed ? "Expand panel" : "Collapse panel"}
+                  >
+                    {panel.collapsed ? <FaChevronDown /> : <FaChevronUp />}
+                  </button>
+                  <button
+                    className="panel-control"
+                    onClick={() => togglePanelMinimize(index)}
+                    aria-label="Minimize panel"
+                  >
+                    <FaMinusCircle />
+                  </button>
+                </div>
+              </div>
+              
+              <div className="panel-content">
+                {!panel.collapsed && renderPanelContent(panel)}
+              </div>
+              
+              {/* Resizer between panels (except for the last one) */}
+              {!panel.collapsed && index < visiblePanels.length - 1 && !visiblePanels[index + 1].collapsed && (
+                <div 
+                  className="panel-resizer"
+                  onMouseDown={(e) => handleResizeStart(index, e)}
+                ></div>
+              )}
+            </div>
+          ))}
+        </div>
+        {renderMinimizedBar()}
+      </>
+    );
+  };
+
   if (loading) {
     return <div className="loading">Loading...</div>;
   }
@@ -454,66 +818,9 @@ const CampaignView: React.FC = () => {
           </div>
         </aside>
 
-        {/* Center panel - Main Content */}
+        {/* Center panel - Main Content with resizable panels */}
         <main className="main-panel">
-          {activeMode === CampaignMode.Planning && (
-            <div className="planning-view">
-              <div className="world-graph">
-                <h2>World Graph</h2>
-                <NetworkView 
-                  currentCampaign={currentCampaign}
-                  entities={entities}
-                />
-              </div>
-              <div className="dm-assistant-chat">
-                <h2>DM Assistant</h2>
-                <ChatInterface 
-                  mode="planning"
-                  messages={assistantMessages}
-                  onSendMessage={handleSendMessage}
-                  availableEntities={entities}
-                  isTyping={isTyping}
-                  campaignId={currentCampaign?.id}
-                  userId={user?.id}
-                  isAIAssistant={true}
-                  assistantChat={assistantChat}
-                />
-              </div>
-            </div>
-          )}
-          {activeMode === CampaignMode.Running && (
-            <div className="chat-section">
-              <h2>Session Chat</h2>
-              <ChatInterface 
-                mode="running"
-                messages={assistantMessages}
-                onSendMessage={handleSendMessage}
-                availableEntities={entities}
-                isTyping={isTyping}
-                campaignId={currentCampaign?.id}
-                userId={user?.id}
-                isAIAssistant={true}
-                assistantChat={assistantChat}
-              />
-            </div>
-          )}
-          {activeMode === CampaignMode.Review && (
-            <div className="chat-section">
-              <h2>Session Review</h2>
-              <ChatInterface 
-                mode="review"
-                messages={assistantMessages}
-                onSendMessage={handleSendMessage}
-                availableEntities={entities}
-                isTyping={isTyping}
-                campaignId={currentCampaign?.id}
-                userId={user?.id}
-                isAIAssistant={true}
-                assistantChat={assistantChat}
-              />
-              <DataView entities={entities} />
-            </div>
-          )}
+          {renderPanels()}
         </main>
 
         {/* Right panel - Voice Channels */}

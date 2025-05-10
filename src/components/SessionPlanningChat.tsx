@@ -20,9 +20,14 @@ interface ChatMessage {
 interface SessionPlanningChatProps {
   campaignId: string;
   userId: string;
+  compact?: boolean;
 }
 
-const SessionPlanningChat: React.FC<SessionPlanningChatProps> = ({ campaignId, userId }) => {
+const SessionPlanningChat: React.FC<SessionPlanningChatProps> = ({ 
+  campaignId, 
+  userId,
+  compact = false 
+}) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -37,43 +42,61 @@ const SessionPlanningChat: React.FC<SessionPlanningChatProps> = ({ campaignId, u
   // Initialize planning context and agent
   useEffect(() => {
     const initPlanning = async () => {
-      // Initialize session planning context
-      const newSessionId = await sessionPlanningService.initPlanningContext(campaignId);
-      setSessionId(newSessionId);
-      
-      // Initialize planning agent
-      planningAgent.current = new PlanningAgent({
-        sessionId: newSessionId,
-        campaignId,
-        userId,
-        timestamp: new Date().toISOString()
-      });
-      
-      // Add welcome message
-      setMessages([
-        {
-          id: uuidv4(),
-          role: 'assistant',
-          content: 'Welcome to Session Planning! I can help you design your next D&D session. What would you like to plan today?',
-          timestamp: new Date().toISOString(),
-          suggestions: [
-            {
-              type: 'encounter',
-              content: 'Would you like to create a new session plan?',
-              relatedEntities: []
-            },
-            {
-              type: 'npc_interaction',
-              content: 'Would you like to focus on NPCs for your next session?',
-              relatedEntities: []
-            }
-          ]
-        }
-      ]);
+      try {
+        // Initialize session planning context
+        const newSessionId = await sessionPlanningService.initPlanningContext(campaignId);
+        setSessionId(newSessionId);
+        
+        // Initialize planning agent
+        planningAgent.current = new PlanningAgent({
+          sessionId: newSessionId,
+          campaignId,
+          userId,
+          timestamp: new Date().toISOString()
+        });
+        
+        // Add welcome message
+        const welcomeMessage = compact 
+          ? 'What would you like to plan for your session?'
+          : 'Welcome to Session Planning! I can help you design your next D&D session. What would you like to plan today?';
+        
+        setMessages([
+          {
+            id: uuidv4(),
+            role: 'assistant',
+            content: welcomeMessage,
+            timestamp: new Date().toISOString(),
+            suggestions: [
+              {
+                type: 'encounter',
+                content: 'Create a new session plan',
+                relatedEntities: []
+              },
+              {
+                type: 'npc_interaction',
+                content: 'Suggest NPCs for my next session',
+                relatedEntities: []
+              }
+            ]
+          }
+        ]);
+      } catch (error) {
+        console.error("Error initializing planning session:", error);
+        setMessages([
+          {
+            id: uuidv4(),
+            role: 'assistant',
+            content: 'Sorry, there was an error initializing the planning session. Please try again.',
+            timestamp: new Date().toISOString()
+          }
+        ]);
+      }
     };
     
-    initPlanning();
-  }, [campaignId, userId]);
+    if (campaignId && userId) {
+      initPlanning();
+    }
+  }, [campaignId, userId, compact]);
 
   // Scroll to bottom of messages
   useEffect(() => {
@@ -82,7 +105,7 @@ const SessionPlanningChat: React.FC<SessionPlanningChatProps> = ({ campaignId, u
 
   // Handle sending a message
   const handleSendMessage = async () => {
-    if (!input.trim() || !sessionId || !planningAgent.current) return;
+    if (!input.trim()) return;
     
     // Add user message
     const userMessage: ChatMessage = {
@@ -97,20 +120,37 @@ const SessionPlanningChat: React.FC<SessionPlanningChatProps> = ({ campaignId, u
     setIsLoading(true);
     
     try {
+      // Check if the planning agent and session ID are initialized
+      if (!sessionId || !planningAgent.current) {
+        throw new Error("Planning session not initialized properly");
+      }
+      
       // Process the message with planning agent
-      const response = await planningAgent.current.process({
-        type: 'session',
-        details: {
-          prompt: input,
-          campaignId
-        }
-      });
+      let response;
+      try {
+        response = await planningAgent.current.process({
+          type: 'session',
+          details: {
+            prompt: input,
+            campaignId
+          }
+        });
+      } catch (agentError) {
+        console.error("Error in planning agent:", agentError);
+        throw new Error("Failed to process your request. The planning agent encountered an error.");
+      }
       
       // Generate suggestions
-      const suggestions = await sessionPlanningService.getSuggestions(
-        sessionId, 
-        input
-      );
+      let suggestions: ChatSuggestion[] = [];
+      try {
+        suggestions = await sessionPlanningService.getSuggestions(
+          sessionId, 
+          input
+        );
+      } catch (suggestionsError) {
+        console.error("Error getting suggestions:", suggestionsError);
+        // Continue without suggestions rather than failing completely
+      }
       
       // If planning generated a session plan, update it
       if (response.data && 'objectives' in response.data) {
@@ -130,12 +170,19 @@ const SessionPlanningChat: React.FC<SessionPlanningChatProps> = ({ campaignId, u
     } catch (error) {
       console.error('Error processing message:', error);
       
-      // Add error message
+      // Add error message with helpful information
       const errorMessage: ChatMessage = {
         id: uuidv4(),
         role: 'assistant',
-        content: 'Sorry, I encountered an error while processing your request. Please try again.',
-        timestamp: new Date().toISOString()
+        content: error instanceof Error 
+          ? `Sorry, I encountered an error: ${error.message}` 
+          : 'Sorry, I encountered an error while processing your request. Please try again.',
+        timestamp: new Date().toISOString(),
+        suggestions: [{
+          type: "encounter",
+          content: "Try asking a simpler question about your campaign.",
+          relatedEntities: []
+        }]
       };
       
       setMessages(prev => [...prev, errorMessage]);
@@ -262,7 +309,7 @@ const SessionPlanningChat: React.FC<SessionPlanningChatProps> = ({ campaignId, u
   };
 
   return (
-    <div className="session-planning-container">
+    <div className={`session-planning-container ${compact ? 'compact-mode' : ''}`}>
       {/* Left Column - Chat Panel */}
       <div className="chat-panel">
         <div className="messages-container">
@@ -292,69 +339,76 @@ const SessionPlanningChat: React.FC<SessionPlanningChatProps> = ({ campaignId, u
             Create Session
           </button>
           <button onClick={() => setInput('Suggest an encounter with')}>
-            Suggest Encounter
+            Encounter
           </button>
-          <button onClick={() => setInput('How would this NPC react to')}>
-            NPC Reaction
-          </button>
+          {!compact && (
+            <button onClick={() => setInput('How would this NPC react to')}>
+              NPC Reaction
+            </button>
+          )}
         </div>
       </div>
       
-      {/* Center Column - Session Plan Preview */}
-      <div className="session-plan-preview">
-        <h3>Session Plan</h3>
-        {sessionPlan ? (
-          <div className="plan-details">
-            <h4>{sessionPlan.title}</h4>
-            <div className="plan-summary">{sessionPlan.summary}</div>
-            
-            <h5>Objectives</h5>
-            <ul className="objectives-list">
-              {sessionPlan.objectives.map((objective, index) => (
-                <li key={index}>{objective}</li>
-              ))}
-            </ul>
-            
-            <h5>Story Beats</h5>
-            <div className="story-beats">
-              {sessionPlan.storyBeats.map(beat => (
-                <div key={beat.id} className={`story-beat ${beat.type}`}>
-                  <div className="beat-type">{beat.type}</div>
-                  <div className="beat-description">{beat.description}</div>
-                  <div className="beat-duration">{beat.expectedDuration} min</div>
+      {/* Only show these panels if not in compact mode */}
+      {!compact && (
+        <>
+          {/* Center Column - Session Plan Preview */}
+          <div className="session-plan-preview">
+            <h3>Session Plan</h3>
+            {sessionPlan ? (
+              <div className="plan-details">
+                <h4>{sessionPlan.title}</h4>
+                <div className="plan-summary">{sessionPlan.summary}</div>
+                
+                <h5>Objectives</h5>
+                <ul className="objectives-list">
+                  {sessionPlan.objectives.map((objective, index) => (
+                    <li key={index}>{objective}</li>
+                  ))}
+                </ul>
+                
+                <h5>Story Beats</h5>
+                <div className="story-beats">
+                  {sessionPlan.storyBeats.map(beat => (
+                    <div key={beat.id} className={`story-beat ${beat.type}`}>
+                      <div className="beat-type">{beat.type}</div>
+                      <div className="beat-description">{beat.description}</div>
+                      <div className="beat-duration">{beat.expectedDuration} min</div>
+                    </div>
+                  ))}
                 </div>
-              ))}
+              </div>
+            ) : (
+              <div className="empty-plan">
+                No session plan yet. Start chatting to create one!
+              </div>
+            )}
+          </div>
+          
+          {/* Right Column - Context Panel */}
+          <div className="context-panel">
+            <div className="pinned-entities-section">
+              <h4>Pinned Entities</h4>
+              {renderPinnedEntities()}
+            </div>
+            
+            <div className="active-filters-section">
+              <h4>Active Filters</h4>
+              {renderActiveFilters()}
+              <input
+                type="text"
+                placeholder="Add a filter..."
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter' && e.currentTarget.value) {
+                    handleAddFilter(e.currentTarget.value);
+                    e.currentTarget.value = '';
+                  }
+                }}
+              />
             </div>
           </div>
-        ) : (
-          <div className="empty-plan">
-            No session plan yet. Start chatting to create one!
-          </div>
-        )}
-      </div>
-      
-      {/* Right Column - Context Panel */}
-      <div className="context-panel">
-        <div className="pinned-entities-section">
-          <h4>Pinned Entities</h4>
-          {renderPinnedEntities()}
-        </div>
-        
-        <div className="active-filters-section">
-          <h4>Active Filters</h4>
-          {renderActiveFilters()}
-          <input
-            type="text"
-            placeholder="Add a filter..."
-            onKeyPress={(e) => {
-              if (e.key === 'Enter' && e.currentTarget.value) {
-                handleAddFilter(e.currentTarget.value);
-                e.currentTarget.value = '';
-              }
-            }}
-          />
-        </div>
-      </div>
+        </>
+      )}
     </div>
   );
 };

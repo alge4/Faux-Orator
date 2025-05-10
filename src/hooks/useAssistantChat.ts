@@ -4,6 +4,7 @@ import {
   extractDocumentContent,
   generateContentPreview,
 } from "../lib/documentProcessor";
+import { DMAssistantAgent } from "../ai-agents/DMAssistantAgent";
 
 export interface AssistantChat {
   id: string;
@@ -231,8 +232,9 @@ export function useAssistantChat(
 
               // Extract content from document for AI processing
               let contentPreview = "";
+              let extractedContent = "";
               try {
-                const extractedContent = await extractDocumentContent(file);
+                extractedContent = await extractDocumentContent(file);
                 contentPreview = generateContentPreview(extractedContent, 500);
               } catch (error) {
                 console.error("Failed to extract content:", error);
@@ -245,6 +247,7 @@ export function useAssistantChat(
                 file_size: file.size,
                 storage_path: filePath,
                 content_preview: contentPreview,
+                full_content: extractedContent,
               };
             })
           )
@@ -284,19 +287,61 @@ export function useAssistantChat(
       // Fetch current messages for context
       await fetchMessages(assistantChat.id);
 
-      // Generate and save AI response
-      // Create a combined message with document content for the AI to process
+      // Initialize DM Assistant Agent
+      const dmAssistant = new DMAssistantAgent({
+        sessionId: assistantChat.id,
+        campaignId,
+        userId: message.user_id,
+      });
+
+      // For each document, process it separately first
+      if (attachments.length > 0) {
+        for (const attachment of attachments) {
+          await dmAssistant.process({
+            type: "data_import",
+            message: `Processing document: ${attachment.file_name}`,
+            context: {
+              sourceDocument: {
+                content: attachment.full_content,
+                type: attachment.file_type,
+                name: attachment.file_name,
+              },
+            },
+          });
+        }
+      }
+
+      // Then process the user's message with context from all documents
       const messageWithAttachments =
         attachments.length > 0
-          ? `${content}\n\n${attachments
-              .map(
-                (att) =>
-                  `DOCUMENT: ${att.file_name}\nCONTENT: ${att.content_preview}`
-              )
-              .join("\n\n")}`
+          ? `${content}\n\nProcessed Documents:\n${attachments
+              .map((att) => `- ${att.file_name}`)
+              .join("\n")}`
           : content;
 
-      await generateAIResponse(messageWithAttachments, assistantChat, messages);
+      const response = await dmAssistant.process({
+        type: mode,
+        message: messageWithAttachments,
+        context: {
+          sessionHistory: messages.map((msg) => ({
+            role: msg.is_ai_response ? "assistant" : "user",
+            content: msg.content,
+          })),
+        },
+      });
+
+      // Insert AI response
+      const { error: aiError } = await supabase.from("messages").insert({
+        campaign_id: campaignId,
+        content: response.message,
+        mode,
+        assistant_chat_id: assistantChat.id,
+        is_ai_response: true,
+        entities: [],
+        has_attachments: false,
+      });
+
+      if (aiError) throw aiError;
 
       // Refresh messages to include both user message and AI response
       await fetchMessages(assistantChat.id);

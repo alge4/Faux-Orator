@@ -4,6 +4,7 @@ import { DialogueAgent } from "./DialogueAgent";
 import { NPCAgent } from "./NPCAgent";
 import { SessionPlanningAgent } from "./SessionPlanningAgent";
 import { ClaudeAgent } from "./ClaudeAgent";
+import { ResourceQueue } from "../services/resourceQueue";
 import env from "../config/env";
 
 export interface AgentPoolConfig {
@@ -17,6 +18,7 @@ export class AgentPool {
   private agents: Map<string, BaseAgent>;
   private context: AgentContext;
   private config: AgentPoolConfig;
+  private resourceQueue: ResourceQueue;
 
   constructor(context: AgentContext, config: AgentPoolConfig = {}) {
     this.agents = new Map();
@@ -25,40 +27,68 @@ export class AgentPool {
       maxConcurrentAgents: 3,
       enabledAgents: ["dm", "dialogue", "npc", "session", "claude"],
       rulesVersion: "5.5E",
-      preferredProvider: "auto", // Default to auto-select based on available API keys
+      preferredProvider: "auto",
       ...config,
     };
+    this.resourceQueue = new ResourceQueue(this.config.maxConcurrentAgents);
 
     this.initializeAgents();
   }
 
-  private initializeAgents() {
-    if (this.config.enabledAgents?.includes("dm")) {
+  private initializeAgents(): void {
+    if (this.config.enabledAgents.includes("dm")) {
       this.agents.set("dm", new DMAssistantAgent(this.context));
     }
-    if (this.config.enabledAgents?.includes("dialogue")) {
+    if (this.config.enabledAgents.includes("dialogue")) {
       this.agents.set("dialogue", new DialogueAgent(this.context));
     }
-    if (this.config.enabledAgents?.includes("npc")) {
+    if (this.config.enabledAgents.includes("npc")) {
       this.agents.set("npc", new NPCAgent(this.context));
     }
-    if (this.config.enabledAgents?.includes("session")) {
+    if (this.config.enabledAgents.includes("session")) {
       this.agents.set("session", new SessionPlanningAgent(this.context));
     }
-    if (this.config.enabledAgents?.includes("claude") && env.claude.apiKey) {
-      this.agents.set("claude", new ClaudeAgent(this.context));
+    if (this.config.enabledAgents.includes("claude")) {
+      this.agents.set(
+        "claude",
+        new ClaudeAgent(this.context, {
+          model: env.claude.defaultModel,
+        })
+      );
     }
   }
 
   async processWithAgent(
     agentType: string,
-    input: any
+    input: any,
+    priority: number = 1
   ): Promise<AgentResponse> {
     const agent = this.agents.get(agentType);
     if (!agent) {
-      throw new Error(`Agent type ${agentType} not found or not enabled`);
+      throw new Error(`Agent type ${agentType} not found in pool`);
     }
-    return agent.process(input);
+
+    return this.resourceQueue.enqueue(
+      `${agentType}-${Date.now()}`,
+      priority,
+      () => agent.process(input)
+    );
+  }
+
+  getAgent(agentType: string): BaseAgent | undefined {
+    return this.agents.get(agentType);
+  }
+
+  getActiveAgentCount(): number {
+    return this.resourceQueue.getActiveRequestCount();
+  }
+
+  getQueuedRequestCount(): number {
+    return this.resourceQueue.getQueueLength();
+  }
+
+  clearQueue(): void {
+    this.resourceQueue.clearQueue();
   }
 
   // Get the best available agent based on preferences and available API keys

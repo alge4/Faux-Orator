@@ -1,0 +1,37 @@
+## MongoDB Connection URI Format Guide
+
+The MongoDB connection URI should follow this format:
+
+```
+mongodb+srv://<username>:<password>@<cluster-name>.<random-id>.mongodb.net/<database-name>?retryWrites=true&w=majority
+```
+
+### Example:
+```
+mongodb+srv://john_doe:mySecurePassword123@cluster0.abc123.mongodb.net/faux-orator?retryWrites=true&w=majority
+```
+
+### Parts to replace:
+1. `<username>` - Your MongoDB Atlas database user (not your Atlas account email)
+2. `<password>` - The password for your database user
+3. `<cluster-name>` - Usually "cluster0" for your first cluster
+4. `<random-id>` - A unique identifier for your cluster (e.g., "abc123")
+5. `<database-name>` - Your database name (e.g., "faux-orator")
+
+### Where to find your URI:
+1. Log in to MongoDB Atlas
+2. Click on "Connect" for your cluster
+3. Choose "Connect your application"
+4. Select "Node.js" as the driver
+5. Copy the connection string
+
+### Common errors:
+- `ENOTFOUND` - Usually means the hostname is incorrect
+- Authentication failed - Check username and password
+- Network access error - Ensure your IP is allowed in Network Access settings
+
+### Security tips:
+- Never commit your actual connection URI to version control
+- Use environment variables (.env file) to store the URI
+- Create a dedicated database user with appropriate permissions
+- Restrict network access to trusted IP addresses 

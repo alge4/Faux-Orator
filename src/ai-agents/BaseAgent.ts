@@ -1,5 +1,7 @@
 import { supabase, logAgentAction } from "../services/supabase";
 import { AIProvider } from "../services/aiService";
+import { SupabaseMemoryManager } from "../services/memoryManager";
+import { AgentMemory, MemoryType } from "../types/memory";
 
 export interface AgentContext {
   sessionId: string;
@@ -8,23 +10,25 @@ export interface AgentContext {
   timestamp: string;
 }
 
-export interface AgentResponse {
-  success: boolean;
-  message: string;
-  data?: any;
-  error?: string;
-}
-
 export interface AgentOptions {
   aiProvider?: AIProvider;
   temperature?: number;
   maxTokens?: number;
   model?: string;
+  memoryRetentionDays?: number;
+}
+
+export interface AgentResponse {
+  success: boolean;
+  message?: string;
+  error?: string;
+  data?: any;
 }
 
 export abstract class BaseAgent {
   protected context: AgentContext;
   protected options: AgentOptions;
+  protected memoryManager: SupabaseMemoryManager;
 
   constructor(context: AgentContext, options: AgentOptions = {}) {
     this.context = context;
@@ -33,8 +37,10 @@ export abstract class BaseAgent {
       temperature: 0.7,
       maxTokens: undefined,
       model: undefined,
+      memoryRetentionDays: 30,
       ...options,
     };
+    this.memoryManager = new SupabaseMemoryManager();
   }
 
   // Method to be implemented by specific agents
@@ -45,36 +51,35 @@ export abstract class BaseAgent {
     this.options.aiProvider = provider;
   }
 
-  // Get current AI provider setting
-  getAIProvider(): AIProvider {
-    return this.options.aiProvider || "auto";
-  }
-
-  // Common method to update state in Supabase
-  protected async updateStateInDatabase(params: {
+  // Method to update state in the database
+  protected async updateStateInDatabase({
+    tableId,
+    data,
+    id = null,
+    idField = "id",
+  }: {
     tableId: string;
     data: any;
-    id?: string;
+    id?: string | null;
+    idField?: string;
   }): Promise<any> {
-    const { tableId, data, id } = params;
-
     try {
+      // If ID is provided, update the record, otherwise insert
       if (id) {
-        // Update existing record
         const { data: result, error } = await supabase
           .from(tableId)
           .update(data)
-          .eq("id", id)
+          .eq(idField, id)
           .select()
           .single();
 
         if (error) throw error;
         return result;
       } else {
-        // Insert new record
+        // For new records
         const { data: result, error } = await supabase
           .from(tableId)
-          .insert({ ...data, campaign_id: this.context.campaignId })
+          .insert(data)
           .select()
           .single();
 
@@ -82,9 +87,42 @@ export abstract class BaseAgent {
         return result;
       }
     } catch (error) {
-      console.error(`Error updating database in ${tableId}:`, error);
+      console.error(`Error updating state in database (${tableId}):`, error);
       throw error;
     }
+  }
+
+  // Memory management methods
+  protected async storeMemory(
+    type: MemoryType,
+    data: Record<string, any>,
+    relatedEntities: string[] = [],
+    importanceScore: number = 1,
+    expiresAt?: Date
+  ): Promise<string> {
+    return this.memoryManager.store({
+      agent_id: this.constructor.name,
+      campaign_id: this.context.campaignId,
+      memory_type: type,
+      context: {
+        session_id: this.context.sessionId,
+        related_entities: relatedEntities,
+        importance_score: importanceScore,
+        data,
+      },
+      expires_at: expiresAt?.toISOString(),
+      archived: false,
+    });
+  }
+
+  protected async retrieveMemories(type: MemoryType): Promise<AgentMemory[]> {
+    return this.memoryManager.retrieve(this.constructor.name, type);
+  }
+
+  protected async pruneOldMemories(): Promise<void> {
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - this.options.memoryRetentionDays);
+    await this.memoryManager.prune(this.context.campaignId, cutoffDate);
   }
 
   // Common method to log agent actions
@@ -111,11 +149,6 @@ export abstract class BaseAgent {
       console.error(`Error logging agent action to database:`, error);
       // Non-critical, so don't throw
     }
-  }
-
-  // Method to validate input
-  protected validateInput(input: any): boolean {
-    return input !== null && input !== undefined;
   }
 
   // Method to handle errors

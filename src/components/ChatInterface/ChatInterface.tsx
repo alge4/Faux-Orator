@@ -2,6 +2,10 @@ import React, { useState, useRef, useEffect } from 'react';
 import MessageBubble from '../MessageBubble';
 import './ChatInterface.css';
 
+// Configuration constants
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB limit - adjust as needed
+const MAX_FILE_SIZE_MB = MAX_FILE_SIZE / (1024 * 1024); // For display purposes
+
 interface AssistantChat {
   id: string;
   campaign_id: string;
@@ -115,7 +119,12 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                          file.name.endsWith('.md') ||
                          file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
                          file.name.endsWith('.docx');
-      const isValidSize = file.size <= 10 * 1024 * 1024; // 10MB limit
+      const isValidSize = file.size <= MAX_FILE_SIZE;
+      
+      if (!isValidSize) {
+        alert(`File "${file.name}" exceeds the ${MAX_FILE_SIZE_MB}MB size limit.`);
+      }
+      
       return isValidType && isValidSize;
     });
 
