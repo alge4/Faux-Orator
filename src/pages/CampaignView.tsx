@@ -15,6 +15,7 @@ import { useAssistantChat } from '../hooks/useAssistantChat';
 import EntityRelationshipsManager from '../components/EntityRelationshipsManager';
 import { EntityRelationshipDisplay } from '../types/entities';
 import './CampaignView.css';
+import ProfileMenu from '../components/common/ProfileMenu';
 
 interface CampaignFormData {
   name: string;
@@ -436,6 +437,9 @@ const CampaignView: React.FC = () => {
             setShowEditForm(true);
           }}
         />
+        <div style={{ marginLeft: '1.5rem' }}>
+          <ProfileMenu showName={true} />
+        </div>
       </div>
 
       {/* Edit Campaign Modal */}

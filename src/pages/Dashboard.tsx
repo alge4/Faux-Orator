@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useCampaign } from '../hooks/useCampaign';
 import './Dashboard.css';
+import ProfileMenu from '../components/common/ProfileMenu';
 
 // Define campaign form data interface
 interface CampaignFormData {
@@ -90,9 +91,14 @@ const Dashboard: React.FC = () => {
   
   return (
     <div className="dashboard">
-      <div className="dashboard-header">
-        <h1>Welcome, {user?.user_metadata?.name || 'Dungeon Master'}</h1>
-        <p className="dashboard-subtitle">Manage your D&D campaigns and adventures</p>
+      <div className="dashboard-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div>
+          <h1>Welcome, {user?.user_metadata?.name || 'Dungeon Master'}</h1>
+          <p className="dashboard-subtitle">Manage your D&D campaigns and adventures</p>
+        </div>
+        <div style={{ marginLeft: '1.5rem' }}>
+          <ProfileMenu showName={true} />
+        </div>
       </div>
       
       <div className="dashboard-content">

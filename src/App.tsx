@@ -15,6 +15,7 @@ const Campaign = lazy(() => import('./pages/Campaign'));
 const CampaignView = lazy(() => import('./pages/CampaignView'));
 const NotFound = lazy(() => import('./pages/NotFound'));
 const VoiceChatTest = lazy(() => import('./pages/VoiceChatTest'));
+const ProfilePage = lazy(() => import('./pages/ProfilePage'));
 
 // App Routes Component
 const AppRoutes: React.FC = () => {
@@ -33,6 +34,7 @@ const AppRoutes: React.FC = () => {
       <Route path="/campaign/:id/view" element={<ProtectedRoute><CampaignView /></ProtectedRoute>} />
       <Route path="/campaign/:id/details" element={<ProtectedRoute><Campaign /></ProtectedRoute>} />
       <Route path="/voice-chat-test" element={<ProtectedRoute><VoiceChatTest /></ProtectedRoute>} />
+      <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
       
       {/* 404 Route */}
       <Route path="*" element={<NotFound />} />
