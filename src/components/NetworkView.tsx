@@ -1,115 +1,183 @@
-import React, { useRef, useEffect, useState } from 'react';
-import { Entity } from '../hooks/useCampaign';
+import React, { useRef, useState, useEffect, Component, ErrorInfo, ReactNode } from 'react';
+import { Entity, EntityRelationshipDisplay } from '../types/entities';
 import CytoscapeComponent from 'react-cytoscapejs';
 import cytoscape from 'cytoscape';
 import './NetworkView.css';
 
+// Error boundary to catch errors in the Cytoscape component
+class CytoscapeErrorBoundary extends Component<
+  { children: ReactNode; fallback: ReactNode },
+  { hasError: boolean }
+> {
+  constructor(props: { children: ReactNode; fallback: ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(_: Error) {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.error('CytoscapeErrorBoundary caught an error:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return this.props.fallback;
+    }
+
+    return this.props.children;
+  }
+}
+
+// Define a type for our stylesheet
+type StylesheetElement = {
+  selector: string;
+  style: Record<string, string | number | boolean>;
+};
+
 interface NetworkViewProps {
-  currentCampaign?: any;
   entities?: Entity[];
+  relationships?: EntityRelationshipDisplay[];
   onEntitySelect?: (entityId: string) => void;
 }
 
+type ViewMode = 'graph' | 'list';
+
 const NetworkView: React.FC<NetworkViewProps> = ({ 
-  currentCampaign, 
   entities = [],
+  relationships = [],
   onEntitySelect
 }) => {
-  const [zoomLevel, setZoomLevel] = useState(1);
+  console.log('NetworkView received entities:', entities.length);
+  console.log('NetworkView received relationships:', relationships.length);
+  
+  const [elements, setElements] = useState<cytoscape.ElementDefinition[]>([]);
+  const [showEmptyState, setShowEmptyState] = useState(true);
+  const [hasError, setHasError] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>('graph');
   const cyRef = useRef<cytoscape.Core | null>(null);
-  
-  // Define colors for different entity types
-  const entityColors: Record<string, string> = {
-    npc: '#4CAF50',      // Green
-    location: '#2196F3',  // Blue
-    faction: '#FFC107',   // Amber
-    item: '#9C27B0',      // Purple
-    quest: '#F44336',     // Red
-    event: '#FF9800'      // Orange
-  };
-  
-  // Generate elements for Cytoscape
-  const generateElements = () => {
-    if (!currentCampaign) return { nodes: [], edges: [] };
-    
-    const nodes: any[] = [
-      // Campaign node
-      {
-        data: { 
-          id: 'campaign', 
-          label: currentCampaign.name || 'Campaign',
-          type: 'campaign'
-        }
+
+  // Create elements for Cytoscape
+  useEffect(() => {
+    try {
+      if (!entities || entities.length === 0) {
+        setShowEmptyState(true);
+        setElements([]);
+        return;
       }
-    ];
-    
-    const edges: any[] = [];
-    
-    // Add entity nodes and their connections to the campaign
-    entities.forEach(entity => {
-      nodes.push({
-        data: {
-          id: entity.id,
-          label: entity.name,
-          type: entity.type,
-          description: entity.content.description || '',
-        }
+
+      setShowEmptyState(false);
+      
+      // Build graph elements
+      const graphElements: cytoscape.ElementDefinition[] = [];
+      
+      // Add nodes
+      const validEntities = entities.filter(e => e && e.id && e.name);
+      validEntities.forEach(entity => {
+        graphElements.push({
+          data: {
+            id: entity.id,
+            label: entity.name,
+            type: entity.type,
+            nodeType: 'entity'
+          }
+        });
       });
       
-      // Connect entity to campaign
-      edges.push({
-        data: {
-          id: `campaign-${entity.id}`,
-          source: 'campaign',
-          target: entity.id,
-          type: entity.type
-        }
-      });
-    });
-    
-    // Add some connections between entities for demonstration
-    // In a real app, these would be based on actual relationships
-    if (entities.length > 1) {
-      const npcs = entities.filter(e => e.type === 'npc');
-      const locations = entities.filter(e => e.type === 'location');
-      
-      // Connect NPCs to locations
-      npcs.forEach(npc => {
-        if (locations.length > 0) {
-          const location = locations[Math.floor(Math.random() * locations.length)];
-          edges.push({
-            data: {
-              id: `${npc.id}-${location.id}`,
-              source: npc.id,
-              target: location.id,
-              type: 'located_at'
-            }
-          });
-        }
-      });
-      
-      // Connect NPCs to other NPCs
-      if (npcs.length > 1) {
-        for (let i = 0; i < npcs.length - 1; i++) {
-          edges.push({
-            data: {
-              id: `${npcs[i].id}-${npcs[i+1].id}`,
-              source: npcs[i].id,
-              target: npcs[i+1].id,
-              type: 'knows'
-            }
-          });
-        }
+      // Add edges
+      if (relationships && relationships.length > 0) {
+        const validRelationships = relationships.filter(
+          r => r && r.id && r.source && r.source.id && r.target && r.target.id
+        );
+        
+        validRelationships.forEach(rel => {
+          // Make sure both source and target entities exist
+          const sourceExists = validEntities.some(e => e.id === rel.source.id);
+          const targetExists = validEntities.some(e => e.id === rel.target.id);
+          
+          if (sourceExists && targetExists) {
+            graphElements.push({
+              data: {
+                id: rel.id,
+                source: rel.source.id,
+                target: rel.target.id,
+                label: rel.relationship_type,
+                edgeType: 'relationship',
+                strength: rel.strength,
+                bidirectional: rel.bidirectional
+              }
+            });
+          }
+        });
       }
+      
+      setElements(graphElements);
+    } catch (error) {
+      console.error('Error creating network elements:', error);
+      setHasError(true);
     }
-    
-    return { nodes, edges };
-  };
-  
-  const elements = generateElements();
-  
-  // Cytoscape style
-  const cytoscapeStyle: cytoscape.Stylesheet[] = [
+  }, [entities, relationships]);
+
+  // Force layout recalculation when elements change or component mounts
+  useEffect(() => {
+    if (cyRef.current && elements.length > 0 && viewMode === 'graph') {
+      // First immediate layout calculation
+      try {
+        console.log('NetworkView: Initial layout calculation');
+        cyRef.current.layout({ 
+          name: 'cose',
+          animate: true,
+          nodeDimensionsIncludeLabels: true,
+          randomize: true,
+          componentSpacing: 100,
+          nodeRepulsion: function(node: any) { return 2048; },
+          idealEdgeLength: function(edge: any) { return 128; }
+        }).run();
+      } catch (err) {
+        console.error('Error in initial layout:', err);
+      }
+      
+      // Second delayed layout to ensure container sizes are set
+      setTimeout(() => {
+        if (cyRef.current) {
+          console.log('NetworkView: Delayed layout recalculation');
+          try {
+            // Check if the container has dimensions
+            const container = cyRef.current.container();
+            if (container) {
+              const width = container.clientWidth;
+              const height = container.clientHeight;
+              console.log(`NetworkView: Container size: ${width}x${height}`);
+              
+              if (width > 0 && height > 0) {
+                cyRef.current.layout({ 
+                  name: 'cose',
+                  animate: true,
+                  nodeDimensionsIncludeLabels: true,
+                  randomize: true,
+                  componentSpacing: 100,
+                  nodeRepulsion: function(node: any) { return 2048; },
+                  idealEdgeLength: function(edge: any) { return 128; }
+                }).run();
+                
+                // Force a fit to the viewport
+                cyRef.current.fit();
+              } else {
+                console.warn('NetworkView: Container has zero dimensions, graph may not display correctly');
+              }
+            }
+          } catch (err) {
+            console.error('Error in delayed layout:', err);
+          }
+        }
+      }, 300); // Longer delay to ensure DOM is fully rendered
+    }
+  }, [elements.length, viewMode]);
+
+  // Define styles
+  const cytoscapeStyle: StylesheetElement[] = [
     {
       selector: 'node',
       style: {
@@ -133,251 +201,188 @@ const NetworkView: React.FC<NetworkViewProps> = ({
         'curve-style': 'bezier'
       }
     },
-    {
-      selector: 'node[type="campaign"]',
-      style: {
-        'background-color': '#333',
-        'width': 60,
-        'height': 60,
-        'font-weight': 'bold',
-        'font-size': '14px'
-      }
-    },
     // Styles for each entity type
     {
       selector: 'node[type="npc"]',
       style: {
-        'background-color': entityColors.npc
+        'background-color': '#e74c3c'
       }
     },
     {
       selector: 'node[type="location"]',
       style: {
-        'background-color': entityColors.location
+        'background-color': '#3498db'
       }
     },
     {
       selector: 'node[type="faction"]',
       style: {
-        'background-color': entityColors.faction
+        'background-color': '#2ecc71'
       }
     },
     {
       selector: 'node[type="item"]',
       style: {
-        'background-color': entityColors.item
+        'background-color': '#f39c12'
+      }
+    },
+    // Edge styles
+    {
+      selector: 'edge[bidirectional=true]',
+      style: {
+        'target-arrow-shape': 'triangle',
+        'source-arrow-shape': 'triangle'
       }
     },
     {
-      selector: 'node[type="quest"]',
+      selector: 'edge[bidirectional=false]',
       style: {
-        'background-color': entityColors.quest
-      }
-    },
-    {
-      selector: 'node[type="event"]',
-      style: {
-        'background-color': entityColors.event
-      }
-    },
-    // Edge type styles
-    {
-      selector: 'edge[type="located_at"]',
-      style: {
-        'line-color': '#2196F3',
-        'line-style': 'dashed'
-      }
-    },
-    {
-      selector: 'edge[type="knows"]',
-      style: {
-        'line-color': '#4CAF50'
+        'target-arrow-shape': 'triangle'
       }
     }
   ];
-  
-  // Layout options
-  const layoutOptions = {
-    name: 'concentric',
-    fit: true,
-    padding: 50,
-    startAngle: 3/2 * Math.PI,
-    minNodeSpacing: 80,
-    concentric: function(node: any) {
-      return node.data('type') === 'campaign' ? 2 : 1;
-    },
-    levelWidth: function() { return 1; }
-  };
-  
-  // Handle zoom in/out
-  const handleZoomIn = () => {
-    if (cyRef.current) {
-      cyRef.current.zoom(cyRef.current.zoom() * 1.1);
-      setZoomLevel(cyRef.current.zoom());
+
+  // Safe handle for node selection
+  const safeHandleNodeTap = (evt: cytoscape.EventObject) => {
+    try {
+      if (onEntitySelect && evt.target && evt.target.id) {
+        onEntitySelect(evt.target.id());
+      }
+    } catch (error) {
+      console.error('Error handling node tap:', error);
     }
   };
-  
-  const handleZoomOut = () => {
-    if (cyRef.current) {
-      cyRef.current.zoom(cyRef.current.zoom() * 0.9);
-      setZoomLevel(cyRef.current.zoom());
+
+  // Safe initialize cytoscape
+  const safeInitializeCytoscape = (cy: cytoscape.Core) => {
+    try {
+      // Store the reference
+      cyRef.current = cy;
+      
+      // Set up event handlers
+      cy.on('tap', 'node', safeHandleNodeTap);
+      
+      // Run layout
+      cy.layout({ 
+        name: 'cose',
+        animate: true,
+        nodeDimensionsIncludeLabels: true,
+        randomize: true,
+        componentSpacing: 100,
+        nodeRepulsion: function(node: any) { return 2048; },
+        idealEdgeLength: function(edge: any) { return 128; }
+      }).run();
+    } catch (error) {
+      console.error('Error initializing cytoscape:', error);
+      setHasError(true);
     }
   };
-  
-  // Handle Cytoscape reference
-  const setCytoRef = (cy: cytoscape.Core) => {
-    cyRef.current = cy;
-    
-    // Initial layout
-    cy.layout(layoutOptions as any).run();
-    
-    // Set initial zoom level
-    setZoomLevel(cy.zoom());
-    
-    // Create a div for tooltips
-    let tooltipEl: HTMLDivElement | null = null;
-    
-    // Add events for node interaction
-    cy.on('mouseover', 'node', function(evt) {
-      const node = evt.target;
-      node.addClass('hover');
-      
-      // Create tooltip
-      if (!tooltipEl) {
-        tooltipEl = document.createElement('div');
-        tooltipEl.className = 'cy-tooltip';
-        document.body.appendChild(tooltipEl);
-      }
-      
-      // Set tooltip content based on node type
-      let tooltipContent = '';
-      if (node.data('type') === 'campaign') {
-        tooltipContent = `<strong>${node.data('label')}</strong>`;
-      } else {
-        tooltipContent = `
-          <strong>${node.data('label')}</strong><br/>
-          <em>${node.data('type')}</em><br/>
-          ${node.data('description') ? node.data('description').substring(0, 100) + '...' : 'No description'}
-        `;
-      }
-      
-      tooltipEl.innerHTML = tooltipContent;
-      
-      // Position tooltip near node
-      const pos = node.renderedPosition();
-      const container = cy.container();
-      
-      if (container) {
-        const rect = container.getBoundingClientRect();
-        tooltipEl.style.left = `${rect.left + pos.x + 15}px`;
-        tooltipEl.style.top = `${rect.top + pos.y - 15}px`;
-        tooltipEl.style.display = 'block';
-      }
-    });
-    
-    cy.on('mouseout', 'node', function() {
-      // Remove hover class
-      cy.nodes().removeClass('hover');
-      
-      // Hide tooltip
-      if (tooltipEl) {
-        tooltipEl.style.display = 'none';
-      }
-    });
-    
-    // Handle tap/click on nodes
-    cy.on('tap', 'node', function(evt) {
-      const node = evt.target;
-      console.log('Selected node:', node.data());
-      
-      // Add visual feedback for selection
-      cy.elements().removeClass('selected');
-      node.addClass('selected');
-      
-      // Call onEntitySelect callback if provided
-      if (onEntitySelect && node.id() !== 'campaign') {
-        onEntitySelect(node.id());
-      }
-    });
-    
-    // Clean up tooltip when component unmounts
-    return () => {
-      if (tooltipEl && tooltipEl.parentNode) {
-        tooltipEl.parentNode.removeChild(tooltipEl);
-      }
-    };
+
+  // Toggle between graph and list view
+  const toggleViewMode = () => {
+    setViewMode(viewMode === 'graph' ? 'list' : 'graph');
   };
-  
-  return (
-    <div className="network-view">
-      <div className="network-header">
-        <h2>World Graph</h2>
-        <div className="network-controls">
-          <button onClick={handleZoomOut} aria-label="Zoom out">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="11" cy="11" r="8"></circle>
-              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-              <line x1="8" y1="11" x2="14" y2="11"></line>
-            </svg>
-          </button>
-          <span className="zoom-level">{Math.round(zoomLevel * 100)}%</span>
-          <button onClick={handleZoomIn} aria-label="Zoom in">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="11" cy="11" r="8"></circle>
-              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-              <line x1="11" y1="8" x2="11" y2="14"></line>
-              <line x1="8" y1="11" x2="14" y2="11"></line>
-            </svg>
-          </button>
+
+  // Handle entity selection from list view
+  const handleEntityClick = (entityId: string) => {
+    if (onEntitySelect) {
+      onEntitySelect(entityId);
+    }
+  };
+
+  // Error fallback UI
+  const errorFallback = (
+    <div className="network-error">
+      <p>There was an error loading the network graph. Please try refreshing the page or use the list view.</p>
+    </div>
+  );
+
+  // Empty state UI
+  if (showEmptyState) {
+    return (
+      <div className="network-view">
+        <div className="network-empty-state">
+          <p>Create your first entity to start building your campaign's network graph.</p>
         </div>
       </div>
-      
-      {!currentCampaign ? (
-        <div className="no-campaign-message">
-          <p>Select a campaign to view its network</p>
-        </div>
-      ) : entities.length === 0 ? (
-        <div className="no-entities-message">
-          <p>Create your first entity to start building your campaign's network graph</p>
-        </div>
-      ) : (
-        <div className="network-graph-container">
-          <CytoscapeComponent
-            elements={[...elements.nodes, ...elements.edges]}
-            style={{ width: '100%', height: '100%' }}
-            stylesheet={cytoscapeStyle}
-            cy={setCytoRef}
-          />
-          
-          <div className="network-legend">
-            <div className="legend-title">Entity Types</div>
-            <div className="legend-item">
-              <span className="legend-color" style={{ backgroundColor: '#4CAF50' }}></span>
-              <span className="legend-label">NPC</span>
-            </div>
-            <div className="legend-item">
-              <span className="legend-color" style={{ backgroundColor: '#2196F3' }}></span>
-              <span className="legend-label">Location</span>
-            </div>
-            <div className="legend-item">
-              <span className="legend-color" style={{ backgroundColor: '#FFC107' }}></span>
-              <span className="legend-label">Faction</span>
-            </div>
-            <div className="legend-item">
-              <span className="legend-color" style={{ backgroundColor: '#9C27B0' }}></span>
-              <span className="legend-label">Item</span>
-            </div>
-            <div className="legend-item">
-              <span className="legend-color" style={{ backgroundColor: '#F44336' }}></span>
-              <span className="legend-label">Quest</span>
-            </div>
-            <div className="legend-item">
-              <span className="legend-color" style={{ backgroundColor: '#FF9800' }}></span>
-              <span className="legend-label">Event</span>
-            </div>
+    );
+  }
+
+  // List view of entities
+  const renderListView = () => {
+    return (
+      <div className="network-list-view">
+        <div className="entity-section">
+          <h3>Entities</h3>
+          <div className="entity-list">
+            {entities.map(entity => (
+              <div 
+                key={entity.id} 
+                className={`entity-item entity-${entity.type}`}
+                onClick={() => handleEntityClick(entity.id)}
+              >
+                <div className="entity-icon"></div>
+                <div className="entity-name">{entity.name}</div>
+                <div className="entity-type">{entity.type}</div>
+              </div>
+            ))}
           </div>
         </div>
-      )}
+        
+        {relationships && relationships.length > 0 && (
+          <div className="relationship-section">
+            <h3>Relationships</h3>
+            <div className="relationship-list">
+              {relationships.map(rel => (
+                <div key={rel.id} className="relationship-item">
+                  <span className={`entity-badge entity-${rel.source.type}`}>{rel.source.name}</span>
+                  <span className="relationship-type">
+                    {rel.bidirectional ? '⟷' : '→'} {rel.relationship_type}
+                  </span>
+                  <span className={`entity-badge entity-${rel.target.type}`}>{rel.target.name}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // Graph view with error boundary
+  const renderGraphView = () => {
+    return (
+      <CytoscapeErrorBoundary fallback={errorFallback}>
+        {elements.length > 0 && (
+          <CytoscapeComponent
+            elements={elements}
+            style={{ width: '100%', height: '100%' }}
+            stylesheet={cytoscapeStyle}
+            layout={{ name: 'cose', fit: true }}
+            cy={safeInitializeCytoscape}
+          />
+        )}
+      </CytoscapeErrorBoundary>
+    );
+  };
+
+  // If there's an error in the graph view, default to list view
+  if (hasError && viewMode === 'graph') {
+    setViewMode('list');
+  }
+
+  return (
+    <div className="network-view">
+      <div className="network-view-controls">
+        <button 
+          onClick={toggleViewMode}
+          className={`view-toggle-button ${viewMode}`}
+        >
+          {viewMode === 'graph' ? 'Switch to List View' : 'Switch to Graph View'}
+        </button>
+      </div>
+      
+      {viewMode === 'graph' ? renderGraphView() : renderListView()}
     </div>
   );
 };

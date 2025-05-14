@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useCampaign, CampaignMode, Entity } from '../hooks/useCampaign';
 import { useAuth } from '../hooks/useAuth';
@@ -8,8 +8,12 @@ import NetworkView from '../components/NetworkView';
 import DataView from '../components/DataView';
 import VoiceChat from '../components/VoiceChat';
 import CampaignMenu from '../components/CampaignMenu';
-import { supabase } from '../services/supabase';
+import EntityTabsBar from '../components/EntityTabsBar';
+import { supabase, fetchAllEntitiesForCampaign, fetchEntityRelationshipsWithDetails } from '../services/supabase';
 import chevronIcon from '../assets/icons/chevron.svg';
+import { useAssistantChat } from '../hooks/useAssistantChat';
+import EntityRelationshipsManager from '../components/EntityRelationshipsManager';
+import { EntityRelationshipDisplay } from '../types/entities';
 import './CampaignView.css';
 
 interface CampaignFormData {
@@ -17,6 +21,15 @@ interface CampaignFormData {
   description: string;
   setting: string;
   theme: string;
+}
+
+// Interface for entity data
+interface EntityData {
+  id: string;
+  name: string;
+  description?: string;
+  content?: Record<string, unknown>;
+  [key: string]: unknown;
 }
 
 const CampaignView: React.FC = () => {
@@ -45,6 +58,96 @@ const CampaignView: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isRotating, setIsRotating] = useState<'left' | 'right' | null>(null);
+  const [mainContentPadding, setMainContentPadding] = useState(false);
+  const [selectedEntityForView, setSelectedEntityForView] = useState<EntityData | null>(null);
+  const [relationships, setRelationships] = useState<EntityRelationshipDisplay[]>([]);
+  const [isLoadingRelationships, setIsLoadingRelationships] = useState(true);
+  const [relationshipsError, setRelationshipsError] = useState<string | null>(null);
+
+  const {
+    assistantChat,
+    messages: assistantMessages,
+    isLoading: isChatLoading,
+    error: chatError,
+    sendMessage,
+    isTyping
+  } = useAssistantChat(currentCampaign?.id || '', activeMode);
+
+  // Define fetchCampaigns function
+  const fetchCampaigns = useCallback(async () => {
+    try {
+      const { data, error } = await supabase
+        .from('campaigns')
+        .select('*')
+        .order('updated_at', { ascending: false });
+      
+      if (error) {
+        console.error('Error fetching campaigns:', error);
+        return;
+      }
+      
+      setCampaigns(data || []);
+    } catch (err) {
+      console.error('Failed to fetch campaigns:', err);
+    }
+  }, []);
+
+  // Define fetchEntities function
+  const fetchEntities = useCallback(async () => {
+    if (!currentCampaign?.id) return;
+
+    try {
+      console.log('CampaignView: Fetching entities for campaign:', currentCampaign.id);
+      const allEntities = await fetchAllEntitiesForCampaign(currentCampaign.id);
+      const convertedEntities: Entity[] = [
+        ...(allEntities.npcs || []).map(npc => ({
+          id: npc.id,
+          name: npc.name,
+          type: 'npc' as const,
+          campaign_id: npc.campaign_id,
+          content: { description: npc.description },
+          locked: false,
+          created_at: npc.created_at,
+          updated_at: npc.updated_at
+        })),
+        ...(allEntities.locations || []).map(loc => ({
+          id: loc.id,
+          name: loc.name,
+          type: 'location' as const,
+          campaign_id: loc.campaign_id,
+          content: { description: loc.description },
+          locked: false,
+          created_at: loc.created_at,
+          updated_at: loc.updated_at
+        })),
+        ...(allEntities.factions || []).map(faction => ({
+          id: faction.id,
+          name: faction.name,
+          type: 'faction' as const,
+          campaign_id: faction.campaign_id,
+          content: { description: faction.description },
+          locked: false,
+          created_at: faction.created_at,
+          updated_at: faction.updated_at
+        })),
+        ...(allEntities.items || []).map(item => ({
+          id: item.id,
+          name: item.name,
+          type: 'item' as const,
+          campaign_id: item.campaign_id,
+          content: { description: item.description },
+          locked: false,
+          created_at: item.created_at,
+          updated_at: item.updated_at
+        }))
+      ];
+
+      console.log('CampaignView: Entities loaded successfully, count:', convertedEntities.length, convertedEntities);
+      setEntities(convertedEntities);
+    } catch (error) {
+      console.error('Error fetching entities:', error);
+    }
+  }, [currentCampaign?.id]);
 
   // Load current campaign data into form when opened
   useEffect(() => {
@@ -57,6 +160,46 @@ const CampaignView: React.FC = () => {
       });
     }
   }, [currentCampaign]);
+
+  // Load campaigns
+  useEffect(() => {
+    if (user) {
+      fetchCampaigns();
+      if (id) {
+        fetchEntities();
+      }
+    }
+  }, [user, id]);
+
+  // Add an event listener to refresh entities when created
+  useEffect(() => {
+    // Function to handle the entity created event
+    const handleEntityCreated = (event: Event) => {
+      const customEvent = event as CustomEvent<{entityType: string, campaignId: string}>;
+      const { campaignId } = customEvent.detail;
+      
+      // Only refresh if it's for the current campaign
+      if (campaignId === id) {
+        console.log('Entity created event received, refreshing entities for campaign:', campaignId);
+        fetchEntities();
+      }
+    };
+
+    // Add event listener
+    window.addEventListener('entityCreated', handleEntityCreated);
+
+    // Clean up event listener on unmount
+    return () => {
+      window.removeEventListener('entityCreated', handleEntityCreated);
+    };
+  }, [id, fetchEntities]);
+
+  // Handle entity selection
+  const handleEntitySelect = (entity: EntityData) => {
+    console.log('Selected entity:', entity);
+    setSelectedEntityForView(entity);
+    // You can add more handling here like adding the entity to the chat
+  };
 
   // Combined input handler for both text inputs and textareas
   const handleFormChange = (
@@ -115,95 +258,13 @@ const CampaignView: React.FC = () => {
     }
   };
 
-  // Fetch campaigns from Supabase
-  useEffect(() => {
-    const fetchCampaigns = async () => {
-      const { data, error } = await supabase
-        .from('campaigns')
-        .select('*')
-        .order('name');
-      
-      if (error) {
-        console.error('Error fetching campaigns:', error);
-        return;
-      }
-      
-      setCampaigns(data || []);
-    };
-
-    fetchCampaigns();
-  }, []);
-
-  // Fetch entities for current campaign
-  useEffect(() => {
-    const fetchEntities = async () => {
-      if (!currentCampaign?.id) return;
-
-      // Fetch all entity types in parallel
-      const [npcs, locations, factions, items] = await Promise.all([
-        supabase.from('npcs').select('*').eq('campaign_id', currentCampaign.id),
-        supabase.from('locations').select('*').eq('campaign_id', currentCampaign.id),
-        supabase.from('factions').select('*').eq('campaign_id', currentCampaign.id),
-        supabase.from('items').select('*').eq('campaign_id', currentCampaign.id)
-      ]);
-
-      // Convert to Entity type
-      const allEntities: Entity[] = [
-        ...(npcs.data || []).map(npc => ({
-          id: npc.id,
-          name: npc.name,
-          type: 'npc' as const,
-          campaign_id: npc.campaign_id,
-          content: { description: npc.description },
-          locked: false,
-          created_at: npc.created_at,
-          updated_at: npc.updated_at
-        })),
-        ...(locations.data || []).map(loc => ({
-          id: loc.id,
-          name: loc.name,
-          type: 'location' as const,
-          campaign_id: loc.campaign_id,
-          content: { description: loc.description },
-          locked: false,
-          created_at: loc.created_at,
-          updated_at: loc.updated_at
-        })),
-        ...(factions.data || []).map(faction => ({
-          id: faction.id,
-          name: faction.name,
-          type: 'faction' as const,
-          campaign_id: faction.campaign_id,
-          content: { description: faction.description },
-          locked: false,
-          created_at: faction.created_at,
-          updated_at: faction.updated_at
-        })),
-        ...(items.data || []).map(item => ({
-          id: item.id,
-          name: item.name,
-          type: 'item' as const,
-          campaign_id: item.campaign_id,
-          content: { description: item.description },
-          locked: false,
-          created_at: item.created_at,
-          updated_at: item.updated_at
-        }))
-      ];
-
-      setEntities(allEntities);
-    };
-
-    fetchEntities();
-  }, [currentCampaign?.id]);
-
   // Handle sending messages
-  const handleSendMessage = async (message: string) => {
+  const handleSendMessage = async (content: string, files?: File[]) => {
     if (!currentCampaign?.id || !user?.id) return;
 
     const newMessage = {
       id: Date.now().toString(),
-      content: message,
+      content: content,
       sender: user.email || 'Anonymous',
       timestamp: new Date().toISOString(),
       entities: []
@@ -218,13 +279,20 @@ const CampaignView: React.FC = () => {
         .insert([{
           campaign_id: currentCampaign.id,
           user_id: user.id,
-          content: message,
+          content: content,
           mode: activeMode
         }]);
     } catch (error) {
       console.error('Error saving message:', error);
     }
   };
+
+  // Fetch entities when the campaign ID changes
+  useEffect(() => {
+    if (currentCampaign?.id) {
+      fetchEntities();
+    }
+  }, [currentCampaign?.id]);
 
   const handleBackToDashboard = async () => {
     await refreshCampaigns();
@@ -257,6 +325,61 @@ const CampaignView: React.FC = () => {
     setTimeout(() => setIsRotating(null), 300);
   };
 
+  const fetchRelationships = useCallback(async () => {
+    if (!currentCampaign?.id) {
+      console.warn('CampaignView: Cannot fetch relationships - no campaign ID');
+      return;
+    }
+
+    console.log('CampaignView: Starting to fetch relationships for campaign:', currentCampaign.id);
+    setIsLoadingRelationships(true);
+    setRelationshipsError(null);
+    
+    try {
+      console.log('CampaignView: Calling fetchEntityRelationshipsWithDetails API');
+      const result = await fetchEntityRelationshipsWithDetails(currentCampaign.id);
+      
+      if (result.data) {
+        console.log('CampaignView: Relationships loaded successfully. Count:', result.data.length);
+        console.log('CampaignView: Relationship data:', result.data);
+        setRelationships(result.data);
+      } else if (result.error) {
+        console.error('CampaignView: Failed to load relationships:', result.error);
+        console.error('CampaignView: Error details:', {
+          name: result.error.name,
+          message: result.error.message,
+          stack: result.error.stack
+        });
+        setRelationshipsError(`Failed to load relationships: ${result.error.message}`);
+      }
+    } catch (err: any) {
+      console.error('CampaignView: Error loading relationships:', err);
+      console.error('CampaignView: Error details:', {
+        name: err?.name,
+        message: err?.message,
+        stack: err?.stack
+      });
+      setRelationshipsError(`An unexpected error occurred: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      console.log('CampaignView: Finished relationship fetch attempt');
+      setIsLoadingRelationships(false);
+    }
+  }, [currentCampaign?.id]);
+
+  useEffect(() => {
+    if (currentCampaign?.id) {
+      console.log('CampaignView: Campaign ID changed, fetching relationships for:', currentCampaign.id);
+      fetchRelationships();
+    }
+  }, [currentCampaign?.id, fetchRelationships]);
+
+  const handleRelationshipsChange = useCallback(() => {
+    console.log('CampaignView: handleRelationshipsChange called - relationship data changed');
+    console.log('CampaignView: Current campaign ID:', currentCampaign?.id);
+    console.log('CampaignView: Will now refresh relationships data');
+    fetchRelationships();
+  }, [fetchRelationships, currentCampaign?.id]);
+
   if (loading) {
     return <div className="loading">Loading...</div>;
   }
@@ -266,7 +389,7 @@ const CampaignView: React.FC = () => {
   }
 
   return (
-    <div className="campaign-view">
+    <div className={`campaign-view ${mainContentPadding ? 'expanded-padding' : ''}`}>
       <div className="campaign-header">
         <div className="header-left">
           <button 
@@ -447,12 +570,51 @@ const CampaignView: React.FC = () => {
         {/* Center panel - Main Content */}
         <main className="main-panel">
           {activeMode === CampaignMode.Planning && (
-            <div className="campaign-network">
-              <h2>Campaign Network</h2>
-              <NetworkView 
-                currentCampaign={currentCampaign}
-                entities={entities}
-              />
+            <div className="planning-view">
+              {console.log('CampaignView planning mode entities:', entities)}
+              
+              <div className="world-graph">
+                <h2>World Graph</h2>
+                <div className="graph-container">
+                  <NetworkView 
+                    entities={entities}
+                    relationships={relationships}
+                    onEntitySelect={(entityId) => {
+                      const entity = entities.find(e => e.id === entityId);
+                      if (entity) {
+                        handleEntitySelect(entity);
+                      }
+                    }}
+                  />
+                </div>
+                {currentCampaign?.id && (
+                  <div className="relationship-manager-container">
+                    <EntityRelationshipsManager
+                      campaignId={currentCampaign.id}
+                      entities={entities}
+                      relationships={relationships}
+                      isLoading={isLoadingRelationships}
+                      error={relationshipsError}
+                      onRelationshipsChange={handleRelationshipsChange}
+                      selectedEntityId={selectedEntityForView?.id}
+                    />
+                  </div>
+                )}
+              </div>
+              <div className="dm-assistant-chat">
+                <h2>DM Assistant</h2>
+                <ChatInterface 
+                  mode="planning"
+                  messages={assistantMessages}
+                  onSendMessage={handleSendMessage}
+                  availableEntities={entities}
+                  isTyping={isTyping}
+                  campaignId={currentCampaign?.id}
+                  userId={user?.id}
+                  isAIAssistant={true}
+                  assistantChat={assistantChat}
+                />
+              </div>
             </div>
           )}
           {activeMode === CampaignMode.Running && (
@@ -460,28 +622,52 @@ const CampaignView: React.FC = () => {
               <h2>Session Chat</h2>
               <ChatInterface 
                 mode="running"
-                messages={messages}
+                messages={assistantMessages}
                 onSendMessage={handleSendMessage}
                 availableEntities={entities}
-                isTyping={false}
+                isTyping={isTyping}
                 campaignId={currentCampaign?.id}
                 userId={user?.id}
+                isAIAssistant={true}
+                assistantChat={assistantChat}
               />
             </div>
           )}
           {activeMode === CampaignMode.Review && (
-            <div className="chat-section">
-              <h2>Session Review</h2>
-              <ChatInterface 
-                mode="review"
-                messages={messages}
-                onSendMessage={handleSendMessage}
-                availableEntities={entities}
-                isTyping={false}
-                campaignId={currentCampaign?.id}
-                userId={user?.id}
-              />
-              <DataView entities={entities} />
+            <div className="review-section">
+              <h2>Campaign Review</h2>
+              <div className="review-content">
+                <NetworkView 
+                  entities={entities}
+                  relationships={relationships}
+                  onEntitySelect={(entityId) => {
+                    const entity = entities.find(e => e.id === entityId);
+                    if (entity) {
+                      handleEntitySelect(entity);
+                    }
+                  }}
+                />
+                {selectedEntityForView && (
+                  <div className="selected-entity-details">
+                    <h3>{selectedEntityForView.name}</h3>
+                    <p>{selectedEntityForView.description || 'No description available'}</p>
+                    {currentCampaign?.id && (
+                      <div className="entity-relationships-section">
+                        <h4>Relationships</h4>
+                        <EntityRelationshipsManager
+                          campaignId={currentCampaign.id}
+                          entities={entities}
+                          relationships={relationships}
+                          isLoading={isLoadingRelationships}
+                          error={relationshipsError}
+                          onRelationshipsChange={handleRelationshipsChange}
+                          selectedEntityId={selectedEntityForView.id}
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </main>
@@ -509,6 +695,15 @@ const CampaignView: React.FC = () => {
           </div>
         </aside>
       </div>
+      
+      {/* Add the EntityTabsBar */}
+      {currentCampaign && (
+        <EntityTabsBar 
+          campaignId={currentCampaign.id}
+          onEntitySelect={handleEntitySelect}
+          onExpand={(isExpanded) => setMainContentPadding(isExpanded)}
+        />
+      )}
     </div>
   );
 };

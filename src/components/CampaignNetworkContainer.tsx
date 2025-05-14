@@ -92,6 +92,83 @@ const CampaignNetworkContainer: React.FC = () => {
     fetchCampaignData();
   }, [campaignId]);
   
+  // Listen for entity creation events
+  useEffect(() => {
+    // Function to handle entity created event
+    const handleEntityCreated = (event: Event) => {
+      const customEvent = event as CustomEvent<{entityType: string, campaignId: string}>;
+      const { campaignId: eventCampaignId } = customEvent.detail;
+      
+      // Only refresh if it's for the current campaign
+      if (eventCampaignId === campaignId) {
+        console.log('CampaignNetworkContainer: Entity created event received, refreshing entities');
+        // We can reuse the fetchCampaignData function
+        const fetchData = async () => {
+          setIsLoading(true);
+          
+          try {
+            // Helper function for type-safe entity conversion
+            const convertToEntity = (
+              item: any, 
+              entityType: "npc" | "location" | "faction" | "item" | "event" | "quest"
+            ): Entity => ({
+              id: item.id,
+              name: item.name,
+              type: entityType,
+              content: {
+                description: item.description || ''
+              },
+              locked: false,
+              campaign_id: item.campaign_id,
+              created_at: item.created_at,
+              updated_at: item.updated_at
+            });
+            
+            // Fetch entities with proper typing
+            const fetchEntities = async (
+              table: 'npcs' | 'locations' | 'factions' | 'items', 
+              entityType: "npc" | "location" | "faction" | "item"
+            ) => {
+              const { data, error } = await supabase
+                .from(table)
+                .select('*')
+                .eq('campaign_id', campaignId);
+                
+              if (error) throw error;
+              
+              return (data || []).map(item => convertToEntity(item, entityType));
+            };
+            
+            // Fetch all entity types in parallel
+            const [npcs, locations, factions, items] = await Promise.all([
+              fetchEntities('npcs', 'npc'),
+              fetchEntities('locations', 'location'),
+              fetchEntities('factions', 'faction'),
+              fetchEntities('items', 'item')
+            ]);
+            
+            // Combine all entities
+            setEntities([...npcs, ...locations, ...factions, ...items]);
+          } catch (err: any) {
+            console.error('Error refreshing campaign data:', err);
+          } finally {
+            setIsLoading(false);
+          }
+        };
+        
+        fetchData();
+      }
+    };
+
+    // Add event listener
+    window.addEventListener('entityCreated', handleEntityCreated);
+
+    // Clean up event listener on unmount
+    return () => {
+      window.removeEventListener('entityCreated', handleEntityCreated);
+    };
+  }, [campaignId]);
+  
   if (isLoading) {
     return (
       <div className="campaign-network-container loading">

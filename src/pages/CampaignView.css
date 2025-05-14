@@ -605,4 +605,188 @@ textarea.form-control {
 .menu-icon {
   margin-right: 0.5rem;
   font-size: 1rem;
+}
+
+.planning-view {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  gap: 1rem;
+  padding: 1rem;
+}
+
+.world-graph {
+  flex: 2;
+  display: flex;
+  flex-direction: column;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.world-graph h2 {
+  padding: 1rem;
+  margin: 0;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+/* Add styles for the graph and relationship manager containers */
+.graph-container {
+  flex: 1;
+  min-height: 300px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transition: flex-grow 0.3s ease;
+}
+
+/* Parent container styles when relationships are minimized */
+.world-graph.relationships-minimized {
+  display: flex;
+  flex-direction: column;
+}
+
+.world-graph.relationships-minimized .graph-container {
+  flex-grow: 5;
+}
+
+.world-graph.relationships-minimized .relationship-manager-container {
+  flex-shrink: 1;
+  flex-grow: 0;
+  min-height: 60px;
+  max-height: 60px;
+  transition: min-height 0.3s ease, max-height 0.3s ease;
+}
+
+.relationship-manager-container {
+  flex: 1;
+  min-height: 200px;
+  max-height: 40%;
+  border-top: 1px solid #e5e7eb;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transition: all 0.3s ease;
+}
+
+/* When relationships are minimized, adjust container sizes */
+.relationship-manager-container .entity-relationships-manager.minimized {
+  min-height: 60px;
+  max-height: 60px;
+}
+
+.relationship-manager-container .entity-relationships-manager.minimized .relationships-header {
+  margin-bottom: 0;
+}
+
+/* Adjust the world graph container when relationships are minimized */
+.relationship-manager-container .entity-relationships-manager.minimized ~ .graph-container {
+  flex-grow: 2;
+}
+
+.dm-assistant-chat {
+  flex: 1;
+  min-width: 300px;
+  max-width: 400px;
+  display: flex;
+  flex-direction: column;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.dm-assistant-chat h2 {
+  padding: 1rem;
+  margin: 0;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+/* Ensure the NetworkView fills its container */
+.world-graph .network-view {
+  flex: 1;
+  overflow: hidden;
+}
+
+/* Ensure the ChatInterface fills its container */
+.dm-assistant-chat .chat-interface {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Styling for the review section */
+.review-section {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.review-content {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.selected-entity-details {
+  padding: 1rem;
+  background: #ffffff;
+  border-top: 1px solid #e5e7eb;
+  overflow-y: auto;
+  max-height: 40%;
+}
+
+.selected-entity-details h3 {
+  margin-top: 0;
+  color: var(--primary-color, #333);
+  margin-bottom: 0.5rem;
+}
+
+.selected-entity-details p {
+  color: var(--text-color, #4b5563);
+  margin-bottom: 1rem;
+}
+
+.entity-relationships-section {
+  margin-top: 1rem;
+}
+
+.entity-relationships-section h4 {
+  margin-top: 0;
+  margin-bottom: 0.5rem;
+  color: var(--primary-color, #333);
+  font-size: 1rem;
+}
+
+/* Make the relationships manager more compact in review mode */
+.review-section .entity-relationships-manager {
+  padding: 0;
+}
+
+.review-section .relationship-item {
+  margin-bottom: 4px;
+}
+
+.review-section .relationships-header {
+  margin-bottom: 8px;
+}
+
+/* Support for EntityTabsBar padding */
+.campaign-view.expanded-padding .campaign-content {
+  padding-bottom: 350px; /* Match the height of the expanded EntityTabsBar */
+}
+
+/* Make sure all content inside is properly sized */
+.campaign-view.expanded-padding .main-panel {
+  padding-bottom: 350px; /* Match the height of the expanded EntityTabsBar */
+  overflow-y: auto; /* Allow scrolling */
+}
+
+/* Make sure the entity tabs bar stays on top */
+.entity-tabs-bar {
+  z-index: 1050; /* Higher than other elements in the view */
 } 
