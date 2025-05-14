@@ -24,6 +24,7 @@ const DeleteConfirmation: React.FC<DeleteConfirmationProps> = ({
 }) => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [confirmation, setConfirmation] = useState('');
   
   function getTableName(type: string): string {
     switch (type) {
@@ -105,7 +106,21 @@ const DeleteConfirmation: React.FC<DeleteConfirmationProps> = ({
           <p className="delete-warning">
             This action cannot be undone.
           </p>
-          
+          <p className="delete-confirmation-string">
+            Please type <strong>DELETE</strong> to confirm.
+          </p>
+          <input
+            type="text"
+            className="delete-confirmation-input"
+            value={confirmation}
+            onChange={e => setConfirmation(e.target.value)}
+            placeholder="Type DELETE to confirm"
+            disabled={isDeleting}
+            autoFocus
+          />
+          {confirmation && confirmation !== 'DELETE' && (
+            <div className="delete-error">You must type DELETE to confirm.</div>
+          )}
           {error && <div className="delete-error">{error}</div>}
         </div>
         
@@ -120,7 +135,7 @@ const DeleteConfirmation: React.FC<DeleteConfirmationProps> = ({
           <button 
             className="delete-button" 
             onClick={handleDelete}
-            disabled={isDeleting}
+            disabled={isDeleting || confirmation !== 'DELETE'}
           >
             {isDeleting ? 'Deleting...' : 'Delete'}
           </button>

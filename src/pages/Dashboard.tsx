@@ -3,6 +3,8 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useCampaign } from '../hooks/useCampaign';
 import './Dashboard.css';
+import DeleteConfirmation from '../components/DeleteConfirmation';
+import { FaTrash } from 'react-icons/fa';
 
 // Define campaign form data interface
 interface CampaignFormData {
@@ -15,7 +17,7 @@ interface CampaignFormData {
 
 const Dashboard: React.FC = () => {
   const { user } = useAuth();
-  const { campaigns, createCampaign, setCurrentCampaign, currentCampaign } = useCampaign();
+  const { campaigns, createCampaign, setCurrentCampaign, currentCampaign, deleteCampaign } = useCampaign();
   const navigate = useNavigate();
   
   // State for creating a new campaign
@@ -27,6 +29,8 @@ const Dashboard: React.FC = () => {
     theme: ''
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [deleteMode, setDeleteMode] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<{id: string, name: string} | null>(null);
   
   // Handle input changes
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -88,6 +92,12 @@ const Dashboard: React.FC = () => {
     }
   };
   
+  // Handle campaign deletion
+  const handleDeleteCampaign = async (id: string) => {
+    await deleteCampaign(id);
+    setDeleteTarget(null);
+  };
+  
   return (
     <div className="dashboard">
       <div className="dashboard-header">
@@ -100,12 +110,21 @@ const Dashboard: React.FC = () => {
         <div className="dashboard-section">
           <div className="section-header">
             <h2>Your Campaigns</h2>
-            <button 
-              className="btn btn-primary btn-sm"
-              onClick={() => setShowNewCampaignForm(true)}
-            >
-              Create Campaign
-            </button>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <button 
+                className={`btn btn-secondary btn-sm${deleteMode ? ' active' : ''}`}
+                onClick={() => setDeleteMode(m => !m)}
+                title={deleteMode ? 'Exit Delete Mode' : 'Delete Campaigns'}
+              >
+                <FaTrash style={{ marginRight: 4 }} /> {deleteMode ? 'Done' : 'Delete'}
+              </button>
+              <button 
+                className="btn btn-primary btn-sm"
+                onClick={() => setShowNewCampaignForm(true)}
+              >
+                Create Campaign
+              </button>
+            </div>
           </div>
           
           {/* Campaign list */}
@@ -115,8 +134,22 @@ const Dashboard: React.FC = () => {
                 <div 
                   key={campaign.id} 
                   className={`campaign-card ${campaign.is_active ? 'active-campaign' : ''}`}
-                  onClick={() => handleSelectCampaign(campaign.id)}
+                  onClick={() => !deleteMode && handleSelectCampaign(campaign.id)}
+                  style={{ position: 'relative' }}
                 >
+                  {deleteMode && (
+                    <button
+                      className="campaign-delete-btn"
+                      title="Delete Campaign"
+                      onClick={e => {
+                        e.stopPropagation();
+                        setDeleteTarget({ id: campaign.id, name: campaign.name });
+                      }}
+                      style={{ position: 'absolute', top: 8, right: 8, background: 'none', border: 'none', cursor: 'pointer', color: '#e53e3e', zIndex: 2 }}
+                    >
+                      <FaTrash />
+                    </button>
+                  )}
                   <h3 className="campaign-title">{campaign.name}</h3>
                   <p className="campaign-setting">{campaign.setting || 'No setting defined'}</p>
                   <p className="campaign-description">{campaign.description || 'No description provided'}</p>
@@ -271,6 +304,16 @@ const Dashboard: React.FC = () => {
             </form>
           </div>
         </div>
+      )}
+      {deleteTarget && (
+        <DeleteConfirmation
+          entityType="campaign"
+          entityName={deleteTarget.name}
+          entityId={deleteTarget.id}
+          onClose={() => setDeleteTarget(null)}
+          onDelete={() => handleDeleteCampaign(deleteTarget.id)}
+          handleDeleteEntitySubmit={async (id) => { await deleteCampaign(id); return true; }}
+        />
       )}
     </div>
   );
